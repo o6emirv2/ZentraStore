@@ -1,0 +1,189 @@
+:root {
+  color-scheme:dark;
+  --red:#f21d41;
+  --red-bright:#ff3658;
+  --green:#4dde9d;
+  --danger:#ff5a6f;
+  --line:#252d3b;
+  --text:#f7f8fb;
+  --soft:#b7becb;
+  --dim:#98a4b6;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px)
+}
+*,*::before,*::after {
+  box-sizing:border-box
+}
+html {
+  min-width:320px;
+  background:#03050a;
+  -webkit-text-size-adjust:100%
+}
+body {
+  min-width:320px;
+  min-height:100vh;
+  min-height:100dvh;
+  margin:0;
+  padding:max(16px,var(--safe-top)) max(14px,var(--safe-right)) max(16px,var(--safe-bottom)) max(14px,var(--safe-left));
+  display:grid;
+  place-items:center;
+  background:radial-gradient(circle at 4% 0,rgba(242,29,65,.18),transparent 26rem),radial-gradient(circle at 100% 80%,rgba(53,212,244,.055),transparent 26rem),linear-gradient(155deg,#080b12,#03050a 55%,#05070c);
+  color:var(--text);
+  font:500 15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased
+}
+.gate {
+  position:relative;
+  width:min(100%,470px);
+  padding:16px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:22px;
+  background:linear-gradient(150deg,rgba(17,23,34,.985),rgba(5,8,14,.99));
+  box-shadow:0 28px 90px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.04)
+}
+.gate::before {
+  content:"";
+  position:absolute;
+  inset:0 auto auto 0;
+  width:65%;
+  height:2px;
+  background:linear-gradient(90deg,var(--red),transparent)
+}
+.brand {
+  padding-bottom:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.075)
+}
+.brand img {
+  width:48px;
+  height:48px;
+  object-fit:contain;
+  filter:drop-shadow(0 0 13px rgba(242,29,65,.3))
+}
+.brand>span {
+  display:grid;
+  gap:2px
+}
+.brand b {
+  font-size:0.875rem;
+  letter-spacing:.09em
+}
+.brand small {
+  color:var(--red-bright);
+  font-size:0.75rem;
+  font-weight:900;
+  letter-spacing:.1em
+}
+.status {
+  width:58px;
+  height:58px;
+  margin:22px 0 13px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,90,111,.25);
+  border-radius:17px;
+  background:rgba(255,90,111,.07);
+  color:var(--danger);
+  font-size:1.25rem;
+  font-weight:900
+}
+.status.is-success {
+  border-color:rgba(77,222,157,.25);
+  background:rgba(77,222,157,.08);
+  color:var(--green)
+}
+.eyebrow {
+  display:block;
+  color:var(--red-bright);
+  font-size:0.75rem;
+  font-weight:900;
+  letter-spacing:.12em
+}
+.status.is-success+.eyebrow {
+  color:var(--green)
+}
+h1 {
+  margin:6px 0 7px;
+  font-size:clamp(1.15rem,5vw,1.52rem);
+  line-height:1.2;
+  letter-spacing:-.025em
+}
+p {
+  margin:0;
+  color:var(--dim);
+  font-size:0.875rem;
+  line-height:1.6
+}
+a {
+  min-height:49px;
+  margin-top:18px;
+  padding:0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border:1px solid rgba(242,29,65,.4);
+  border-radius:12px;
+  background:linear-gradient(135deg,var(--red-bright),#c91031);
+  box-shadow:0 14px 32px rgba(242,29,65,.2);
+  color:#fff;
+  text-decoration:none;
+  font-size:0.875rem;
+  font-weight:900
+}
+a span {
+  font-size:.9rem
+}
+main>small {
+  display:block;
+  margin-top:12px;
+  padding:8px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#070b12;
+  color:var(--dim);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:0.75rem;
+  overflow-wrap:anywhere
+}
+a:focus-visible {
+  outline:3px solid rgba(53,212,244,.8);
+  outline-offset:3px
+}
+@media(min-width:600px) {
+  .gate {
+    padding:22px;
+    border-radius:26px
+  }
+  .brand {
+    padding-bottom:18px
+  }
+  .brand img {
+    width:54px;
+    height:54px
+  }
+  .status {
+    margin-top:28px;
+    width:64px;
+    height:64px;
+    border-radius:19px
+  }
+  .gate p {
+    font-size:0.875rem
+  }
+  a {
+    min-height:52px;
+    font-size:0.875rem
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {
+    animation-duration:.001ms!important;
+    transition-duration:.001ms!important
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "shelby-store-production",
+  "version": "66.2.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "SHELBY STORE premium game storefront, secure account sessions, resilient orders and encrypted digital-delivery vault",
+  "main": "server.js",
+  "engines": {
+    "node": "24.x",
+    "npm": ">=10 <12"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm run check:server && npm run check:browser && npm run check:catalog && npm run check:source",
+    "check:server": "node --check server.js && node --check server/config/env.js && node --check server/config/cors.js && node --check server/config/firebaseAdmin.js && node --check server/core/distributedRateLimitStore.js && node --check server/core/firestorePagination.js && node --check server/core/security.js && node --check server/core/requestSecurity.js && node --check server/core/userSessionService.js && node --check server/core/adminAccessService.js && node --check server/core/adminTotpService.js && node --check server/core/adminSessionRegistry.js && node --check server/core/adminHandoffService.js && node --check server/core/adminGateService.js && node --check server/core/adminReauthService.js && node --check server/core/storeBadgeCatalog.js && node --check server/core/storeCatalog.js && node --check server/core/storeAvatars.js && node --check server/core/storeLinks.js && node --check server/core/storeCatalogService.js && node --check server/core/storeCatalogCleanupService.js && node --check server/core/storeKeyVault.js && node --check server/core/storeInventoryService.js && node --check server/core/storePromotionService.js && node --check server/core/adminStoreService.js && node --check server/core/storeService.js && node --check server/core/storeProfileService.js && node --check server/routes/auth.routes.js && node --check server/routes/identity.routes.js && node --check server/routes/admin-auth.routes.js && node --check server/routes/store.routes.js",
+    "check:browser": "node --input-type=module --check < script.js && node --input-type=module --check < public/js/ui/interaction-guard.js && node --input-type=module --check < public/js/ui/interaction-guard-entry.js && node --input-type=module --check < public/js/ui/notification-center.js && node --input-type=module --check < public/js/store/api.js && node --input-type=module --check < public/js/store/auth.js && node --input-type=module --check < public/js/store/social-links.js && node --input-type=module --check < public/js/store/customer-app.js && node --input-type=module --check < public/js/store/customer-renderers.js && node --input-type=module --check < public/js/store/products.js && node --input-type=module --check < public/js/store/product-media.js && node --input-type=module --check < public/js/store/product-gallery.js && node --input-type=module --check < public/js/store/showcase-slider.js && node --input-type=module --check < public/js/store/storefront.js && node --input-type=module --check < admin/admin-auth.js && node --input-type=module --check < admin/admin-core.js && node --input-type=module --check < admin/admin-gate.js && node --input-type=module --check < admin/admin-dashboard.js",
+    "check:catalog": "node -e \"const fs=require('fs'),c=require('./public/data/store-products.json'),i=require('./firestore.indexes.json');if(!Array.isArray(c.products)||!c.products.length||!Array.isArray(i.indexes))process.exit(1);const b=Array.isArray(c.badgeOptions)?c.badgeOptions:[];for(const f of ['key','label','icon']){const v=b.map(x=>String(x[f]||'').toLocaleUpperCase('tr-TR'));if(v.length!==new Set(v).size)process.exit(1)}const keys=new Set(b.map(x=>x.key));for(const x of c.products){if(!['android','ios'].includes(x.platform)||!keys.has(x.badgeKey)||!/^\\/public\\/assets\\/products\\/[A-Za-z0-9._-]+$/.test(x.image)||!fs.existsSync('.'+x.image))process.exit(1)}console.log('catalog products:',c.products.length,'badges:',b.length,'firestore indexes:',i.indexes.length)\"",
+    "check:source": "node scripts/verify-source.cjs"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.3",
+    "express-rate-limit": "^7.2.0",
+    "firebase-admin": "^13.10.0",
+    "helmet": "^8.1.0"
+  },
+  "overrides": {
+    "ws": "^8.20.1",
+    "@tootallnate/once": "^3.0.1",
+    "uuid": "^11.1.1"
+  },
+  "packageManager": "npm@10.8.2"
+}
