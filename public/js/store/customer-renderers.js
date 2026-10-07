@@ -42,7 +42,7 @@ function renderAvatarPickerView(avatars = [], selectedId = '1', fallbackIcons = 
     const media = avatar?.image
       ? `<img class="avatar-image" src="${escapeCustomerHtml(avatar.image)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
       : customerIcon(fallbackIcons[id] || fallbackIcons['1'] || 'fa-user');
-    return `<button class="customer-avatar-choice${selected ? ' is-selected' : ''}" type="button" data-avatar-choice="${escapeCustomerHtml(id)}" aria-pressed="${String(selected)}" aria-label="${escapeCustomerHtml(avatar?.label || `SHELBY STORE Avatar ${id}`)}">
+    return `<button class="customer-avatar-choice${selected ? ' is-selected' : ''}" type="button" data-avatar-choice="${escapeCustomerHtml(id)}" aria-pressed="${String(selected)}" aria-label="${escapeCustomerHtml(avatar?.label || `ZENTRA STORE Avatar ${id}`)}">
       <span class="customer-avatar-choice__media" data-avatar-id="${escapeCustomerHtml(id)}">${media}</span>
       <span class="customer-avatar-choice__check" aria-hidden="true">${customerIcon('fa-check')}</span>
     </button>`;

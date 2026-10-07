@@ -178,7 +178,7 @@ let productGalleryController = null;
 function showNotice(type, title, message, options = {}) {
   notificationCenter ||= createNotificationCenter({
     host: $('#toastStack'),
-    brand: 'SHELBY STORE',
+    brand: 'ZENTRA STORE',
     soundUrl: '/public/assets/sounds/bildirim.wav'
   });
   return notificationCenter.notify(type, title, message, options);
@@ -429,7 +429,7 @@ function renderStorefrontConfiguration() {
   const host = $('#storeAnnouncement');
   if (host) {
     host.hidden = announcement.enabled !== true || (!announcement.title && !announcement.message);
-    if (!host.hidden) host.innerHTML = `<div class="store-announcement__icon">${iconMarkup(announcement.tone === 'warning' ? 'fa-triangle-exclamation' : announcement.tone === 'success' ? 'fa-circle-check' : 'fa-bullhorn')}</div><div><small>MAĞAZA DUYURUSU</small><strong>${escapeHtml(announcement.title || 'SHELBY STORE')}</strong><p>${escapeHtml(announcement.message || '')}</p></div>${announcement.ctaLabel ? `<button type="button" data-announcement-target="${escapeHtml(announcement.ctaTarget || 'catalog')}">${escapeHtml(announcement.ctaLabel)} ${iconMarkup('fa-arrow-right')}</button>` : ''}`;
+    if (!host.hidden) host.innerHTML = `<div class="store-announcement__icon">${iconMarkup(announcement.tone === 'warning' ? 'fa-triangle-exclamation' : announcement.tone === 'success' ? 'fa-circle-check' : 'fa-bullhorn')}</div><div><small>MAĞAZA DUYURUSU</small><strong>${escapeHtml(announcement.title || 'ZENTRA STORE')}</strong><p>${escapeHtml(announcement.message || '')}</p></div>${announcement.ctaLabel ? `<button type="button" data-announcement-target="${escapeHtml(announcement.ctaTarget || 'catalog')}">${escapeHtml(announcement.ctaLabel)} ${iconMarkup('fa-arrow-right')}</button>` : ''}`;
     host.dataset.tone = ['info', 'success', 'warning'].includes(announcement.tone) ? announcement.tone : 'info';
   }
   const categoryVisibility = storefront.categoryVisibility || {};
@@ -1089,7 +1089,7 @@ async function submitOrder(lines, paymentMethod, options = {}) {
     }
     if (options.closeLayer && state.activeLayer) closeActiveLayer({ restoreFocus: false });
     if (paymentMethod === 'telegram') {
-      showNotice('success', 'Siparişiniz oluşturuldu', `${payload.order?.orderNumber || 'SHELBY STORE siparişiniz'} hesabınıza başarıyla kaydedildi.`);
+      showNotice('success', 'Siparişiniz oluşturuldu', `${payload.order?.orderNumber || 'ZENTRA STORE siparişiniz'} hesabınıza başarıyla kaydedildi.`);
       openTelegramTarget(payload.telegramUrl, telegramWindow);
     }
     await Promise.allSettled([refreshStoreAccount(), loadCatalog(true), loadOrders(true)]);
@@ -1142,7 +1142,7 @@ function formatOrderDate(value = 0) {
 }
 
 function clientTelegramMessage(order) {
-  const lines = ['Merhaba, SHELBY STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
+  const lines = ['Merhaba, ZENTRA STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
   (order.items || []).forEach((item, index) => {
     const prefix = (order.items || []).length > 1 ? `${index + 1}. ` : '';
     lines.push(
@@ -1173,7 +1173,7 @@ function orderProductVisual(order = {}) {
   if (product) return productImage(product, { compact: true, eager: true });
   return productPlaceholder({
     id: String(item?.productId || 'store-product'),
-    name: String(item?.productName || 'SHELBY STORE'),
+    name: String(item?.productName || 'ZENTRA STORE'),
     accent: '#e64067',
     icon: 'fa-box-open'
   }, true);
@@ -1436,7 +1436,7 @@ async function cancelOrder(orderId = '') {
     }
     state.cancelConfirmOrderId = '';
     showNotice('success', 'Siparişiniz iptal edildi', order.paymentMethod === 'wallet'
-      ? 'Sipariş tutarı SHELBY STORE bakiyenize güvenle iade edildi.'
+      ? 'Sipariş tutarı ZENTRA STORE bakiyenize güvenle iade edildi.'
       : 'Ödeme bekleyen siparişiniz iptal edildi.');
   } catch (error) {
     if (String(state.auth.user?.uid || '') === requestedUserId) showNotice('error', 'Siparişinizi iptal edemedik', friendlyStoreError(error));
@@ -1545,7 +1545,7 @@ function renderAvatarPicker() {
   const serverAvatars = Array.isArray(state.catalog?.avatars) ? state.catalog.avatars : [];
   const avatars = serverAvatars.length
     ? serverAvatars
-    : Object.keys(FALLBACK_AVATAR_ICONS).map((id) => ({ id, label: `SHELBY STORE Avatar ${id}`, image: '' }));
+    : Object.keys(FALLBACK_AVATAR_ICONS).map((id) => ({ id, label: `ZENTRA STORE Avatar ${id}`, image: '' }));
   if (avatarPicker) avatarPicker.innerHTML = renderAvatarPickerView(avatars, state.selectedAvatarId, FALLBACK_AVATAR_ICONS);
   if ($('#avatarChoiceCount')) $('#avatarChoiceCount').textContent = `${avatars.length} SEÇENEK`;
   applyAvatar($('#accountAvatar'), state.selectedAvatarId);
@@ -1608,7 +1608,7 @@ function renderAccountHeader() {
   });
   if ($('#guestActions')) $('#guestActions').hidden = signedIn;
   if ($('#accountButton')) $('#accountButton').hidden = !signedIn;
-  const username = account?.username || auth.user?.displayName || auth.user?.email?.split('@')[0] || 'SHELBY STORE Üyesi';
+  const username = account?.username || auth.user?.displayName || auth.user?.email?.split('@')[0] || 'ZENTRA STORE Üyesi';
   const email = account?.email || auth.user?.email || '—';
   const balanceKurus = Number(account?.balanceKurus || 0);
   const avatarId = String(account?.avatarId || state.selectedAvatarId || '1');
@@ -2605,7 +2605,7 @@ export async function bootStorefront() {
         renderAvatarPicker();
       }
       if (action === 'logout' && $('#accountLogoutName')) {
-        $('#accountLogoutName').textContent = state.auth.account?.username || state.auth.user?.displayName || state.auth.user?.email || 'SHELBY STORE üyesi';
+        $('#accountLogoutName').textContent = state.auth.account?.username || state.auth.user?.displayName || state.auth.user?.email || 'ZENTRA STORE üyesi';
       }
       if (action === 'username' && $('#accountNewUsername')) $('#accountNewUsername').value = state.auth.account?.username || '';
       if (action === 'name') {

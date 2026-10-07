@@ -171,7 +171,7 @@ function normalizeAvatar(source = {}) {
     if (url.protocol !== 'https:' || url.hostname !== 'encrypted-tbn0.gstatic.com' || url.pathname !== '/images') return null;
     if (!/^tbn:ANd9Gc/i.test(url.searchParams.get('q') || '') || url.searchParams.get('s') !== '10') return null;
   } catch (_) { return null; }
-  return Object.freeze({ id, label: label || `SHELBY Profil ${id}`, image });
+  return Object.freeze({ id, label: label || `ZENTRA Profil ${id}`, image });
 }
 
 function normalizeCatalog(source = {}) {

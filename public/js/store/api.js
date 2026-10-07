@@ -82,7 +82,7 @@ const USER_MESSAGES = Object.freeze({
   STORE_PAYMENT_METHOD_INVALID: 'Ödeme yöntemi doğrulanamadı.',
   STORE_ACCOUNT_DISABLED: 'Hesabınız güvenlik nedeniyle kullanıma kapatılmış. Lütfen destek ekibiyle iletişime geçin.',
   STORE_ACCOUNT_NOT_FOUND: 'Hesap bilgilerinizi doğrulayamadık. Lütfen yeniden giriş yapın.',
-  STORE_INSUFFICIENT_BALANCE: 'SHELBY STORE bakiyeniz bu sipariş için yeterli değil.',
+  STORE_INSUFFICIENT_BALANCE: 'ZENTRA STORE bakiyeniz bu sipariş için yeterli değil.',
   STORE_ORDER_CONFLICT: 'Bu sipariş isteği daha önce farklı bilgilerle kullanılmış. Lütfen sepetinizi yenileyip yeniden deneyin.',
   STORE_ORDER_NOT_FOUND: 'Sipariş bulunamadı veya artık erişilebilir değil.',
   STORE_ORDER_ID_REQUIRED: 'Sipariş bilgisi eksik. Lütfen sipariş listenizi yenileyin.',

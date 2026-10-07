@@ -57,7 +57,7 @@ function presentation(type, title, message, options) {
 
 export function createNotificationCenter({
   host,
-  brand = 'SHELBY STORE',
+  brand = 'ZENTRA STORE',
   soundUrl = '/public/assets/sounds/bildirim.wav',
   maxVisible = 2
 } = {}) {
@@ -191,7 +191,7 @@ export function createNotificationCenter({
     const meta = document.createElement('span');
     meta.className = 'shelby-notice__meta';
     const brandName = document.createElement('b');
-    brandName.textContent = safeText(brand, 'SHELBY STORE', 36);
+    brandName.textContent = safeText(brand, 'ZENTRA STORE', 36);
     const scope = document.createElement('em');
     scope.textContent = view.scope;
     const timestamp = document.createElement('small');

@@ -208,7 +208,7 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
     if (!image?.matches?.('[data-showcase-slide] img') || image.dataset.showcaseFallback === '1') return;
     image.dataset.showcaseFallback = '1';
     image.src = '/public/assets/images/shelby-store-brand.jpeg';
-    image.alt = 'SHELBY STORE premium oyun mağazası';
+    image.alt = 'ZENTRA STORE premium oyun mağazası';
   }
 
   if (total) total.textContent = String(slides.length).padStart(2, '0');
