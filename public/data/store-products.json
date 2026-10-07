@@ -36,7 +36,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "ZOLO",
+      "id": "zolo",
       "platform": "android",
       "game": "pubg",
       "name": "ZOLO",
@@ -68,7 +68,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "CONTRAHAX",
+      "id": "contra-hax",
       "platform": "android",
       "game": "pubg",
       "name": "CONTRAHAX",
@@ -100,7 +100,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "ASPECT",
+      "id": "aspect",
       "platform": "android",
       "game": "pubg",
       "name": "ASPECT",
@@ -132,7 +132,7 @@
       "badgeKey": "mod"
     },
     {
-      "id": "SHİELD",
+      "id": "shield",
       "platform": "android",
       "game": "pubg",
       "name": "SHİELD",
@@ -164,7 +164,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "MOON",
+      "id": "moon",
       "platform": "android",
       "game": "pubg",
       "name": "MOON",
@@ -196,7 +196,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "OBSİDİAN",
+      "id": "obsidian",
       "platform": "android",
       "game": "pubg",
       "name": "OBSİDİAN",
@@ -228,7 +228,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "H-KERNEL",
+      "id": "h-kernel",
       "platform": "android",
       "game": "pubg",
       "name": "H-KERNEL",
@@ -260,7 +260,7 @@
       "badgeKey": "rooted"
     },
     {
-      "id": "KİNGMOD",
+      "id": "ios-kingmod",
       "platform": "ios",
       "game": "pubg",
       "name": "KİNGMOD",
@@ -292,7 +292,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "AQ OXİDE",
+      "id": "ios-aq-oxide",
       "platform": "ios",
       "game": "oxide",
       "name": "AQ OXİDE",
@@ -324,7 +324,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "STAR",
+      "id": "ios-star",
       "platform": "ios",
       "game": "pubg",
       "name": "STAR",
@@ -356,7 +356,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "VN-HAX",
+      "id": "ios-vn-hax",
       "platform": "ios",
       "game": "pubg",
       "name": "VN HAX",
@@ -388,7 +388,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "DOLPHİN",
+      "id": "ios-dolphin",
       "platform": "ios",
       "game": "pubg",
       "name": "DOLPHİN",
@@ -420,10 +420,10 @@
       "badgeKey": "premium"
     },
     {
-      "id": "OASİS",
+      "id": "ios-oasis",
       "platform": "ios",
       "game": "pubg",
-      "name": "OASIS",
+      "name": "OASİS",
       "badge": "PREMIUM",
       "icon": "fa-water",
       "image": "/public/assets/products/oasis.jpeg",
@@ -452,7 +452,7 @@
       "badgeKey": "premium"
     },
     {
-      "id": "GBOX IPAD",
+      "id": "ios-gbox-ipad",
       "platform": "ios",
       "game": "other",
       "name": "GBOX IPAD",
@@ -473,7 +473,7 @@
       "badgeKey": "annual"
     },
     {
-      "id": "GBOX IPHONE",
+      "id": "ios-gbox-iphone",
       "platform": "ios",
       "game": "other",
       "name": "GBOX IPHONE",
@@ -494,7 +494,7 @@
       "badgeKey": "annual"
     },
     {
-      "id": "ULTİMA OXİDE",
+      "id": "ios-ultima-oxide",
       "platform": "ios",
       "game": "oxide",
       "name": "ULTİMA OXİDE",
@@ -529,7 +529,7 @@
       ]
     },
     {
-      "id": "TİTAN",
+      "id": "titan",
       "platform": "android",
       "game": "pubg",
       "name": "TİTAN",
@@ -558,7 +558,7 @@
       ]
     },
     {
-      "id": "ETA",
+      "id": "eta",
       "platform": "android",
       "game": "oxide",
       "name": "ETA",
@@ -592,8 +592,8 @@
         }
       ]
     },
-        {
-      "id": "CRY4ME",
+    {
+      "id": "cry4me",
       "platform": "android",
       "game": "oxide",
       "name": "CRY4ME",
@@ -628,7 +628,7 @@
       ]
     },
     {
-      "id": "LEBRO OXİDE",
+      "id": "lebro-oxide",
       "platform": "android",
       "game": "oxide",
       "name": "LEBRO",
