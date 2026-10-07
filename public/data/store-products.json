@@ -234,7 +234,7 @@
       "name": "H-KERNEL",
       "badge": "ROOTLU",
       "icon": "fa-microchip",
-      "image": "/public/assets/products/h-kernel.PNG",
+      "image": "/public/assets/products/h-kernel.jpeg",
       "accent": "39,161,255",
       "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI H-KERNEL PAKETLERİ.",
       "plans": [
@@ -259,6 +259,7 @@
       ],
       "badgeKey": "rooted"
     },
+
     {
       "id": "ios-kingmod",
       "platform": "ios",
@@ -290,6 +291,38 @@
         }
       ],
       "badgeKey": "premium"
+    },
+    {
+      "id": "contra-hax-ios",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "CONTRAHAX",
+      "badge": "YENİ",
+      "icon": "fa-crosshairs",
+      "image": "/public/assets/products/contra-hax.jpeg",
+      "accent": "255,86,105",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN CONTRAHAX PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ],
+      "badgeKey": "new"
     },
     {
       "id": "ios-aq-oxide",
