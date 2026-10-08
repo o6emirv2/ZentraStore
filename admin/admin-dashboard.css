@@ -1749,3 +1749,28 @@ img {
     transition-duration:.001ms!important
   }
 }
+
+
+/* Katalog: mevcut tasarımı koruyan, erişilebilir ürün oluşturma penceresi. */
+.product-create-layer{z-index:2700}
+.product-create-card{width:min(94vw,780px);max-width:780px;max-height:min(90dvh,920px);overflow-y:auto;overscroll-behavior:contain;display:grid;gap:14px;scrollbar-width:thin}
+.product-create-card>h2,.product-create-card>p{margin:0}
+.product-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.product-create-card label{min-width:0;display:grid;gap:7px;font-size:13px;color:#dce7fb}
+.product-create-card label>span{font-weight:700}
+.product-create-card label>small{font-size:11px;color:#93a4bc}
+.product-create-card input,.product-create-card select,.product-create-card textarea{width:100%;min-width:0;border:1px solid rgba(130,166,209,.26);border-radius:11px;background:#101a2a;color:#fff;padding:12px 13px;outline:0}
+.product-create-card input:focus-visible,.product-create-card select:focus-visible,.product-create-card textarea:focus-visible{border-color:#30c5ff;box-shadow:0 0 0 3px rgba(48,197,255,.16)}
+.product-create-card input[type="checkbox"]{width:18px;height:18px}
+.product-create-card input[type="file"]{cursor:pointer}
+.product-create-card .toggle-row{display:flex;align-items:center}
+.product-create-plan-header{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.product-create-plan-header strong{font-size:14px}
+.product-create-plan-header button{padding:10px 12px}
+.product-create-plans{display:grid;gap:11px}
+.product-create-plan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:9px;padding:12px;border:1px solid rgba(120,150,210,.22);border-radius:14px;background:rgba(9,22,41,.68);align-items:end}
+.product-create-plan label{font-size:11px}
+.product-create-plan [data-remove-plan]{height:43px;padding:0 12px}
+.product-create-card .reauth-actions{position:sticky;bottom:0;padding:15px 0 0;background:linear-gradient(0deg,#080e1b 80%,transparent)}
+.product-create-card button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:690px){.product-create-card{width:min(96vw,780px);max-height:94dvh;padding:19px}.product-create-fields{grid-template-columns:1fr}.product-create-plan{grid-template-columns:repeat(2,minmax(0,1fr))}.product-create-plan [data-remove-plan]{grid-column:span 2}.product-create-card .reauth-actions{gap:8px}}

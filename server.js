@@ -149,7 +149,7 @@ function contentSecurityPolicy() {
       'script-src-attr': ["'none'"],
       'style-src': ["'self'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
       'style-src-attr': ["'unsafe-inline'"],
-      'img-src': ["'self'", 'data:', 'blob:', 'https://encrypted-tbn0.gstatic.com'],
+      'img-src': ["'self'", 'data:', 'blob:', 'https://encrypted-tbn0.gstatic.com', 'https://firebasestorage.googleapis.com'],
       'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
       'connect-src': [...new Set(connect)],
       'media-src': ["'self'"],
@@ -264,6 +264,7 @@ app.options('/api/*', cors(corsOptions));
 app.use('/api', apiLimiter);
 app.use('/api', apiRequestGuard);
 app.use('/api', appCheckGuard);
+app.use('/api/admin/store/products/image', express.json({ limit: '1200kb', strict: true, inflate: false }));
 app.use('/api', express.json({ limit: '256kb', strict: true, inflate: false }));
 app.use('/api', bodySafetyGuard);
 

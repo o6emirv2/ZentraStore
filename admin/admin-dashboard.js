@@ -1,8 +1,8 @@
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261008-v1';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v1';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v2';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261008-v2';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v2';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v2';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v2';
 
 installInteractionGuard();
 
@@ -96,6 +96,7 @@ function applyAdminPermissions() {
   if (roleLabel) roleLabel.textContent = String(state.adminPolicy?.role || 'admin').toLocaleUpperCase('tr-TR') + ' OTURUMU';
   const staticWriteControls = [
     ['#inventoryKeys, #inventoryImportForm button[type="submit"], #inventoryMigrateShared, #inventoryRotateKeys', 'store.inventory.write'],
+    ['#openProductCreate', 'store.catalog.write'],
     ['#walletForm input, #walletForm select, #walletForm textarea, #walletForm button, #paymentConnectionForm input, #paymentConnectionForm button', 'store.wallet.write'],
     ['#contentForm input, #contentForm select, #contentForm textarea, #contentForm button, #promotionForm input, #promotionForm select, #promotionForm textarea, #promotionForm button, #quickLinksForm input, #quickLinksForm select, #quickLinksForm textarea, #quickLinksForm button', 'store.content.write'],
     ['#staffForm input, #staffForm select, #staffForm textarea, #staffForm button', 'store.staff.write']
@@ -970,6 +971,119 @@ function markProductDirty(form) {
   updateProductBulkButton();
 }
 
+
+let productCreateBusy = false;
+let productCreatePreviousFocus = null;
+
+function addProductPlanRow() {
+  const host = $('#newProductPlans');
+  if (!host || host.children.length >= 12) return;
+  const row = document.createElement('div');
+  row.className = 'product-create-plan';
+  row.innerHTML = '<label><span>Paket kodu</span><input name="key" pattern="[a-z][a-z0-9-]{0,39}" maxlength="40" placeholder="aylik" required></label>'
+    + '<label><span>Paket adı</span><input name="label" maxlength="50" placeholder="1 Aylık" required></label>'
+    + '<label><span>Süre</span><input name="duration" maxlength="50" placeholder="30 Gün" required></label>'
+    + '<label><span>Fiyat (₺)</span><input name="price" type="text" inputmode="decimal" placeholder="299,90" required></label>'
+    + '<button type="button" class="secondary-action" data-remove-plan title="Paketi kaldır" aria-label="Paketi kaldır"><i class="fa-solid fa-trash-can"></i></button>';
+  host.appendChild(row);
+  row.querySelector('input')?.focus();
+}
+
+function closeProductCreate() {
+  if (productCreateBusy) return;
+  const layer = $('#productCreateLayer');
+  layer.hidden = true;
+  document.body.classList.remove('has-admin-modal');
+  productCreatePreviousFocus?.focus?.();
+  productCreatePreviousFocus = null;
+}
+
+function openProductCreate() {
+  if (!requirePermission('store.catalog.write', 'Yeni ürün oluşturma')) return;
+  if (state.productDirty.size) return toast('warning', 'Kaydedilmemiş ürün değişiklikleri var', 'Yeni ürüne geçmeden önce mevcut ürünlerdeki değişiklikleri Toplu Kayıt ile kaydedin.');
+  productCreatePreviousFocus = document.activeElement;
+  const form = $('#productCreateForm');
+  form.reset();
+  $('#newProductPlans').replaceChildren();
+  const badgeSelect = $('#newProductBadge');
+  badgeSelect.innerHTML = productBadgeOptions().map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`).join('');
+  addProductPlanRow();
+  $('#productCreateStatus').textContent = 'Otomatik satış ürünü stok eklenene kadar stok dışı gösterilir.';
+  $('#productCreateLayer').hidden = false;
+  form.elements.namedItem('id')?.focus();
+}
+
+function readNewProduct() {
+  const form = $('#productCreateForm');
+  const field = (name) => String(form.elements.namedItem(name)?.value || '').trim();
+  const plans = [...$('#newProductPlans').children].map((row) => {
+    const value = (name) => String(row.querySelector(`[name="${name}"]`)?.value || '').trim();
+    const rawPrice = parseMoneyInput(value('price'));
+    if (!Number.isFinite(rawPrice) || rawPrice <= 0 || rawPrice > 1_000_000) throw new Error('Paket fiyatı 0 ile 1.000.000 ₺ arasında olmalıdır.');
+    return { key: value('key').toLowerCase(), label: value('label'), duration: value('duration'), priceKurus: Math.round(rawPrice * 100) };
+  });
+  if (!plans.length) throw new Error('En az bir paket tanımlamalısınız.');
+  if (new Set(plans.map((item) => item.key)).size !== plans.length) throw new Error('Paket kodları benzersiz olmalıdır.');
+  return {
+    id: field('id').toLowerCase(), name: field('name'), platform: field('platform'), game: field('game'),
+    inventoryType: field('inventoryType'), fulfillmentMode: field('fulfillmentMode'),
+    category: field('category'), badgeKey: field('badgeKey'), description: field('description'),
+    featured: form.elements.namedItem('featured').checked, plans
+  };
+}
+
+async function imageDataUrl(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 750_000 || file.size < 32) {
+    throw new Error('Görsel JPG, PNG veya WebP olmalı ve 750 KB sınırını aşmamalıdır.');
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Görsel dosyası okunamadı.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitNewProduct(event) {
+  event.preventDefault();
+  if (productCreateBusy || !requirePermission('store.catalog.write', 'Yeni ürün oluşturma')) return;
+  let product;
+  try { product = readNewProduct(); } catch (error) { return toast('error', 'Ürün doğrulanamadı', error.message); }
+  if (!(await requestAdminReauth())) return;
+  const button = $('#productCreateSubmit');
+  const status = $('#productCreateStatus');
+  productCreateBusy = true;
+  button.disabled = true;
+  try {
+    const file = $('#productCreateForm').elements.namedItem('imageFile')?.files?.[0];
+    if (file) {
+      status.textContent = 'Görsel güvenli depolama alanına yükleniyor...';
+      const upload = await adminFetch('/api/admin/store/products/image', {
+        method: 'POST', timeoutMs: 45_000, body: { imageData: await imageDataUrl(file) }
+      });
+      product.image = upload.url;
+    }
+    status.textContent = 'Ürün kaydı Firebase üzerinde güvenli biçimde oluşturuluyor...';
+    const response = await adminFetch('/api/admin/store/products', { method: 'POST', timeoutMs: 45_000, body: product });
+    status.textContent = 'Ürün oluşturuldu.';
+    state.catalog = null;
+    state.loaded.delete('overview');
+    state.loaded.delete('inventory');
+    toast('success', 'Yeni ürün eklendi', `${response.product?.name || product.name} kataloğa kaydedildi. Ürün stokunu Stok Kasası bölümünden ekleyebilirsiniz.`);
+    productCreateBusy = false;
+    closeProductCreate();
+    await loadProducts();
+  } catch (error) {
+    status.textContent = isUncertainMutationError(error)
+      ? 'İşlemin sonucu belirsiz. Kataloğu yenileyip ürünün oluşup oluşmadığını kontrol edin; tekrar göndermeyin.'
+      : 'Ürün oluşturma işlemi tamamlanamadı: ' + error.message;
+    toast('error', 'Ürün eklenemedi', status.textContent);
+  } finally {
+    productCreateBusy = false;
+    button.disabled = false;
+  }
+}
+
 async function loadProducts() {
   $('#adminProductGrid').innerHTML = loadingMarkup('Katalog yükleniyor');
   renderLiveStatus('#productMetrics', { icon: 'fa-spinner fa-spin', title: 'Katalog yenileniyor', detail: 'Ürün ayarları ile gerçek stok bilgileri birleştiriliyor.', tone: 'checking' });
@@ -1668,6 +1782,7 @@ function bind() {
   $$('[data-secure-action-cancel]').forEach((button) => button.addEventListener('click', () => closeSecureAction(null)));
   $('#secureActionForm').addEventListener('submit', (event) => { event.preventDefault(); const result = secureActionResult(); if (result) closeSecureAction(result); });
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('#productCreateLayer').hidden) { event.preventDefault(); closeProductCreate(); return; }
     if (event.key === 'Escape' && !$('#secureActionLayer').hidden && state.secureActionResolve) {
       event.preventDefault();
       closeSecureAction(null);
@@ -1685,6 +1800,15 @@ function bind() {
   $('#inventoryInspect').addEventListener('click', inspectInventory);
   $('#inventoryMigrateShared').addEventListener('click', migrateSharedInventory);
   $('#inventoryRotateKeys').addEventListener('click', rotateInventoryKeys);
+  $('#openProductCreate')?.addEventListener('click', openProductCreate);
+  $('#productCreateForm')?.addEventListener('submit', submitNewProduct);
+  $('#addProductPlan')?.addEventListener('click', addProductPlanRow);
+  $$('[data-product-create-close]').forEach((button) => button.addEventListener('click', closeProductCreate));
+  $('#newProductPlans')?.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-remove-plan]')) return;
+    if ($('#newProductPlans').children.length === 1) return toast('warning', 'En az bir paket gerekli', 'Üründe en az bir paket bulunmalıdır.');
+    event.target.closest('.product-create-plan')?.remove();
+  });
   $('#adminProductGrid').addEventListener('submit', (event) => event.preventDefault());
   $('#adminProductGrid').addEventListener('input', (event) => { const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });
   $('#adminProductGrid').addEventListener('change', (event) => { if (event.target.matches?.('[data-product-badge-key]')) syncProductBadgePreview(event.target); const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });

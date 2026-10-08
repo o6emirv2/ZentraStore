@@ -39,6 +39,7 @@ const {
   getEffectiveCatalog,
   updateProductSettings,
   updateProductsBulk,
+  createProduct,
   updateStorefrontSettings,
   updateStorefrontQuickLinks
 } = require('../core/storeCatalogService');
@@ -60,6 +61,7 @@ const {
   updateProfileUsername, updateProfileFullName,
   updateProfileBirthDate, updateProfileEmail
 } = require('../core/storeProfileService');
+const { uploadProductImage } = require('../core/storeProductCreation');
 const router = express.Router();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
@@ -236,6 +238,21 @@ router.get('/admin/store/catalog', ...adminChain, requireStorePermission('store.
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, catalog: req.query.stock === '0' ? catalog : await decorateCatalogWithStock(catalog, { fresh: true }) });
+}));
+
+router.post('/admin/store/products/image', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
+  const url = await uploadProductImage(req.body?.imageData);
+  noStore(res);
+  res.status(201).json({ ok: true, url });
+}));
+
+router.post('/admin/store/products', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
+  const product = await createProduct(req.body || {}, req.user);
+  await writeSupplementalAdminAudit(req, 'store.product.create', {
+    productId: product.id, platform: product.platform, fulfillmentMode: product.fulfillmentMode
+  });
+  noStore(res);
+  res.status(201).json({ ok: true, product });
 }));
 
 router.patch('/admin/store/products/:productId', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {

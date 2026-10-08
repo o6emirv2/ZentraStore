@@ -198,7 +198,8 @@ async function reconcileRetiredCatalogData({ apply = false } = {}) {
   const plan = buildCatalogRetirementPlan({
     settingsProducts: settings.catalog?.products || {},
     legacyRows: legacySnapshot.docs.map((document) => ({ id: document.id, data: document.data() || {} })),
-    summaries: summaryRows
+    summaries: summaryRows,
+    catalog: { ...STORE_CATALOG, products: [...STORE_CATALOG.products, ...Object.values(settings.catalog?.customProducts || {})] }
   });
   const retiredProductIds = [...plan.retiredProductIds];
   const retiredSkus = [...plan.retiredSkus];

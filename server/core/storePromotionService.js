@@ -3,7 +3,7 @@
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
-const { findProduct } = require('./storeCatalog');
+const { getEffectiveCatalog } = require('./storeCatalogService');
 
 const MAX_DISCOUNT_KURUS = 100_000_000;
 const MAX_WALLET_PROMOTIONS = 50;
@@ -86,7 +86,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
   const platforms = [...new Set(requestedPlatforms.map((value) => safeText(value, 20).toLowerCase()))];
   const productIds = [...new Set(requestedProducts.map((value) => safeText(value, 80).toLowerCase()))];
   if (platforms.some((value) => !['android', 'ios'].includes(value))
-    || productIds.some((value) => !/^[a-z0-9][a-z0-9-]{1,79}$/.test(value) || !findProduct(value))) {
+    || productIds.some((value) => !/^[a-z0-9][a-z0-9-]{1,79}$/.test(value))) {
     throw promotionError('STORE_PROMOTION_SCOPE_INVALID');
   }
   const usageLimit = positiveInteger(input.usageLimit);
@@ -246,6 +246,11 @@ async function listPromotions() {
 async function savePromotion(code = '', input = {}, actor = {}) {
   const normalized = normalizeCode(code);
   const { db } = database();
+  if (Array.isArray(input?.productIds) && input.productIds.length) {
+    const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
+    const ids = new Set(catalog.products.map((product) => product.id));
+    if (input.productIds.some((id) => !ids.has(safeText(id, 80).toLowerCase()))) throw promotionError('STORE_PROMOTION_SCOPE_INVALID');
+  }
   const reference = db.collection('storePromotions').doc(normalized);
   let result = null;
   await db.runTransaction(async (transaction) => {

@@ -211,7 +211,7 @@ function normalizeCart(rawItems = [], catalog = null) {
 
 function orderNumber() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `SH-${date}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+  return `ZS-${date}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
 }
 
 function currency(value = 0) {

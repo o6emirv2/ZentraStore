@@ -12,10 +12,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v1" />
-  <script src="./admin-auth.js?v=zentra-20261008-v1"></script>
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v2" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v2" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v2" />
+  <script src="./admin-auth.js?v=zentra-20261008-v2"></script>
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -74,7 +74,7 @@
       </section>
 
       <section class="admin-panel" data-admin-panel="products" hidden inert>
-        <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
+        <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="primary-action" id="openProductCreate" type="button"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i><span>Yeni Ürün Ekle</span></button><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
         <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
       </section>
 
@@ -164,7 +164,34 @@
   <div class="reauth-layer" id="reauthLayer" hidden><div class="reauth-backdrop"></div><form class="reauth-card" id="reauthForm" role="dialog" aria-modal="true" aria-labelledby="reauthTitle"><button class="reauth-close" type="button" data-reauth-cancel aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button><span class="reauth-icon"><i class="fa-solid fa-shield-halved"></i></span><span class="reauth-kicker">KRİTİK İŞLEM</span><h2 id="reauthTitle">Hesap parolanı doğrula.</h2><p>İşlem kaydedilmeden önce açık yönetici hesabının parolası tekrar kontrol edilir.</p><label><span>Hesap şifresi</span><div><i class="fa-solid fa-key"></i><input id="reauthPassword" type="password" autocomplete="current-password" required /></div></label><div class="reauth-actions"><button type="button" data-reauth-cancel>Vazgeç</button><button type="submit">Doğrula ve Devam Et</button></div></form></div>
 
   <div class="reauth-layer" id="secureActionLayer" hidden><div class="reauth-backdrop" data-secure-action-cancel></div><form class="reauth-card secure-action-card" id="secureActionForm" role="dialog" aria-modal="true" aria-labelledby="secureActionTitle"><button class="reauth-close" type="button" data-secure-action-cancel aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button><span class="reauth-icon"><i class="fa-solid fa-shield-halved"></i></span><span class="reauth-kicker" id="secureActionKicker">GÜVENLİ İŞLEM</span><h2 id="secureActionTitle">İşlemi doğrula.</h2><p id="secureActionSummary">Bu kritik işlem gerekçe ve hesap parolasıyla doğrulanacaktır.</p><label><span>Gerekçe kategorisi</span><div><i class="fa-solid fa-list-check"></i><select id="secureActionCategory" required></select></div></label><label><span>Denetim açıklaması</span><textarea id="secureActionReason" maxlength="200" rows="3" placeholder="İşlem gerekçesini en az 3 karakterle açıklayın." required></textarea></label><label><span>Hesap şifresi</span><div><i class="fa-solid fa-key"></i><input id="secureActionPassword" type="password" autocomplete="current-password" required /></div></label><div class="reauth-actions"><button type="button" data-secure-action-cancel>Vazgeç</button><button type="submit" id="secureActionConfirm">Doğrula ve Uygula</button></div></form></div>
+
+  <div class="reauth-layer product-create-layer" id="productCreateLayer" hidden>
+    <div class="reauth-backdrop" data-product-create-close></div>
+    <form class="reauth-card product-create-card" id="productCreateForm" role="dialog" aria-modal="true" aria-labelledby="productCreateTitle">
+      <button class="reauth-close" type="button" data-product-create-close aria-label="Yeni ürün penceresini kapat"><i class="fa-solid fa-xmark"></i></button>
+      <span class="reauth-kicker">ZENTRA STORE · KATALOG</span>
+      <h2 id="productCreateTitle">Yeni ürün oluştur</h2>
+      <p>Ürün bilgileri güvenli sunucuda doğrulanır ve Firebase kataloğuna kaydedilir. Mevcut ürünlere dokunulmaz.</p>
+      <div class="product-create-fields">
+        <label><span>Ürün kimliği</span><input name="id" required minlength="3" maxlength="64" pattern="[a-z][a-z0-9-]{2,63}" autocomplete="off" placeholder="yeni-urun-ios" /><small>Küçük harf, sayı ve kısa çizgi; sonradan değiştirilemez.</small></label>
+        <label><span>Ürün adı</span><input name="name" required minlength="3" maxlength="80" placeholder="Ürün adı" /></label>
+        <label><span>Platform</span><select name="platform"><option value="android">Android</option><option value="ios">iOS</option></select></label>
+        <label><span>Oyun</span><select name="game"><option value="other">Diğer</option><option value="pubg">PUBG Mobile</option><option value="oxide">Oxide</option></select></label>
+        <label><span>Stok biçimi</span><select name="inventoryType"><option value="license">Lisans / kod</option><option value="account">Random hesap</option></select></label>
+        <label><span>Teslimat yöntemi</span><select name="fulfillmentMode"><option value="automatic">Otomatik stok + Telegram</option><option value="telegram_only">Yalnızca Telegram (manuel)</option></select></label>
+        <label><span>Kategori</span><input name="category" maxlength="50" placeholder="Premium ürünler" /></label>
+        <label><span>Satış etiketi</span><select name="badgeKey" id="newProductBadge"></select></label>
+      </div>
+      <label><span>Ürün açıklaması</span><textarea name="description" rows="3" required minlength="8" maxlength="240" placeholder="Ürün özelliklerini kısaca açıklayın."></textarea></label>
+      <label><span>Ürün görseli (JPG, PNG veya WebP; en fazla 750 KB)</span><input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" /><small>Görsel Firebase Storage'a yüklenir. Seçilmezse ZENTRA STORE görseli kullanılır.</small></label>
+      <div class="product-create-plan-header"><strong>Ürün paketleri</strong><button type="button" class="secondary-action" id="addProductPlan"><i class="fa-solid fa-plus"></i> Paket Ekle</button></div>
+      <div id="newProductPlans" class="product-create-plans"></div>
+      <label class="toggle-row"><input name="featured" type="checkbox" /><span><strong>Öne çıkan ürün</strong><small>Anasayfada öne çıkar.</small></span></label>
+      <p id="productCreateStatus" class="form-hint" role="status" aria-live="polite">Ürün önce kaydedilir; otomatik satışta stok yükleyene kadar stok dışı görünür.</p>
+      <div class="reauth-actions"><button type="button" data-product-create-close>Vazgeç</button><button type="submit" id="productCreateSubmit"><i class="fa-solid fa-shield-halved"></i> Güvenli Şekilde Ürün Ekle</button></div>
+    </form>
+  </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v1"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v2"></script>
 </body>
 </html>
