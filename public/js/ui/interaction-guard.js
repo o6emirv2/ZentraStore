@@ -1,4 +1,4 @@
-const GUARD_KEY = '__SHELBY_INTERACTION_GUARD__';
+const GUARD_KEY = '__ZENTRA_INTERACTION_GUARD__';
 const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 const MEDIA_SELECTOR = 'img, video, picture, canvas, svg';
 
@@ -43,7 +43,7 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
     if (event.ctrlKey) event.preventDefault();
   };
 
-  documentRoot.documentElement.classList.add('shelby-interaction-locked');
+  documentRoot.documentElement.classList.add('zentra-interaction-locked');
   normalizeProtectedMedia(documentRoot);
 
   listen(documentRoot, 'contextmenu', preventContextMenu, { capture: true });
@@ -70,7 +70,7 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
     destroy() {
       observer?.disconnect();
       listeners.splice(0).forEach((remove) => remove());
-      documentRoot.documentElement.classList.remove('shelby-interaction-locked');
+      documentRoot.documentElement.classList.remove('zentra-interaction-locked');
       delete windowRoot[GUARD_KEY];
     }
   });

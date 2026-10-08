@@ -5,7 +5,7 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAccount } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
-const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'shelby', 'shelbyios', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
+const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'zentra', 'ZENTRA_STORE', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
 
 function profileError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });

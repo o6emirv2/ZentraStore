@@ -114,6 +114,9 @@ async function isAdminPrincipal(uid = '', email = '') {
 
 async function requireAdmin(req, res, next) {
   try {
+    if (req.user?.email_verified !== true) {
+      return res.status(403).json({ ok: false, error: 'ADMIN_VERIFIED_EMAIL_REQUIRED' });
+    }
     const policy = await resolveStaffPolicy(req.user?.uid, req.user?.email);
     if (policy) {
       req.adminPolicy = policy;

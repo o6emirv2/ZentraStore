@@ -45,7 +45,7 @@ function validateAvatarUrl(value = '') {
 
 const AVATAR_CATALOG = Object.freeze(RAW_AVATARS.map(([id, image], index) => Object.freeze({
   id,
-  label: `SHELBY Profil ${String(index + 1).padStart(2, '0')}`,
+  label: `ZENTRA Profil ${String(index + 1).padStart(2, '0')}`,
   image: validateAvatarUrl(image)
 })));
 const AVATAR_IDS = Object.freeze(AVATAR_CATALOG.map((item) => item.id));

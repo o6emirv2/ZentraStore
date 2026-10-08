@@ -115,7 +115,7 @@ async function writeSupplementalAdminAudit(req, action, details = {}) {
   try {
     return await writeAdminAudit(req, action, details);
   } catch (error) {
-    console.error('[shelby-store:audit]', JSON.stringify({
+    console.error('[zentra-store:audit]', JSON.stringify({
       action, requestId: String(req?.requestId || '').slice(0, 120),
       code: String(error?.code || 'ADMIN_AUDIT_FAILED').slice(0, 80), committed: true
     }));

@@ -147,6 +147,7 @@ async function resolveAutomaticAdminIdentity() {
   const uid = String(user?.uid || '').trim();
   if (!uid || uid !== uids[0] || email !== emails[0]) throw gateError('ADMIN_IDENTITY_MISMATCH');
   if (user.disabled === true) throw gateError('ADMIN_ACCOUNT_DISABLED', 403);
+  if (user.emailVerified !== true) throw gateError('ADMIN_VERIFIED_EMAIL_REQUIRED', 403);
   return { uid, email };
 }
 

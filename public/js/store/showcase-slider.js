@@ -1,4 +1,4 @@
-import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=audit-20260908-v1';
+import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-20261008-v1';
 
 const AUTOPLAY_DELAY_MS = 3000;
 const SWIPE_THRESHOLD_PX = 42;
@@ -207,7 +207,7 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
     const image = event.target;
     if (!image?.matches?.('[data-showcase-slide] img') || image.dataset.showcaseFallback === '1') return;
     image.dataset.showcaseFallback = '1';
-    image.src = '/public/assets/images/shelby-store-brand.jpeg';
+    image.src = '/public/assets/images/zentra-store-brand.jpeg';
     image.alt = 'ZENTRA STORE premium oyun mağazası';
   }
 

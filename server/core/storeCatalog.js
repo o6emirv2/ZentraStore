@@ -70,7 +70,7 @@ function sanitizeCatalog() {
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(rawCatalog.version) || 1)),
     currency: 'TRY',
-    telegramUsername: String(rawCatalog.telegramUsername || 'shelbyios').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32),
+    telegramUsername: String(rawCatalog.telegramUsername || 'ZENTRA_STORE').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32),
     products: Object.freeze(normalized)
   });
 }

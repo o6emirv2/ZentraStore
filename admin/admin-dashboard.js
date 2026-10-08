@@ -1,8 +1,8 @@
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=audit-20260908-v1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=audit-20260908-v1';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=audit-20260908-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=audit-20260908-v1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=audit-20260908-v1';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261008-v1';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v1';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v1';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v1';
 
 installInteractionGuard();
 
@@ -150,7 +150,7 @@ let notificationCenter = null;
 function toast(type, title, message, options = {}) {
   notificationCenter ||= createNotificationCenter({
     host: $('#adminToasts'),
-    brand: 'SHELBY STORE · YÖNETİM',
+    brand: 'ZENTRA STORE · YÖNETİM',
     soundUrl: '/public/assets/sounds/bildirim.wav'
   });
   return notificationCenter.notify(type, title, message, options);
@@ -238,7 +238,7 @@ async function reauthenticateAdmin(password = '') {
   const value = String(password || '');
   if (!value) return false;
   try {
-    await window.SHELBY_ADMIN_AUTH.reauthenticate(value);
+    await window.ZENTRA_ADMIN_AUTH.reauthenticate(value);
     return true;
   } catch (error) {
     toast('error', 'Kimliğinizi doğrulayamadık', error?.message || 'Lütfen hesap şifrenizi kontrol edip yeniden deneyin.');
@@ -330,7 +330,7 @@ function orderMarkup(order) {
     ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya random hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Telegram siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
     : telegram && deliveryAttached ? `<div class="form-hint"><i class="fa-solid fa-lock"></i>Manuel teslimat bu siparişe şifreli olarak bağlandı (${escapeHtml(order.delivery.itemCount)} kayıt).</div>` : '';
   const deliveryPlaceholder = telegram ? 'Müşteriye gösterilecek açıklama/not. Key veya şifreyi bu alana yazmayın.' : 'Teslimat bilgisini buraya yazmayın; sistem güvenli şekilde otomatik teslim eder.';
-  const paymentLabel = order.paymentMethod === 'wallet' ? 'SHELBY STORE Bakiye' : 'Telegram';
+  const paymentLabel = order.paymentMethod === 'wallet' ? 'ZENTRA STORE Bakiye' : 'Telegram';
   const salesChannelLabel = telegram ? 'Telegram · manuel teslimat' : 'Otomatik teslimat';
   return `<article class="admin-order" data-admin-order="${escapeHtml(order.id)}"><header class="admin-order__head"><div><small>OLUŞTURULDU · ${escapeHtml(formatDate(order.createdAt))}</small><strong>${escapeHtml(order.orderNumber)}</strong><em>Son güncelleme · ${escapeHtml(formatDate(order.updatedAt || order.createdAt))}</em></div><span class="order-state order-state--${escapeHtml(order.status)}"><i class="fa-solid ${status.icon}"></i>${escapeHtml(status.label)}</span></header><div class="admin-order__meta"><span><small>KULLANICI</small><strong>${escapeHtml(order.username || '—')}</strong></span><span><small>E-POSTA</small><strong title="${escapeHtml(order.email)}">${escapeHtml(order.email || '—')}</strong></span><span><small>HESAP KİMLİĞİ</small><strong title="${escapeHtml(order.uid)}">…${escapeHtml(String(order.uid || '').slice(-10))}</strong></span><span><small>ÖDEME</small><strong>${escapeHtml(paymentLabel)}</strong></span><span><small>SATIŞ KANALI</small><strong>${escapeHtml(salesChannelLabel)}</strong></span><span><small>TESLİMAT</small><strong>${escapeHtml(order.delivery?.status || (telegram ? 'bekliyor' : 'otomatik'))}</strong></span></div><div class="admin-order__items">${items || '<span><em>Ürün bilgisi bulunamadı</em><b>—</b></span>'}</div><div class="admin-order__total"><span>Sipariş toplamı</span><strong>${escapeHtml(formatPrice(order.totalKurus))}</strong></div><div class="admin-order__editor"><label><span>Yeni durum</span><select data-order-status ${locked ? 'disabled' : permissionDisabled('store.orders.write')}>${options}</select></label>${manualDelivery}<label><span>Kullanıcıya teslimat notu</span><textarea data-delivery-message maxlength="500" placeholder="${escapeHtml(deliveryPlaceholder)}" ${locked ? 'disabled' : ''}>${escapeHtml(order.delivery?.message || '')}</textarea></label><button class="primary-action" type="button" data-save-order="${escapeHtml(order.id)}" ${locked || state.busyOrder === order.id ? 'disabled' : permissionDisabled('store.orders.write')}><i class="fa-solid ${state.busyOrder === order.id ? 'fa-spinner fa-spin' : 'fa-lock'}"></i>${state.busyOrder === order.id ? 'Güncelleniyor' : ['awaiting_payment', 'payment_review'].includes(order.status) ? 'Ödemeyi Onayla / Güncelle' : 'Güvenli Şekilde Güncelle'}</button></div></article>`;
 }
@@ -1438,7 +1438,7 @@ function generateCouponCode() {
   if (!window.crypto?.getRandomValues) return toast('error', 'Kupon kodu oluşturulamadı', 'Tarayıcının güvenli rastgele sayı üreticisi kullanılamıyor.');
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = window.crypto.getRandomValues(new Uint8Array(8));
-  $('#promotionCode').value = `SHELBY-${Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')}`;
+  $('#promotionCode').value = `ZENTRA-${Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')}`;
   $('#promotionTitle')?.focus();
 }
 
@@ -1638,7 +1638,7 @@ async function logout() {
 
 function bind() {
   let redirecting = false;
-  window.addEventListener('shelby:admin-session-invalid', () => {
+  window.addEventListener('zentra:admin-session-invalid', () => {
     if (redirecting) return;
     redirecting = true;
     toast('warning', 'Yönetici oturumunuz sona erdi', 'Güvenliğiniz için giriş sayfasına yönlendiriliyorsunuz.');
@@ -1745,7 +1745,7 @@ function renderAdminEntryFailure(error) {
   retry.textContent = requiresHandoff ? 'Yönetici Girişine Dön' : 'Yeniden Dene';
   retry.addEventListener('click', () => {
     if (requiresHandoff) {
-      const origin = String(window.SHELBY_ADMIN_AUTH.canonicalOrigin() || window.location.origin).replace(/\/+$/, '');
+      const origin = String(window.ZENTRA_ADMIN_AUTH.canonicalOrigin() || window.location.origin).replace(/\/+$/, '');
       window.location.replace(`${origin}/admin/index.html`);
       return;
     }
@@ -1759,8 +1759,8 @@ function renderAdminEntryFailure(error) {
 async function boot() {
   lockAdminInteractions(); startAmbientCanvas($('#ambientCanvas')); installAdminChromeStability();
   try {
-    await window.SHELBY_ADMIN_AUTH.init();
-    const apiOrigin = new URL(window.SHELBY_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
+    await window.ZENTRA_ADMIN_AUTH.init();
+    const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
     if (apiOrigin !== window.location.origin) {
       throw Object.assign(new Error('Yönetim merkezi güvenli sunucu alanında açılmalıdır. Yönetici girişinden devam edin.'), {
         code: 'ADMIN_HANDOFF_REQUIRED'

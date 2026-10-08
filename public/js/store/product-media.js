@@ -1,8 +1,8 @@
 const PRODUCT_ASSET_ROOT = '/public/assets/products';
-const MEDIA_VERSION = 'storefront-v66';
+const MEDIA_VERSION = 'storefront-v67';
 const EMPTY_MEDIA = Object.freeze([]);
 
-export const PRODUCT_MEDIA_SOURCE_PATTERN = /^\/public\/assets\/products\/(?:[a-z0-9-]+\.jpeg|gallery\/[a-z0-9-]+\/game-\d{2}\.jpeg)(?:\?v=storefront-v66)?$/;
+export const PRODUCT_MEDIA_SOURCE_PATTERN = /^\/public\/assets\/products\/(?:[a-z0-9-]+\.jpeg|gallery\/[a-z0-9-]+\/game-\d{2}\.jpeg)(?:\?v=storefront-v67)?$/;
 
 function versionedMediaPath(path) {
   return `${path}?v=${MEDIA_VERSION}`;

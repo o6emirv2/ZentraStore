@@ -90,7 +90,7 @@ function normalizeAvatarId(value, allowed, fallback = '1') {
 
 function normalizeStoreProfile(profile = {}, authUser = {}) {
   const storeProfile = profile.storeProfile && typeof profile.storeProfile === 'object' ? profile.storeProfile : {};
-  const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'SHELBY STORE Üyesi', 40);
+  const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'ZENTRA STORE Üyesi', 40);
   const accountStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
   const avatarId = normalizeAvatarId(storeProfile.avatarId || profile.storeAvatarId, AVATAR_IDS);
   const avatar = getAvatarById(avatarId);
@@ -221,7 +221,7 @@ function currency(value = 0) {
 }
 
 function buildTelegramMessage(order) {
-  const lines = ['Merhaba, SHELBY STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
+  const lines = ['Merhaba, ZENTRA STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
   order.items.forEach((item, index) => {
     const prefix = order.items.length > 1 ? `${index + 1}. ` : '';
     lines.push(
@@ -649,7 +649,7 @@ async function adjustStoreBalance({ targetUid = '', amountKurus = 0, type = 'COR
     tx.set(userRef, {
       ...(userSnapshot.exists ? {} : {
         email: safeText(targetAuthUser.email || '', 160).toLowerCase(),
-        username: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || 'SHELBY STORE Üyesi', 40),
+        username: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || 'ZENTRA STORE Üyesi', 40),
         usernameLower: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || '', 40).toLocaleLowerCase('tr-TR'),
         storeAccountStatus: 'active',
         storeProfile: { avatarId: '1' },

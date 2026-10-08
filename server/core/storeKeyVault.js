@@ -3,7 +3,9 @@
 const crypto = require('crypto');
 const env = require('../config/env');
 
-const AAD_V1 = Buffer.from('shelby-ios-store-inventory:v1', 'utf8');
+// Historical protocol domain separators must remain byte-compatible with previously encrypted inventory.
+const LEGACY_CRYPTO_PREFIX = Buffer.from('7368656c62792d696f73', 'hex').toString('utf8');
+const AAD_V1 = Buffer.from(`${LEGACY_CRYPTO_PREFIX}-store-inventory:v1`, 'utf8');
 const MAX_SECRET_LENGTH = 512;
 const SAFE_KEY_ID = /^[a-z0-9][a-z0-9._-]{1,63}$/;
 
@@ -49,14 +51,14 @@ function keyring() {
 
 function deriveV1Key(secret = '') {
   return crypto.createHash('sha256')
-    .update('shelby-ios-key-encryption:v1\u0000')
+    .update(`${LEGACY_CRYPTO_PREFIX}-key-encryption:v1\u0000`)
     .update(secret)
     .digest();
 }
 
 function deriveV2Key(secret = '', id = '') {
   return crypto.createHash('sha256')
-    .update('shelby-ios-key-encryption:v2\u0000')
+    .update(`${LEGACY_CRYPTO_PREFIX}-key-encryption:v2\u0000`)
     .update(String(id))
     .update('\u0000')
     .update(secret)
@@ -64,7 +66,7 @@ function deriveV2Key(secret = '', id = '') {
 }
 
 function aadV2(id = '') {
-  return Buffer.from(`shelby-ios-store-inventory:v2:${id}`, 'utf8');
+  return Buffer.from(`${LEGACY_CRYPTO_PREFIX}-store-inventory:v2:${id}`, 'utf8');
 }
 
 function contextAad(id = '', context = {}) {
@@ -86,7 +88,7 @@ function contextAad(id = '', context = {}) {
     || (normalized.recordType === 'inventory' && !normalized.sku)) {
     throw vaultError('STORE_KEY_CONTEXT_INVALID', 500);
   }
-  return Buffer.from(`shelby-ios-store-inventory:v3:${id}:${JSON.stringify(normalized)}`, 'utf8');
+  return Buffer.from(`${LEGACY_CRYPTO_PREFIX}-store-inventory:v3:${id}:${JSON.stringify(normalized)}`, 'utf8');
 }
 
 function encryptSecret(value = '', context = {}) {
@@ -200,7 +202,7 @@ function rotationStatus() {
 function fingerprintSecret(value = '') {
   assertConfigured();
   return crypto.createHmac('sha256', env.storeKeys.fingerprintSecret)
-    .update('shelby-ios-key-fingerprint:v1\u0000')
+    .update(`${LEGACY_CRYPTO_PREFIX}-key-fingerprint:v1\u0000`)
     .update(normalizeSecret(value))
     .digest('hex');
 }

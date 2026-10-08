@@ -234,7 +234,7 @@
       "name": "H-KERNEL",
       "badge": "ROOTLU",
       "icon": "fa-microchip",
-      "image": "/public/assets/products/h-kernel.jpeg",
+      "image": "/public/assets/products/h-kernel.PNG",
       "accent": "39,161,255",
       "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI H-KERNEL PAKETLERİ.",
       "plans": [
@@ -531,7 +531,7 @@
       "platform": "ios",
       "game": "oxide",
       "name": "ULTİMA OXİDE",
-      "image": "/public/assets/products/aq-oxide.jpeg",
+      "image": "/public/assets/products/aq-oxide.JPG",
       "icon": "fa-fire-flame-curved",
       "accent": "255,65,38",
       "description": "İPHONE VE İPAD İÇİN ULTİMA PAKETLERİ.",

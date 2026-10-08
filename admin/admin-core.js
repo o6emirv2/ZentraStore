@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=audit-20260908-v1';
+import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261008-v1';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -16,12 +16,12 @@ export function startAmbientCanvas(canvas) {
   let previous = 0;
   let stopped = false;
   const resize = () => {
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
+    const ratio = Math.min(devicePixelRatio || 1, 1.25);
     width = canvas.width = Math.round(innerWidth * ratio);
     height = canvas.height = Math.round(innerHeight * ratio);
     canvas.style.width = `${innerWidth}px`;
     canvas.style.height = `${innerHeight}px`;
-    points = Array.from({ length: Math.min(54, Math.max(20, Math.round(innerWidth / 24))) }, () => ({
+    points = Array.from({ length: Math.min(36, Math.max(16, Math.round(innerWidth / 36))) }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
       radius: 1 + Math.random() * 2.2,
@@ -42,7 +42,7 @@ export function startAmbientCanvas(canvas) {
       context.beginPath();
       context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
       context.fillStyle = `rgba(255,55,72,${point.alpha})`;
-      context.shadowBlur = 10;
+      context.shadowBlur = 6;
       context.shadowColor = '#e51f32';
       context.fill();
     });
@@ -73,6 +73,7 @@ function errorMessage(payload = {}, status = 0) {
   const code = String(payload.error || payload.code || '');
   const messages = {
     ADMIN_REQUIRED: 'Bu hesap yönetici izin listesinde bulunmuyor.',
+    ADMIN_VERIFIED_EMAIL_REQUIRED: 'Yönetici hesabının e-posta adresi Firebase üzerinden doğrulanmalıdır.',
     ADMIN_PERMISSION_REQUIRED: 'Bu işlem mevcut personel rolünün yetki kapsamı dışında.',
     ADMIN_OWNER_IMMUTABLE: 'Korunan mağaza sahibi kaydı personel yetkileriyle değiştirilemez.',
     ADMIN_GATE_REQUIRED: 'Lütfen güvenli yönetici giriş adımlarını yeniden tamamlayın.',
@@ -210,16 +211,16 @@ export async function adminFetch(path, options = {}) {
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('X-Shelby-Store-Client', 'secure-admin-v66');
-    const url = window.SHELBY_ADMIN_AUTH?.apiUrl?.(path) || path;
+    headers.set('X-Zentra-Store-Client', 'secure-admin-v67');
+    const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
     let sameOrigin = false;
     try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin; } catch (_) {}
     if (!sameOrigin || method !== 'GET') {
-      const token = await waitForSignal(Promise.resolve().then(() => window.SHELBY_ADMIN_AUTH?.token?.()).catch(() => ''), controller.signal);
+      const token = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.token?.()).catch(() => ''), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
-    const appCheckToken = await waitForSignal(Promise.resolve().then(() => window.SHELBY_ADMIN_AUTH?.appCheckToken?.()).catch(() => ''), controller.signal);
+    const appCheckToken = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.appCheckToken?.()).catch(() => ''), controller.signal);
     if (appCheckToken) headers.set('X-Firebase-AppCheck', appCheckToken);
     let body = options.body;
     if (body && typeof body !== 'string') {
@@ -237,7 +238,7 @@ export async function adminFetch(path, options = {}) {
       error.payload = payload;
       error.requestId = String(payload.requestId || response.headers.get('x-request-id') || '');
       if ([401, 403].includes(response.status) && ['AUTH_REQUIRED', 'AUTH_INVALID', 'ADMIN_REQUIRED', 'ADMIN_GATE_REQUIRED', 'ADMIN_GATE_ACCESS_INVALID', 'ADMIN_ACTIVE_SESSION_MISMATCH'].includes(String(error.code))) {
-        window.dispatchEvent(new CustomEvent('shelby:admin-session-invalid', { detail: { code: error.code } }));
+        window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: error.code } }));
       }
       throw error;
     }

@@ -1,5 +1,5 @@
-import { isUncertainMutationError } from '../request-utils.js?v=audit-20260908-v1';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=audit-20260908-v1';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261008-v1';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261008-v1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -13,12 +13,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=audit-20260908-v1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=audit-20260908-v1';
-import { createNotificationCenter } from '../ui/notification-center.js?v=audit-20260908-v1';
-import { installProductGallery } from './product-gallery.js?v=audit-20260908-v1';
-import { installShowcaseSlider } from './showcase-slider.js?v=audit-20260908-v1';
-import { renderQuickLinks } from './social-links.js?v=audit-20260908-v1';
+} from './auth.js?v=zentra-20261008-v1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v1';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v1';
+import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v1';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v1';
+import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -31,8 +31,8 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=audit-20260908-v1';
-import { createCustomerAppController } from './customer-app.js?v=audit-20260908-v1';
+} from './customer-app.js?v=zentra-20261008-v1';
+import { createCustomerAppController } from './customer-app.js?v=zentra-20261008-v1';
 import {
   renderAvatarPickerView,
   renderCartItemView,
@@ -40,11 +40,12 @@ import {
   renderCustomerEmpty,
   renderDeliveryCardView,
   renderOrderCardView
-} from './customer-renderers.js?v=audit-20260908-v1';
+} from './customer-renderers.js?v=zentra-20261008-v1';
 
-const STORE_VERSION = 'storefront-v66';
-const FAVORITES_STORAGE_KEY = 'shelby-store-favorites-v66';
-const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
+const STORE_VERSION = 'storefront-v67';
+const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
+// Read historical keys once so existing customers keep their favorites during brand migration.
+const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
 const FALLBACK_AVATAR_ICONS = Object.freeze({
   '1': 'fa-crown',
   '2': 'fa-bolt',
@@ -445,7 +446,7 @@ function renderStorefrontConfiguration() {
     if (officialChannel) link.href = officialChannel.url;
   });
   const requestedSupport = String(storefront.support?.telegramUsername || state.catalog?.telegramUsername || '').replace(/^@+/, '');
-  const supportUsername = /^[a-z][a-z0-9_]{4,31}$/i.test(requestedSupport) ? requestedSupport : 'shelbyios';
+  const supportUsername = /^[a-z][a-z0-9_]{4,31}$/i.test(requestedSupport) ? requestedSupport : 'ZENTRA_STORE';
   $$('[data-telegram-support]').forEach((link) => {
     link.href = `https://t.me/${supportUsername}`;
   });
@@ -1163,7 +1164,7 @@ function clientTelegramMessage(order) {
 }
 
 function telegramOrderUrl(order) {
-  const username = state.catalog?.telegramUsername || 'shelbyios';
+  const username = state.catalog?.telegramUsername || 'ZENTRA_STORE';
   return `https://t.me/${encodeURIComponent(username)}?text=${encodeURIComponent(clientTelegramMessage(order))}`;
 }
 

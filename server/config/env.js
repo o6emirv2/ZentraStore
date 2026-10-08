@@ -18,9 +18,11 @@ function normalizeOrigin(value = '') {
   const raw = String(value || '').trim();
   if (!raw) return '';
   try {
-    const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
-    if (!['http:', 'https:'].includes(url.protocol)) return '';
-    return `${url.protocol}//${url.host}`;
+    const candidate = /^https?:\/\//i.test(raw) ? raw : (/^[a-z0-9.-]+(?::[0-9]{1,5})?\/?$/i.test(raw) ? `https://${raw}` : '');
+    if (!candidate) return '';
+    const url = new URL(candidate);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash || url.pathname !== '/' || !url.hostname.includes('.')) return '';
+    return url.origin;
   } catch (_) {
     return '';
   }
@@ -126,7 +128,6 @@ const serviceAccount = value(
 
 const env = {
   nodeEnv: process.env.NODE_ENV || 'production',
-  logLevel: process.env.LOG_LEVEL || 'info',
   serviceOrigin,
   publicBaseUrl,
   canonicalOrigin,
@@ -165,7 +166,7 @@ const env = {
     const distinct = encryptionSecret !== fingerprintSecret;
     if (encryptionReady) {
       decryptionSecrets[activeKeyId] = encryptionSecret;
-      if (activeKeyId !== 'legacy-v1' && !decryptionSecrets['legacy-v1']) decryptionSecrets['legacy-v1'] = encryptionSecret;
+      // Legacy decrypt keys must be explicitly retained during rotation; never alias them to a new key.
     }
     return {
       encryptionSecret,
@@ -191,7 +192,7 @@ function publicRuntimeConfig() {
       mode: env.firebase.appCheckMode
     },
     firebaseConfigSource: env.firebase.publicConfigSource,
-    brand: 'SHELBY STORE',
+    brand: 'ZENTRA STORE',
     version: integer(String(packageVersion || '').split('.')[0], 1, 1, 10_000),
     minimumPasswordLength: 8
   };
@@ -230,6 +231,7 @@ function configurationReport() {
   if (!env.storeKeys.encryptionReady) missing.push('STORE_KEY_ENCRYPTION_SECRET');
   if (!env.storeKeys.fingerprintReady) missing.push('STORE_KEY_FINGERPRINT_SECRET');
   if (env.storeKeys.encryptionReady && env.storeKeys.fingerprintReady && !env.storeKeys.distinct) missing.push('STORE_KEY_SECRETS_MUST_DIFFER');
+  if (env.storeKeys.activeKeyId !== 'legacy-v1' && !env.storeKeys.decryptionSecrets['legacy-v1']) missing.push('STORE_KEY_LEGACY_DECRYPTION_KEY_REQUIRED');
   if (env.adminEmails.length !== 1 || env.adminEmails.some(isPlaceholder)) missing.push('ADMIN_EMAILS');
   if (env.adminUids.length !== 1 || env.adminUids.some(isPlaceholder)) missing.push('ADMIN_UIDS');
   const requiredHex = (name) => /^[0-9a-f]{64}$/i.test(String(process.env[name] || '').trim()) && !isPlaceholder(process.env[name]);

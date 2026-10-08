@@ -1,4 +1,4 @@
-import { normalizeQuickLinks } from './social-links.js?v=audit-20260908-v1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v1';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
@@ -183,7 +183,7 @@ function normalizeCatalog(source = {}) {
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(value.version) || 1)),
     currency: 'TRY',
-    telegramUsername: String(value.telegramUsername || 'shelbyios').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
+    telegramUsername: String(value.telegramUsername || 'ZENTRA_STORE').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),

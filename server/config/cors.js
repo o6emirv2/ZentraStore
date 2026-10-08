@@ -16,7 +16,7 @@ function corsOptions(req, callback) {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type', 'Authorization', 'X-Request-Id', 'X-Idempotency-Key',
-      'X-Shelby-Store-Client', 'X-Admin-Reauth', 'X-Firebase-AppCheck'
+      'X-Zentra-Store-Client', 'X-Admin-Reauth', 'X-Firebase-AppCheck'
     ],
     exposedHeaders: ['X-Request-Id'],
     maxAge: 86400

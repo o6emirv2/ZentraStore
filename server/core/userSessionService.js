@@ -3,7 +3,7 @@
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 
-const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-shelby_session' : 'shelby_session';
+const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-zentra_session' : 'zentra_session';
 const REMEMBER_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const BROWSER_TTL_MS = 24 * 60 * 60 * 1000;
 

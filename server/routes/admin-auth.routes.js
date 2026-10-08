@@ -56,7 +56,7 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
     throw Object.assign(new Error('ADMIN_GATE_FACTOR_REQUIRED'), { code: 'ADMIN_GATE_FACTOR_REQUIRED', statusCode: 401 });
   }
   return sealAdminStep({
-    type: 'shelby-admin-step-v42',
+    type: 'zentra-admin-step-v42',
     stage: Number(stage),
     uid: String(identity.uid || '').trim(),
     email: String(identity.email || '').trim().toLowerCase(),
@@ -95,7 +95,7 @@ async function activeAdminIdentity(req) {
   let user;
   try { user = await auth.getUser(uid); } catch (_) { user = null; }
   const liveEmail = String(user?.email || '').trim().toLowerCase();
-  if (!user?.uid || user.uid !== uid || liveEmail !== email || user.disabled === true) {
+  if (!user?.uid || user.uid !== uid || liveEmail !== email || user.disabled === true || user.emailVerified !== true) {
     throw Object.assign(new Error('ADMIN_ACTIVE_SESSION_MISMATCH'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH', statusCode: 403 });
   }
   if (policy.systemOwner === true) {

@@ -1,10 +1,10 @@
 'use strict';
 
 const MAX_QUICK_LINKS = 16;
-const CHANNEL_LINKS_REVISION = 69;
+const CHANNEL_LINKS_REVISION = 70;
 const QUICK_LINK_PLATFORMS = Object.freeze(['telegram', 'tiktok', 'whatsapp']);
-const TIKTOK_OFFICIAL_URL = 'https://www.tiktok.com/@srfxkayra';
-const TELEGRAM_SUPPORT_USERNAME = 'shelbyios';
+const TIKTOK_OFFICIAL_URL = 'https://www.tiktok.com/@shelbystorelive';
+const TELEGRAM_SUPPORT_USERNAME = 'ZENTRA_STORE';
 const LINK_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,59}$/;
 const HIDDEN_TEXT_PATTERN = /[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u2069<>]/g;
 
@@ -27,9 +27,10 @@ const PLATFORM_RULES = Object.freeze({
 });
 
 const DEFAULT_QUICK_LINKS = Object.freeze([
-  { id: 'official-telegram', platform: 'telegram', title: 'Telegram Kanalı', description: 'Resmî kanalımızı takip et', url: 'https://t.me/shelbystoreofficial', enabled: true },
-  { id: 'chat-telegram', platform: 'telegram', title: 'Sohbet Kanalı', description: 'Sohbet grubumuza katıl', url: 'https://t.me/+1CNyDrYyBzcwMGY0', enabled: true },
-  { id: 'free-telegram', platform: 'telegram', title: 'Ücretsiz İçerik', description: 'Ücretsiz içerikleri keşfet', url: 'https://t.me/shelbystorefree', enabled: true },
+  { id: 'official-telegram', platform: 'telegram', title: 'Telegram Kanalı', description: 'Resmî kanalımızı takip et', url: 'https://t.me/+B_m6rCQxMhQ5MjFk', enabled: true },
+  { id: 'guarantee-telegram', platform: 'telegram', title: 'Güvence Kanalı', description: 'Güvence paylaşımlarımızı incele', url: 'https://t.me/+t17sK4mUhbszZTM0', enabled: true },
+  { id: 'chat-telegram', platform: 'telegram', title: 'Sohbet Kanalı', description: 'Sohbet grubumuza katıl', url: 'https://t.me/+chmRui3czAdhNTE0', enabled: true },
+  { id: 'free-telegram', platform: 'telegram', title: 'Ücretsiz İçerik', description: 'Ücretsiz içerikleri keşfet', url: 'https://t.me/zentrastorefree', enabled: true },
   { id: 'tiktok-official', platform: 'tiktok', title: 'TikTok', description: 'Videolarımızı izle', url: TIKTOK_OFFICIAL_URL, enabled: true },
   { id: 'whatsapp-support', platform: 'whatsapp', title: 'WhatsApp Destek', description: 'Destek ekibimize ulaş', url: 'https://wa.me/905339673730', enabled: true },
   { id: 'support-telegram', platform: 'telegram', title: 'Telegram Destek', description: 'Destek ekibimize güvenle ulaş', url: `https://t.me/${TELEGRAM_SUPPORT_USERNAME}`, enabled: true }

@@ -31,7 +31,7 @@ function cssStructureValid(source) {
   }
   return !quote && !comment && stack.length === 0;
 }
-const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />';
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />';
 for (const filename of files) {
   if (!/\.(?:js|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
@@ -95,6 +95,15 @@ for (const [htmlName, scriptNames] of domGroups) {
 }
 const catalog = JSON.parse(fs.readFileSync(path.join(root, 'public/data/store-products.json')));
 const productIds = new Set();
+const oldVisualBrand = /\b(?:shelby\s+store|shelbyios)\b/i;
+for (const file of files) {
+  const name = relative(file);
+  if (!/\.(?:js|cjs|html|css|json|yaml)$/.test(name) || name === 'scripts/verify-source.cjs') continue;
+  const content = fs.readFileSync(file, 'utf8');
+  const withoutExplicitOldTiktok = content.replaceAll('https://www.tiktok.com/@shelbystorelive', '');
+  if (oldVisualBrand.test(withoutExplicitOldTiktok)) failures.push(name + ': eski mağaza markası görünür kaynakta bulunuyor');
+}
+
 for (const product of catalog.products) {
   if (productIds.has(product.id)) failures.push('Tekrarlanan ürün ' + product.id);
   productIds.add(product.id);
@@ -109,18 +118,19 @@ const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json')));
 if (pkg.version !== lock.version || pkg.version !== lock.packages[''].version || JSON.stringify(pkg.dependencies) !== JSON.stringify(lock.packages[''].dependencies) || JSON.stringify(pkg.engines) !== JSON.stringify(lock.packages[''].engines)) failures.push('Paket ve kilit dosyası uyumsuz');
 const { CHANNEL_LINKS_REVISION, DEFAULT_QUICK_LINKS } = require(path.join(root, 'server/core/storeLinks.js'));
 const expectedChannelUrls = [
-  'https://t.me/shelbystoreofficial',
-  'https://t.me/+1CNyDrYyBzcwMGY0',
-  'https://t.me/shelbystorefree',
-  'https://www.tiktok.com/@srfxkayra',
+  'https://t.me/+B_m6rCQxMhQ5MjFk',
+  'https://t.me/+t17sK4mUhbszZTM0',
+  'https://t.me/+chmRui3czAdhNTE0',
+  'https://t.me/zentrastorefree',
+  'https://www.tiktok.com/@shelbystorelive',
   'https://wa.me/905339673730',
-  'https://t.me/shelbyios'
+  'https://t.me/ZENTRA_STORE'
 ];
-if (CHANNEL_LINKS_REVISION !== 69 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
+if (CHANNEL_LINKS_REVISION !== 70 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
 const homeSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if ((homeSource.match(/data-quick-link-id=/g) || []).length !== expectedChannelUrls.length || expectedChannelUrls.some((url) => !homeSource.includes(`href="${url}"`))) failures.push('Ana sayfa bağlantı kartları sunucu bağlantı paketiyle uyuşmuyor');
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.85 / 0.85 / 0.85 unchanged', result: 'PASS' }));
+console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.85 initial-scale; pinch zoom enabled', result: 'PASS' }));

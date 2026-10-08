@@ -34,7 +34,7 @@ const port = Math.max(1, Number(process.env.PORT || 10000) || 10000);
 const host = '0.0.0.0';
 
 
-const ADMIN_ENTRY_BLOCK_COOKIE = env.nodeEnv === 'production' ? '__Host-shelby_admin_block' : 'shelby_admin_block';
+const ADMIN_ENTRY_BLOCK_COOKIE = env.nodeEnv === 'production' ? '__Host-zentra_admin_block' : 'zentra_admin_block';
 const ADMIN_ENTRY_BLOCK_SECONDS = 5 * 60;
 
 function readCookie(req, name) {
@@ -64,19 +64,19 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     : 'Güvenli yönetici geçişi tamamlanamadı. Lütfen son doğrulama adımını yeniden deneyin.'));
   const safeCode = escapeHtml(code);
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8" />\n`
-    + `<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />\n`
+    + `<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />\n`
     + `<meta name="color-scheme" content="dark" />\n`
     + `<meta name="theme-color" content="#070304" />\n`
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=audit-20260908-v1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=audit-20260908-v1" /></head><body>'
-    + '<main class="gate"><div class="brand"><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261008-v1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v1" /></head><body>'
+    + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=audit-20260908-v1"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-20261008-v1"></script></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -176,6 +176,22 @@ app.use(compression({
   }
 }));
 app.use(requestEnvelopeGuard);
+// Render application logs contain failures only. Never log bodies, credentials, tokens or raw URLs.
+app.use((req, res, next) => {
+  res.once('finish', () => {
+    if (res.statusCode < 400) return;
+    const code = String(res.locals.errorCode || (res.statusCode >= 500 ? 'SERVER_ERROR' : 'HTTP_REJECTED'));
+    console.error('[zentra-store:error]', JSON.stringify({
+      status: res.statusCode,
+      method: req.method,
+      path: String(req.route?.path || req.path || '/').replace(/[\u0000-\u001F\u007F<>]/g, '').slice(0, 140),
+      code: code.replace(/[^A-Z0-9_:-]/gi, '').slice(0, 80),
+      requestId: req.requestId
+    }));
+  });
+  next();
+});
+
 app.use(publicLimiter);
 
 app.post('/admin/session/handoff', adminAuthLimiter, express.urlencoded({
@@ -204,6 +220,7 @@ app.post('/admin/session/handoff', adminAuthLimiter, express.urlencoded({
     const uid = String(decoded?.uid || decoded?.sub || '').trim();
     const email = String(decoded?.email || '').trim().toLowerCase();
     const account = await auth.getUser(uid);
+    if (account?.emailVerified !== true) throw Object.assign(new Error('ADMIN_VERIFIED_EMAIL_REQUIRED'), { code: 'ADMIN_VERIFIED_EMAIL_REQUIRED', statusCode: 403 });
     const policy = await resolveStaffPolicy(uid, email);
     if (uid !== handoff.uid || email !== handoff.email || account?.disabled === true
       || String(account?.email || '').trim().toLowerCase() !== email || !policy
@@ -333,23 +350,11 @@ app.use((error, req, res, _next) => {
   const parserStatus = parserCode === 'INVALID_JSON' ? 400 : parserCode === 'REQUEST_BODY_TOO_LARGE' ? 413 : 0;
   const status = parserStatus || Math.max(400, Math.min(599, Number(error?.statusCode || error?.status || 500) || 500));
   const code = String(parserCode || error?.code || (status >= 500 ? 'SERVER_ERROR' : 'REQUEST_REJECTED')).replace(/[^A-Z0-9_:-]/gi, '').slice(0, 80);
-  if (status >= 500) {
-    console.error('[shelby-store:error]', JSON.stringify({
-      method: req.method,
-      path: String(req.route?.path || 'api').replace(/[\u0000-\u001F\u007F<>]/g, '').slice(0, 120),
-      status,
-      code,
-      requestId: req.requestId,
-      ...(error?.providerCode ? { providerCode: String(error.providerCode).replace(/[^A-Z0-9_:-]/gi, '').slice(0, 32) } : {}),
-      ...(error?.providerCorrelationId
-        ? { providerCorrelationId: String(error.providerCorrelationId).replace(/[^A-Z0-9_.:-]/gi, '').slice(0, 80) }
-        : {})
-    }));
-  }
   const publicMessages = {
     INVALID_JSON: 'Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip tekrar deneyin.',
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
   };
+  res.locals.errorCode = code;
   const message = publicMessages[code];
   return res.status(status).json({ ok: false, error: code, code, ...(message ? { message } : {}), requestId: req.requestId });
 });
@@ -360,16 +365,15 @@ function startServer() {
   if (server) return server;
   server = configureHttpServer(app.listen(port, host, () => {
     const report = env.configurationReport();
-    console.info(`[shelby-store] Sunucu ${host}:${port} adresinde bağlantı kabul ediyor.`);
-    if (!report.ready) console.warn('[shelby-store] Güvenli servis hazırlığı için eksik ortam değişkenleri:', report.missing.join(', '));
+    if (!report.ready) console.error('[zentra-store:configuration]', JSON.stringify({ code: 'CONFIGURATION_INCOMPLETE', missing: report.missing }));
   }));
 
   setImmediate(() => {
     scheduleCatalogRetirementCleanup()
       .then((report) => {
-        if (report?.retiredProducts) console.warn('[shelby-store] Katalog dışında kalan ürün kayıtları bulundu; otomatik silme yapılmadı. Bakım öncesi yedek ve kapsam incelemesi gerekli.');
+        // Retired products are retained until an authorized catalog cleanup.
       })
-      .catch(() => console.error('[shelby-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
+      .catch(() => console.error('[zentra-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
   });
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
@@ -378,7 +382,6 @@ function startServer() {
 
 function shutdown(signal) {
   if (!server) return;
-  console.info(`[shelby-store] ${signal} alındı; bağlantılar güvenli şekilde kapatılıyor.`);
   server.close(() => process.exit(0));
   server.closeIdleConnections?.();
   setTimeout(() => {

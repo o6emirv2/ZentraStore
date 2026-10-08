@@ -2,27 +2,27 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="theme-color" content="#070304" />
   <meta name="color-scheme" content="dark" />
-  <meta name="shelby-api-origin" content="https://emirhan-siye.onrender.com" />
+  <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=audit-20260908-v1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=audit-20260908-v1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=audit-20260908-v1" />
-  <script src="./admin-auth.js?v=audit-20260908-v1"></script>
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v1" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v1" />
+  <script src="./admin-auth.js?v=zentra-20261008-v1"></script>
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
-  <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
+  <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
 
   <header class="admin-topbar">
-      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ · V66</small></span></button>
+      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ · V66</small></span></button>
     <div class="admin-topbar__actions">
       <span class="security-chip" id="securityChip"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><small>GÜVENLİK</small><strong id="securityChipScore">--/100</strong></span></span>
       <button class="icon-action" id="refreshAll" type="button" aria-label="Aktif paneli yenile"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button>
@@ -104,7 +104,7 @@
             <label class="toggle-row"><input id="contentAndroidVisible" type="checkbox" /><span><strong>Android kategorisi</strong><small>Android ürünlerini gösterir.</small></span></label>
             <label class="toggle-row"><input id="contentIosVisible" type="checkbox" /><span><strong>iOS kategorisi</strong><small>iOS ürünlerini gösterir.</small></span></label>
           </div>
-          <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="shelbyios" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
+          <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="ZENTRA_STORE" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
           <label><span>Ana sayfa açıklaması</span><textarea id="contentHomeMessage" maxlength="240" rows="3" placeholder="Ana sayfada gösterilecek güvenli bilgi metni."></textarea></label>
           <div class="form-grid"><label><span>Duyuru başlığı</span><input id="announcementTitle" maxlength="80" placeholder="Yeni stoklar yayında" /></label><label><span>Ton</span><select id="announcementTone"><option value="info">Bilgi</option><option value="success">Başarılı</option><option value="warning">Uyarı</option></select></label></div>
           <label><span>Duyuru metni</span><textarea id="announcementMessage" maxlength="240" rows="4" placeholder="Kullanıcı dostu duyuru metnini yazın."></textarea></label>
@@ -165,6 +165,6 @@
 
   <div class="reauth-layer" id="secureActionLayer" hidden><div class="reauth-backdrop" data-secure-action-cancel></div><form class="reauth-card secure-action-card" id="secureActionForm" role="dialog" aria-modal="true" aria-labelledby="secureActionTitle"><button class="reauth-close" type="button" data-secure-action-cancel aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button><span class="reauth-icon"><i class="fa-solid fa-shield-halved"></i></span><span class="reauth-kicker" id="secureActionKicker">GÜVENLİ İŞLEM</span><h2 id="secureActionTitle">İşlemi doğrula.</h2><p id="secureActionSummary">Bu kritik işlem gerekçe ve hesap parolasıyla doğrulanacaktır.</p><label><span>Gerekçe kategorisi</span><div><i class="fa-solid fa-list-check"></i><select id="secureActionCategory" required></select></div></label><label><span>Denetim açıklaması</span><textarea id="secureActionReason" maxlength="200" rows="3" placeholder="İşlem gerekçesini en az 3 karakterle açıklayın." required></textarea></label><label><span>Hesap şifresi</span><div><i class="fa-solid fa-key"></i><input id="secureActionPassword" type="password" autocomplete="current-password" required /></div></label><div class="reauth-actions"><button type="button" data-secure-action-cancel>Vazgeç</button><button type="submit" id="secureActionConfirm">Doğrula ve Uygula</button></div></form></div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=audit-20260908-v1"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v1"></script>
 </body>
 </html>
