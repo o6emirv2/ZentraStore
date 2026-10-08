@@ -1,8 +1,7 @@
 'use strict';
 
-const createAsyncRouter = require('../core/asyncRouter');
+const express = require('express');
 const env = require('../config/env');
-const { logDependencyError } = require('../core/errorLogger');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { authLoginLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
 const { trustedOrigin } = require('../core/userSessionService');
@@ -11,7 +10,7 @@ const {
   validatePersonName, validateBirthDate
 } = require('../core/storeProfileService');
 
-const router = createAsyncRouter();
+const router = express.Router();
 
 function serviceError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
@@ -68,7 +67,7 @@ async function resolvePrivateLogin(identifier = '') {
   if (!email) throw authInvalid();
   const stored = doc.data() || {};
   if (String(stored.email || '').trim().toLowerCase() !== email) {
-    await doc.ref.set({ email, updatedAt: Date.now() }, { merge: true }).catch((error) => { logDependencyError('AUTH_PROFILE_EMAIL_SYNC_FAILED', error); });
+    await doc.ref.set({ email, updatedAt: Date.now() }, { merge: true }).catch(() => null);
   }
   return { email, expectedUid: doc.id };
 }
@@ -107,7 +106,7 @@ router.post('/auth/login', authLoginLimiter, async (req, res, next) => {
     const { auth } = initFirebaseAdmin();
     const authUser = await auth.getUser(uid).catch(() => null);
     if (!authUser || authUser.disabled) throw authInvalid();
-    const customToken = await auth.createCustomToken(uid, { zentraLogin: true });
+    const customToken = await auth.createCustomToken(uid, { shelbyLogin: true });
     return res.json({ ok: true, customToken });
   } catch (error) {
     if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED'].includes(String(error?.code || ''))) return next(error);
@@ -121,13 +120,9 @@ router.post('/auth/password-reset', passwordResetLimiter, async (req, res) => {
     const identifier = text(req.body?.identifier, 160);
     if (identifier) {
       const { email } = await resolvePrivateLogin(identifier);
-      const result = await identityToolkit('sendOobCode', { requestType: 'PASSWORD_RESET', email });
-      if (!result.ok && result.payload?.error?.message !== 'EMAIL_NOT_FOUND') {
-        logDependencyError('AUTH_PASSWORD_RESET_PROVIDER_FAILED', { code: `HTTP_${result.status}` });
-      }
+      await identityToolkit('sendOobCode', { requestType: 'PASSWORD_RESET', email });
     }
-  } catch (error) {
-    if (error?.code !== 'LOGIN_CREDENTIALS_INVALID') logDependencyError('AUTH_PASSWORD_RESET_FAILED', error);
+  } catch (_) {
   }
   return res.status(202).json({ ok: true, accepted: true });
 });

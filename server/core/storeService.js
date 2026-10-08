@@ -1,9 +1,5 @@
 'use strict';
 
-const { withReadDeadline } = require('./deadline');
-const { logDependencyError } = require('./errorLogger');
-const { displayFallbackCatalog } = require('./storeCatalogService');
-
 const crypto = require('crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -94,7 +90,7 @@ function normalizeAvatarId(value, allowed, fallback = '1') {
 
 function normalizeStoreProfile(profile = {}, authUser = {}) {
   const storeProfile = profile.storeProfile && typeof profile.storeProfile === 'object' ? profile.storeProfile : {};
-  const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'ZENTRA STORE Üyesi', 40);
+  const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'SHELBY STORE Üyesi', 40);
   const accountStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
   const avatarId = normalizeAvatarId(storeProfile.avatarId || profile.storeAvatarId, AVATAR_IDS);
   const avatar = getAvatarById(avatarId);
@@ -128,34 +124,31 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
 
 async function readAccount(uid, authUser = {}) {
   const safeUid = safeText(uid, 160);
-  if (!safeUid || safeUid.includes('/')) throw serviceError('AUTH_REQUIRED', 401);
+  if (!safeUid) throw serviceError('AUTH_REQUIRED', 401);
   const { db } = firebaseStore();
   const ref = db.collection('users').doc(safeUid);
-  const synchronize = (snap) => {
-    const profile = snap.exists ? (snap.data() || {}) : {};
-    const account = normalizeStoreProfile(profile, authUser);
-    const authEmail = safeText(authUser.email || '', 160).toLowerCase();
-    const needsSync = !snap.exists || !profile.storeProfile || profile.storeBalanceKurus === undefined
-      || (!!authEmail && authEmail !== safeText(profile.email || '', 160).toLowerCase());
-    return { profile, account, needsSync };
-  };
-  const initial = synchronize(await ref.get());
-  if (!initial.needsSync) return initial.account;
-  return db.runTransaction(async (transaction) => {
-    const live = synchronize(await transaction.get(ref));
-    if (!live.needsSync) return live.account;
-    const { profile, account } = live;
-    transaction.set(ref, {
+  const snap = await ref.get();
+  const profile = snap.exists ? (snap.data() || {}) : {};
+  const account = normalizeStoreProfile(profile, authUser);
+  const authEmail = safeText(authUser.email || '', 160).toLowerCase();
+  const profileEmail = safeText(profile.email || '', 160).toLowerCase();
+  const profileNeedsSync = !snap.exists
+    || !profile.storeProfile
+    || profile.storeBalanceKurus === undefined
+    || (!!authEmail && authEmail !== profileEmail);
+  if (profileNeedsSync) {
+    await ref.set({
       email: account.email,
-      ...(!profile.username ? { username: account.username, usernameLower: account.username.toLocaleLowerCase('tr-TR') } : {}),
-      ...(!profile.storeAccountStatus ? { storeAccountStatus: account.accountStatus } : {}),
-      ...(profile.storeBalanceKurus === undefined ? { storeBalanceKurus: account.balanceKurus } : {}),
-      ...(!profile.storeProfile ? { storeProfile: { avatarId: account.avatarId } } : {}),
-      ...(!profile.storeCreatedAt ? { storeCreatedAt: Date.now() } : {}),
+      username: account.username,
+      usernameLower: account.username.toLocaleLowerCase('tr-TR'),
+      storeAccountStatus: account.accountStatus,
+      storeBalanceKurus: account.balanceKurus,
+      storeProfile: { avatarId: account.avatarId },
+      storeCreatedAt: profile.storeCreatedAt || Date.now(),
       storeUpdatedAt: Date.now()
     }, { merge: true });
-    return account;
-  });
+  }
+  return account;
 }
 
 
@@ -182,7 +175,7 @@ function normalizeCart(rawItems = [], catalog = null) {
   }
   const combined = new Map();
   for (const raw of rawItems) {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).some((key) => !['productId', 'planKey', 'quantity'].includes(key))) throw serviceError('STORE_CART_INVALID', 400);
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw serviceError('STORE_CART_INVALID', 400);
     const productId = safeText(raw?.productId, 80).toLowerCase();
     const planKey = safeText(raw?.planKey, 40).toLowerCase();
     const quantity = raw.quantity === undefined ? 1 : Number(raw.quantity);
@@ -212,13 +205,13 @@ function normalizeCart(rawItems = [], catalog = null) {
   }
   const items = [...combined.values()];
   const totalKurus = items.reduce((total, item) => total + item.lineTotalKurus, 0);
-  if (!Number.isSafeInteger(totalKurus) || totalKurus < 1 || totalKurus > MAX_ORDER_TOTAL_KURUS) throw serviceError('STORE_ORDER_TOTAL_INVALID', 400);
+  if (totalKurus < 1 || totalKurus > MAX_ORDER_TOTAL_KURUS) throw serviceError('STORE_ORDER_TOTAL_INVALID', 400);
   return { items, totalKurus };
 }
 
 function orderNumber() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `ZS-${date}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
+  return `SH-${date}-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
 }
 
 function currency(value = 0) {
@@ -228,7 +221,7 @@ function currency(value = 0) {
 }
 
 function buildTelegramMessage(order) {
-  const lines = ['Merhaba, ZENTRA STORE üzerinden sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
+  const lines = ['Merhaba, SHELBY STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
   order.items.forEach((item, index) => {
     const prefix = order.items.length > 1 ? `${index + 1}. ` : '';
     lines.push(
@@ -250,9 +243,7 @@ function buildTelegramMessage(order) {
 
 function telegramUrl(message = '', telegramUsername = STORE_CATALOG.telegramUsername) {
   const username = safeText(telegramUsername, 80).replace(/^@+/, '') || STORE_CATALOG.telegramUsername;
-  return /^[a-z][a-z0-9_]{4,31}$/i.test(username)
-    ? `https://t.me/${encodeURIComponent(username)}?text=${encodeURIComponent(String(message || ''))}`
-    : `https://wa.me/905339673730?text=${encodeURIComponent(String(message || ''))}`;
+  return `https://t.me/${username}?text=${encodeURIComponent(String(message || ''))}`;
 }
 
 function publicOrder(data = {}, id = '') {
@@ -658,7 +649,7 @@ async function adjustStoreBalance({ targetUid = '', amountKurus = 0, type = 'COR
     tx.set(userRef, {
       ...(userSnapshot.exists ? {} : {
         email: safeText(targetAuthUser.email || '', 160).toLowerCase(),
-        username: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || 'ZENTRA STORE Üyesi', 40),
+        username: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || 'SHELBY STORE Üyesi', 40),
         usernameLower: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || '', 40).toLocaleLowerCase('tr-TR'),
         storeAccountStatus: 'active',
         storeProfile: { avatarId: '1' },
@@ -897,17 +888,15 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
 }
 
 async function publicCatalog() {
+  const catalog = await getEffectiveCatalog({ includeInactive: false });
   const firebase = initFirebaseAdmin();
-  let catalog;
   let stockVerified = true;
   let stocked;
   try {
-    catalog = await getEffectiveCatalog({ includeInactive: false });
-    stocked = await withReadDeadline(decorateCatalogWithStock(catalog), 1500, 'STORE_STOCK_READ_TIMEOUT');
+    stocked = await decorateCatalogWithStock(catalog);
   } catch (error) {
-    logDependencyError('STORE_PUBLIC_CATALOG_DEGRADED', error);
+    if (String(error?.code || error?.message) !== 'STORE_STORAGE_UNAVAILABLE') throw error;
     stockVerified = false;
-    catalog = catalog || displayFallbackCatalog();
     stocked = {
       ...catalog,
       products: catalog.products.map((product) => ({
@@ -917,7 +906,7 @@ async function publicCatalog() {
       }))
     };
   }
-  const backendReady = stockVerified && firebase.enabled === true && !!firebase.db && !!firebase.admin;
+  const backendReady = firebase.enabled === true && !!firebase.db && !!firebase.admin;
   const deliveryReady = backendReady && env.storeKeys.configured === true;
   const configuredServices = stocked.storefront?.services || {};
   const storefront = {
@@ -970,7 +959,6 @@ async function publicCatalog() {
     telegramUsername: safeText(stocked.telegramUsername, 40).replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, ''),
     storefront,
     stockVerified,
-    stale: !stockVerified,
     badgeOptions: (Array.isArray(stocked.badgeOptions) ? stocked.badgeOptions : []).map((badge) => ({
       key: safeText(badge.key, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''),
       label: safeText(badge.label, 40),

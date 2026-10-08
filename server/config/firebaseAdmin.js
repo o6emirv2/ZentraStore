@@ -2,7 +2,6 @@
 
 const admin = require('firebase-admin');
 const env = require('./env');
-const { logError } = require('../core/errorLogger');
 
 function parseServiceAccount(raw = '') {
   const value = String(raw || '').trim();
@@ -35,7 +34,7 @@ function initFirebaseAdmin() {
   const serviceAccount = parseServiceAccount(env.firebase.serviceAccount);
   if (!serviceAccount) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    logError('FIREBASE_CONFIGURATION_INVALID');
+    console.warn('[shelby-store] Firebase Admin yapılandırması bulunamadı.');
     return initialized;
   }
   try {
@@ -52,10 +51,10 @@ function initFirebaseAdmin() {
       appCheck: admin.appCheck(app),
       enabled: true
     };
-
-  } catch (error) {
+    console.info('[shelby-store] Firebase Admin hazır.');
+  } catch (_) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    logError('FIREBASE_INITIALIZATION_FAILED', { error });
+    console.error('[shelby-store] Güvenli veri hizmeti başlatılamadı. Yapılandırmayı kontrol edin.');
   }
   return initialized;
 }

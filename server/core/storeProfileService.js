@@ -1,13 +1,11 @@
 'use strict';
 
-const { logDependencyError } = require('./errorLogger');
-
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAccount } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
-const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'zentra', 'zentrastore', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
+const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'shelby', 'shelbyios', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
 
 function profileError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
@@ -199,7 +197,7 @@ async function updateProfileEmail(uid = '', authUser = {}, input = {}) {
     const now = Date.now();
     await userRef.set({ email, storeUpdatedAt: now, updatedAt: now }, { merge: true });
   } catch (_) {
-    await auth.updateUser(safeUid, { email: previousEmail }).catch((error) => { logDependencyError('PROFILE_EMAIL_ROLLBACK_FAILED', error); });
+    await auth.updateUser(safeUid, { email: previousEmail }).catch(() => null);
     throw profileError('EMAIL_UPDATE_UNAVAILABLE', 503);
   }
   return readAccount(safeUid, { ...authUser, email });

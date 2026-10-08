@@ -1,6 +1,6 @@
 'use strict';
 
-const createAsyncRouter = require('../core/asyncRouter');
+const express = require('express');
 const env = require('../config/env');
 const { requireAuth, strictLimiter } = require('../core/security');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -13,7 +13,7 @@ const {
   verifyUserSession
 } = require('../core/userSessionService');
 
-const router = createAsyncRouter();
+const router = express.Router();
 
 router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');

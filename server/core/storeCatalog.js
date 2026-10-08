@@ -28,8 +28,8 @@ function sanitizeCatalog() {
     const seenPlans = new Set();
     const plans = (Array.isArray(source?.plans) ? source.plans : []).map((plan) => {
       const key = String(plan?.key || '').trim().toLowerCase();
-      const priceKurus = Number(plan?.priceKurus);
-      if (!SAFE_PLAN_KEY.test(key) || seenPlans.has(key) || !Number.isSafeInteger(priceKurus) || priceKurus < 1 || priceKurus > 100_000_000) {
+      const priceKurus = Math.trunc(Number(plan?.priceKurus) || 0);
+      if (!SAFE_PLAN_KEY.test(key) || seenPlans.has(key) || priceKurus < 1 || priceKurus > 100_000_000) {
         throw new Error(`STORE_CATALOG_INVALID_PLAN:${id}:${key || 'missing'}`);
       }
       seenPlans.add(key);
@@ -70,7 +70,7 @@ function sanitizeCatalog() {
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(rawCatalog.version) || 1)),
     currency: 'TRY',
-    telegramUsername: String(rawCatalog.telegramUsername || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32),
+    telegramUsername: String(rawCatalog.telegramUsername || 'shelbyios').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32),
     products: Object.freeze(normalized)
   });
 }

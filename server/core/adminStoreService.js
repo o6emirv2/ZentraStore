@@ -9,7 +9,6 @@ const { createdAtPage } = require('./firestorePagination');
 const { revokeAdminSessionsForUser } = require('./adminSessionRegistry');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { overviewCan, projectAdminOverview } = require('./adminOverviewPolicy');
-const { logDependencyError } = require('./errorLogger');
 
 const ACCOUNT_STATUSES = Object.freeze(['active', 'purchase_blocked', 'suspended']);
 const STAFF_ROLES = Object.freeze(['owner', 'finance', 'inventory', 'orders', 'support', 'viewer']);
@@ -145,8 +144,7 @@ async function commerceStatsForUids(db, uids = []) {
     if (!chunk.length) continue;
     let snapshot;
     try { snapshot = await db.collection('storeOrders').where('uid', 'in', chunk).get(); }
-    catch (error) {
-      logDependencyError('ADMIN_ORDER_QUERY_FALLBACK', error);
+    catch (_) {
       const docs = [];
       for (const uid of chunk) {
         const perUser = await db.collection('storeOrders').where('uid', '==', uid).get();
@@ -198,10 +196,7 @@ async function listStoreUsers({ query = '', limit = 50, pageToken = '' } = {}) {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(Number(limit) || 50)));
   const result = await auth.listUsers(safeLimit, safeText(pageToken, 1024) || undefined);
   const [profiles, commerce] = await Promise.all([
-    result.users.length
-      ? db.getAll(...result.users.map((user) => db.collection('users').doc(user.uid)))
-        .then((snapshots) => snapshots.map((snapshot) => snapshot.exists ? (snapshot.data() || {}) : {}))
-      : Promise.resolve([]),
+    Promise.all(result.users.map((user) => profileForUid(db, user.uid))),
     commerceStatsForUids(db, result.users.map((user) => user.uid))
   ]);
   return {
@@ -254,7 +249,7 @@ async function updateStoreUser({ uid = '', status = '', adminNote = '', actor = 
     recordMutationAudit(batch, db, 'store.user.update', actor, { uid: safeUid, before: previousProfile.storeAccountStatus || 'active', after: safeStatus });
     await batch.commit();
   } catch (_) {
-    if (disableAccount || restoreManagedAccount) await auth.updateUser(safeUid, { disabled: !suspend }).catch((error) => { logDependencyError('ADMIN_AUTH_ROLLBACK_FAILED', error); });
+    if (disableAccount || restoreManagedAccount) await auth.updateUser(safeUid, { disabled: !suspend }).catch(() => null);
     throw serviceError('STORE_ACCOUNT_MODERATION_FAILED', 503);
   }
   invalidateAdminStoreCaches();
@@ -308,7 +303,7 @@ async function getProfileSummarySnapshot(db, { fresh = false } = {}) {
     return profileSummaryCache.snapshot;
   }
   if (!profileSummaryLoad) {
-    const pending = db.collection('users').select('storeBalanceKurus', 'storeWallet', 'storeAccountStatus').get().then((snapshot) => {
+    const pending = db.collection('users').get().then((snapshot) => {
       profileSummaryCache = { at: Date.now(), snapshot };
       return snapshot;
     });
@@ -376,15 +371,14 @@ async function getWalletSummary({ fresh = false } = {}) {
   const { db } = firebaseStore();
   const [profilesSnapshot, ledgerResult, adjustmentsCount] = await Promise.all([
     getProfileSummarySnapshot(db, { fresh }),
-    collectLedgerRows(db).catch(async (error) => {
-      logDependencyError('ADMIN_LEDGER_QUERY_FALLBACK', error);
+    collectLedgerRows(db).catch(async () => {
       const snapshot = await db.collection('storeWalletLedger').limit(WALLET_SUMMARY_LEDGER_LIMIT).get();
       return {
         rows: snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() || {}) })),
         complete: snapshot.size < WALLET_SUMMARY_LEDGER_LIMIT
       };
     }),
-    db.collection('storeWalletAdjustments').count().get().catch((error) => { logDependencyError('ADMIN_ADJUSTMENT_COUNT_FAILED', error); return null; })
+    db.collection('storeWalletAdjustments').count().get().catch(() => null)
   ]);
   let liabilityKurus = 0;
   let fundedAccounts = 0;
@@ -456,7 +450,7 @@ async function getAdminOverview(policy = null) {
   const needsOrders = can('store.orders.read') || can('store.wallet.read');
   const [ordersSnapshot, ordersCount, stock, usersSummary, catalog, walletSummary] = await Promise.all([
     needsOrders ? db.collection('storeOrders').orderBy('createdAt', 'desc').limit(OVERVIEW_ORDER_LIMIT).get() : Promise.resolve({ docs: [] }),
-    needsOrders ? db.collection('storeOrders').count().get().catch((error) => { logDependencyError('ADMIN_ORDER_COUNT_FAILED', error); return null; }) : Promise.resolve(null),
+    needsOrders ? db.collection('storeOrders').count().get().catch(() => null) : Promise.resolve(null),
     can('store.inventory.read') ? inventorySummary({ fresh: false }) : Promise.resolve([]),
     can('store.users.read') ? getUserDirectorySummary({ fresh: false }) : Promise.resolve({}),
     getEffectiveCatalog({ includeInactive: true, fresh: false }),
@@ -571,8 +565,8 @@ async function listAuditLogs(limit = 100, targetUid = '') {
   const { db } = firebaseStore();
   const safeLimit = Math.max(1, Math.min(200, Math.trunc(Number(limit) || 100)));
   const [adminSnapshot, storeSnapshot] = await Promise.all([
-    db.collection('adminAudit').orderBy('createdAt', 'desc').limit(safeLimit).get().catch((error) => { logDependencyError('ADMIN_AUDIT_QUERY_FALLBACK', error); return db.collection('adminAudit').limit(safeLimit).get(); }),
-    db.collection('audit').orderBy('at', 'desc').limit(safeLimit).get().catch((error) => { logDependencyError('AUDIT_QUERY_FALLBACK', error); return db.collection('audit').limit(safeLimit).get(); })
+    db.collection('adminAudit').orderBy('createdAt', 'desc').limit(safeLimit).get().catch(() => db.collection('adminAudit').limit(safeLimit).get()),
+    db.collection('audit').orderBy('at', 'desc').limit(safeLimit).get().catch(() => db.collection('audit').limit(safeLimit).get())
   ]);
   const safeTargetUid = safeText(targetUid, 160);
   return [

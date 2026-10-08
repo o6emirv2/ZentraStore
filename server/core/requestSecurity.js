@@ -2,7 +2,6 @@
 
 const crypto = require('crypto');
 const env = require('../config/env');
-const { logError } = require('./errorLogger');
 
 const API_BODY_LIMIT_BYTES = 256 * 1024;
 const MAX_URI_LENGTH = 2048;
@@ -77,7 +76,7 @@ function allowedHosts() {
 const HOST_ALLOWLIST = allowedHosts();
 
 function requestEnvelopeGuard(req, res, next) {
-  req.requestId = req.requestId || requestId();
+  req.requestId = requestId();
   res.setHeader('X-Request-Id', req.requestId);
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()');
 
@@ -149,8 +148,7 @@ function configureHttpServer(server) {
   server.maxHeadersCount = 80;
   server.maxRequestsPerSocket = 100;
   server.setTimeout(45_000);
-  server.on('clientError', (error, socket) => {
-    logError('HTTP_CLIENT_PROTOCOL_ERROR', { error });
+  server.on('clientError', (_error, socket) => {
     if (!socket || !socket.writable) return;
     socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
   });

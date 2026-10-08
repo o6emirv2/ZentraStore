@@ -1,6 +1,6 @@
 'use strict';
 
-const createAsyncRouter = require('../core/asyncRouter');
+const express = require('express');
 const env = require('../config/env');
 const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, deliveryLimiter, RATE_LIMIT_POLICY } = require('../core/security');
 const { adminAccessCookiePolicy } = require('../core/adminAccessService');
@@ -36,7 +36,6 @@ const {
   markNotificationRead
 } = require('../core/storeInventoryService');
 const {
-  createProduct,
   getEffectiveCatalog,
   updateProductSettings,
   updateProductsBulk,
@@ -61,7 +60,8 @@ const {
   updateProfileUsername, updateProfileFullName,
   updateProfileBirthDate, updateProfileEmail
 } = require('../core/storeProfileService');
-const router = createAsyncRouter();
+const router = express.Router();
+const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
 const sensitiveAdminChain = (permission) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth];
 
@@ -121,45 +121,41 @@ function initFirebaseReady() {
   } catch (_) { return false; }
 }
 
-router.get('/store/catalog', async (_req, res) => {
-  const catalog = await publicCatalog();
-  res.setHeader('Cache-Control', catalog.stockVerified === false ? 'no-store' : 'public, max-age=30, must-revalidate');
-  res.json({ ok: true, catalog });
-});
+router.get('/store/catalog', asyncRoute(async (_req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
+  res.json({ ok: true, catalog: await publicCatalog() });
+}));
 
-router.get('/store/account', requireAuth, async (req, res) => {
+router.get('/store/account', requireAuth, asyncRoute(async (req, res) => {
   const account = await readAccount(req.user.uid, req.user);
   noStore(res);
   res.json({ ok: true, account });
-});
+}));
 
-router.patch('/store/profile/avatar', requireAuth, strictLimiter, async (req, res) => {
+router.patch('/store/profile/avatar', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const account = await updateProfileAvatar(req.user.uid, req.user, req.body || {});
   noStore(res);
   res.json({ ok: true, account });
-});
+}));
 
-const protectedProfileUpdate = (handler) => [requireAuth, strictLimiter, requireRecentUserAuth, async (req, res) => {
+const protectedProfileUpdate = (handler) => [requireAuth, strictLimiter, requireRecentUserAuth, asyncRoute(async (req, res) => {
   const account = await handler(req.user.uid, req.user, req.body || {});
   noStore(res);
   res.json({ ok: true, account });
-}];
+})];
 
 router.patch('/store/profile/username', ...protectedProfileUpdate(updateProfileUsername));
 router.patch('/store/profile/name', ...protectedProfileUpdate(updateProfileFullName));
 router.patch('/store/profile/birth-date', ...protectedProfileUpdate(updateProfileBirthDate));
 router.patch('/store/profile/email', ...protectedProfileUpdate(updateProfileEmail));
 
-router.get('/store/orders', requireAuth, async (req, res) => {
+router.get('/store/orders', requireAuth, asyncRoute(async (req, res) => {
   const result = await listOrders(req.user.uid, req.query.limit || 30, req.query.cursor);
   noStore(res);
   res.json({ ok: true, ...result, empty: result.orders.length === 0 });
-});
+}));
 
-router.post('/store/orders', requireAuth, strictLimiter, async (req, res) => {
-  if (!req.body || Object.keys(req.body).some((key) => !['items', 'paymentMethod', 'idempotencyKey', 'promotionCode'].includes(key))) {
-    return res.status(400).json({ ok: false, error: 'STORE_ORDER_INPUT_INVALID' });
-  }
+router.post('/store/orders', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const result = await createOrder({
     uid: req.user.uid,
     authUser: req.user,
@@ -170,32 +166,32 @@ router.post('/store/orders', requireAuth, strictLimiter, async (req, res) => {
   });
   noStore(res);
   res.status(201).json({ ok: true, ...result });
-});
+}));
 
-router.post('/store/orders/:orderId/cancel', requireAuth, strictLimiter, async (req, res) => {
+router.post('/store/orders/:orderId/cancel', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const result = await cancelOrderByUser({ uid: req.user.uid, orderId: req.params.orderId, reason: req.body?.reason });
   noStore(res);
   res.json({ ok: true, ...result });
-});
+}));
 
-router.get('/store/orders/:orderId/delivery', requireAuth, deliveryLimiter, async (req, res) => {
+router.get('/store/orders/:orderId/delivery', requireAuth, deliveryLimiter, asyncRoute(async (req, res) => {
   const delivery = await readDeliverySecrets({ uid: req.user.uid, orderId: req.params.orderId });
   noStore(res);
   res.json({ ok: true, delivery });
-});
+}));
 
-router.post('/store/promotions/validate', requireAuth, strictLimiter, async (req, res) => {
+router.post('/store/promotions/validate', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const promotion = await previewStorePromotion({ uid: req.user.uid, rawItems: req.body?.items, code: req.body?.code });
   noStore(res);
   res.json({ ok: true, promotion });
-});
+}));
 
-router.get('/store/promotions', requireAuth, async (req, res) => {
+router.get('/store/promotions', requireAuth, asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, promotions: await listWalletPromotions(req.user.uid) });
-});
+}));
 
-router.post('/store/restock-subscriptions', requireAuth, strictLimiter, async (req, res) => {
+router.post('/store/restock-subscriptions', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const subscription = await subscribeRestock({
     uid: req.user.uid,
     productId: req.body?.productId,
@@ -203,52 +199,46 @@ router.post('/store/restock-subscriptions', requireAuth, strictLimiter, async (r
   });
   noStore(res);
   res.status(subscription.subscribed ? 201 : 200).json({ ok: true, subscription });
-});
+}));
 
-router.get('/store/notifications', requireAuth, async (req, res) => {
+router.get('/store/notifications', requireAuth, asyncRoute(async (req, res) => {
   const notifications = await listNotifications(req.user.uid, req.query.limit);
   noStore(res);
   res.json({ ok: true, notifications });
-});
+}));
 
-router.patch('/store/notifications/:notificationId/read', requireAuth, strictLimiter, async (req, res) => {
+router.patch('/store/notifications/:notificationId/read', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   await markNotificationRead(req.user.uid, req.params.notificationId);
   noStore(res);
   res.json({ ok: true });
-});
+}));
 
-router.get('/admin/store/overview', ...adminChain, requireStorePermission('store.overview.read'), async (req, res) => {
+router.get('/admin/store/overview', ...adminChain, requireStorePermission('store.overview.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, overview: await getAdminOverview(req.adminPolicy) });
-});
+}));
 
-router.get('/admin/store/orders', ...adminChain, requireStorePermission('store.orders.read'), async (req, res) => {
+router.get('/admin/store/orders', ...adminChain, requireStorePermission('store.orders.read'), asyncRoute(async (req, res) => {
   const result = await listOrdersForAdmin({ limit: req.query.limit, status: req.query.status, uid: req.query.uid, cursor: req.query.cursor });
   noStore(res);
   res.json({ ok: true, ...result, empty: result.orders.length === 0 });
-});
+}));
 
-router.patch('/admin/store/orders/:orderId', ...sensitiveAdminChain('store.orders.write'), async (req, res) => {
+router.patch('/admin/store/orders/:orderId', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
   const order = await updateOrderByAdmin({ orderId: req.params.orderId, input: req.body || {}, actor: req.user });
   invalidateAdminStoreCaches();
   await writeSupplementalAdminAudit(req, 'store.order.update', { orderId: req.params.orderId, orderNumber: order.orderNumber, before: { status: order.previousStatus || '' }, after: { status: order.status } });
   noStore(res);
   res.json({ ok: true, order });
-});
+}));
 
-router.get('/admin/store/catalog', ...adminChain, requireStorePermission('store.catalog.read'), async (req, res) => {
+router.get('/admin/store/catalog', ...adminChain, requireStorePermission('store.catalog.read'), asyncRoute(async (req, res) => {
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, catalog: req.query.stock === '0' ? catalog : await decorateCatalogWithStock(catalog, { fresh: true }) });
-});
+}));
 
-router.post('/admin/store/products', ...sensitiveAdminChain('store.catalog.write'), async (req, res) => {
-  const product = await createProduct(req.body || {}, req.user);
-  noStore(res);
-  res.status(201).json({ ok: true, product });
-});
-
-router.patch('/admin/store/products/:productId', ...sensitiveAdminChain('store.catalog.write'), async (req, res) => {
+router.patch('/admin/store/products/:productId', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
   const beforeCatalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   const before = beforeCatalog.products.find((item) => item.id === String(req.params.productId || '').toLowerCase()) || null;
   const product = await updateProductSettings(req.params.productId, req.body || {}, req.user);
@@ -259,9 +249,9 @@ router.patch('/admin/store/products/:productId', ...sensitiveAdminChain('store.c
   });
   noStore(res);
   res.json({ ok: true, product });
-});
+}));
 
-router.post('/admin/store/products/bulk', ...sensitiveAdminChain('store.catalog.write'), async (req, res) => {
+router.post('/admin/store/products/bulk', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
   const updates = Array.isArray(req.body?.updates) ? req.body.updates : [];
   const beforeCatalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   const beforeMap = new Map(beforeCatalog.products.map((item) => [item.id, item]));
@@ -282,15 +272,15 @@ router.post('/admin/store/products/bulk', ...sensitiveAdminChain('store.catalog.
   });
   noStore(res);
   res.json({ ok: true, result });
-});
+}));
 
-router.get('/admin/store/content', ...adminChain, requireStorePermission('store.content.read'), async (_req, res) => {
+router.get('/admin/store/content', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, storefront: catalog.storefront });
-});
+}));
 
-router.patch('/admin/store/content', ...sensitiveAdminChain('store.content.write'), async (req, res) => {
+router.patch('/admin/store/content', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
   const before = (await getEffectiveCatalog({ includeInactive: true, fresh: true })).storefront;
   const storefront = await updateStorefrontSettings(req.body || {}, req.user);
   await writeSupplementalAdminAudit(req, 'store.content.update', {
@@ -299,15 +289,15 @@ router.patch('/admin/store/content', ...sensitiveAdminChain('store.content.write
   });
   noStore(res);
   res.json({ ok: true, storefront });
-});
+}));
 
-router.get('/admin/store/links', ...adminChain, requireStorePermission('store.content.read'), async (_req, res) => {
+router.get('/admin/store/links', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, links: catalog.storefront.quickLinks || [] });
-});
+}));
 
-router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), async (req, res) => {
+router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
   const before = (await getEffectiveCatalog({ includeInactive: true, fresh: true })).storefront.quickLinks || [];
   const links = await updateStorefrontQuickLinks(req.body?.links, req.user);
   await writeSupplementalAdminAudit(req, 'store.links.update', {
@@ -316,14 +306,14 @@ router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), 
   });
   noStore(res);
   res.json({ ok: true, links });
-});
+}));
 
-router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), async (_req, res) => {
+router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, promotions: await listPromotions() });
-});
+}));
 
-router.put('/admin/store/promotions/:code', ...sensitiveAdminChain('store.content.write'), async (req, res) => {
+router.put('/admin/store/promotions/:code', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
   const promotion = await savePromotion(req.params.code, req.body || {}, req.user);
   await writeSupplementalAdminAudit(req, 'store.promotion.update', {
     code: promotion.code, type: promotion.type, active: promotion.active,
@@ -331,9 +321,9 @@ router.put('/admin/store/promotions/:code', ...sensitiveAdminChain('store.conten
   });
   noStore(res);
   res.json({ ok: true, promotion });
-});
+}));
 
-router.get('/admin/store/inventory', ...adminChain, requireStorePermission('store.inventory.read'), async (req, res) => {
+router.get('/admin/store/inventory', ...adminChain, requireStorePermission('store.inventory.read'), asyncRoute(async (req, res) => {
   const inventory = await listInventory({
     productId: req.query.productId,
     planKey: req.query.planKey,
@@ -342,19 +332,19 @@ router.get('/admin/store/inventory', ...adminChain, requireStorePermission('stor
   });
   noStore(res);
   res.json({ ok: true, inventory });
-});
+}));
 
-router.get('/admin/store/inventory-summary', ...adminChain, requireStorePermission('store.inventory.read'), async (_req, res) => {
+router.get('/admin/store/inventory-summary', ...adminChain, requireStorePermission('store.inventory.read'), asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, inventory: await inventorySummary({ fresh: true }) });
-});
+}));
 
-router.get('/admin/store/inventory-readiness', ...adminChain, requireStorePermission('store.inventory.read'), async (_req, res) => {
+router.get('/admin/store/inventory-readiness', ...adminChain, requireStorePermission('store.inventory.read'), asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, readiness: inventoryReadiness() });
-});
+}));
 
-router.post('/admin/store/inventory/import-check', ...sensitiveAdminChain('store.inventory.write'), async (req, res) => {
+router.post('/admin/store/inventory/import-check', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
   const result = await inspectInventoryImport({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -362,9 +352,9 @@ router.post('/admin/store/inventory/import-check', ...sensitiveAdminChain('store
   });
   noStore(res);
   res.json({ ok: true, result });
-});
+}));
 
-router.post('/admin/store/inventory/import', ...sensitiveAdminChain('store.inventory.write'), async (req, res) => {
+router.post('/admin/store/inventory/import', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
   const result = await importInventory({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -384,9 +374,9 @@ router.post('/admin/store/inventory/import', ...sensitiveAdminChain('store.inven
   }
   noStore(res);
   res.status(result.idempotentReplay ? 200 : 201).json({ ok: true, result });
-});
+}));
 
-router.post('/admin/store/inventory/migrate-shared-pool', ...sensitiveAdminChain('store.inventory.write'), async (req, res) => {
+router.post('/admin/store/inventory/migrate-shared-pool', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
   const result = await migrateSharedInventoryPool({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -398,9 +388,9 @@ router.post('/admin/store/inventory/migrate-shared-pool', ...sensitiveAdminChain
   });
   noStore(res);
   res.json({ ok: true, result });
-});
+}));
 
-router.post('/admin/store/inventory/rotate-encryption', ...sensitiveAdminChain('store.inventory.write'), async (req, res) => {
+router.post('/admin/store/inventory/rotate-encryption', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
   const result = await rotateInventoryEncryption({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -412,9 +402,9 @@ router.post('/admin/store/inventory/rotate-encryption', ...sensitiveAdminChain('
   });
   noStore(res);
   res.json({ ok: true, result });
-});
+}));
 
-router.post('/admin/store/inventory/:itemId/revoke', ...sensitiveAdminChain('store.inventory.write'), async (req, res) => {
+router.post('/admin/store/inventory/:itemId/revoke', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
   const item = await revokeInventory({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -426,9 +416,9 @@ router.post('/admin/store/inventory/:itemId/revoke', ...sensitiveAdminChain('sto
   await writeSupplementalAdminAudit(req, 'store.inventory.revoke', { productId: item.productId, planKey: item.planKey, itemId: item.id, reason: req.body?.reason });
   noStore(res);
   res.json({ ok: true, item });
-});
+}));
 
-router.post('/admin/store/inventory/:itemId/reveal', ...sensitiveAdminChain('store.inventory.reveal'), async (req, res) => {
+router.post('/admin/store/inventory/:itemId/reveal', ...sensitiveAdminChain('store.inventory.reveal'), asyncRoute(async (req, res) => {
   const item = await revealInventorySecret({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -440,25 +430,25 @@ router.post('/admin/store/inventory/:itemId/reveal', ...sensitiveAdminChain('sto
   await writeSupplementalAdminAudit(req, 'store.inventory.reveal', { productId: item.productId, planKey: item.planKey, itemId: item.id, reason: req.body?.reason });
   noStore(res);
   res.json({ ok: true, item });
-});
+}));
 
-router.get('/admin/store/users', ...adminChain, requireStorePermission('store.users.read'), async (req, res) => {
+router.get('/admin/store/users', ...adminChain, requireStorePermission('store.users.read'), asyncRoute(async (req, res) => {
   const result = await listStoreUsers({ query: req.query.query, limit: req.query.limit, pageToken: req.query.pageToken });
   noStore(res);
   res.json({ ok: true, ...result, users: result.users.map((user) => redactUserFinance(user, req.adminPolicy)) });
-});
+}));
 
-router.get('/admin/store/users/resolve', ...adminChain, requireStorePermission('store.users.read'), async (req, res) => {
+router.get('/admin/store/users/resolve', ...adminChain, requireStorePermission('store.users.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, user: redactUserFinance(await resolveStoreUser(req.query.identifier), req.adminPolicy) });
-});
+}));
 
-router.get('/admin/store/users-summary', ...adminChain, requireStorePermission('store.users.read'), async (req, res) => {
+router.get('/admin/store/users-summary', ...adminChain, requireStorePermission('store.users.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, summary: redactUserFinance(await getUserDirectorySummary({ fresh: req.query.fresh === '1' }), req.adminPolicy) });
-});
+}));
 
-router.patch('/admin/store/users/:uid', ...sensitiveAdminChain('store.users.write'), async (req, res) => {
+router.patch('/admin/store/users/:uid', ...sensitiveAdminChain('store.users.write'), asyncRoute(async (req, res) => {
   const before = await resolveStoreUser(req.params.uid);
   const user = await updateStoreUser({ uid: req.params.uid, status: req.body?.status, adminNote: req.body?.adminNote, actor: req.user });
   await writeSupplementalAdminAudit(req, 'store.user.update', {
@@ -468,19 +458,19 @@ router.patch('/admin/store/users/:uid', ...sensitiveAdminChain('store.users.writ
   });
   noStore(res);
   res.json({ ok: true, user });
-});
+}));
 
-router.get('/admin/store/users/:uid/wallet-ledger', ...adminChain, requireStorePermission('store.wallet.read'), async (req, res) => {
+router.get('/admin/store/users/:uid/wallet-ledger', ...adminChain, requireStorePermission('store.wallet.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, ...await listWalletLedger(req.params.uid, req.query.limit, req.query.cursor) });
-});
+}));
 
-router.get('/admin/store/wallet-summary', ...adminChain, requireStorePermission('store.wallet.read'), async (req, res) => {
+router.get('/admin/store/wallet-summary', ...adminChain, requireStorePermission('store.wallet.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, summary: await getWalletSummary({ fresh: req.query.fresh === '1' }) });
-});
+}));
 
-router.post('/admin/store/wallet/adjust', ...sensitiveAdminChain('store.wallet.write'), async (req, res) => {
+router.post('/admin/store/wallet/adjust', ...sensitiveAdminChain('store.wallet.write'), asyncRoute(async (req, res) => {
   const result = await adjustStoreBalance({
     targetUid: req.body?.uid,
     amountKurus: req.body?.amountKurus,
@@ -494,26 +484,26 @@ router.post('/admin/store/wallet/adjust', ...sensitiveAdminChain('store.wallet.w
   const audit = await writeSupplementalAdminAudit(req, 'store.wallet.adjust', { targetUid: req.body?.uid, type: result.type, amountKurus: result.amountKurus, balanceBeforeKurus: result.balanceBeforeKurus, balanceAfterKurus: result.balanceAfterKurus, transactionId: result.transactionId, reason: req.body?.reason });
   noStore(res);
   res.json({ ok: true, adjustment: result, audit: { transactionAudit: true, adminAuditRecorded: audit.ok === true } });
-});
+}));
 
-router.get('/admin/store/audit', ...adminChain, requireStorePermission('store.audit.read'), async (req, res) => {
+router.get('/admin/store/audit', ...adminChain, requireStorePermission('store.audit.read'), asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, audit: await listAuditLogs(req.query.limit, req.query.uid) });
-});
+}));
 
-router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireOwner, async (_req, res) => {
+router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireOwner, asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, staff: await listStaff() });
-});
+}));
 
-router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireOwner, async (req, res) => {
+router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireOwner, asyncRoute(async (req, res) => {
   const staff = await upsertStaff({ uid: req.params.uid, email: req.body?.email, role: req.body?.role, active: req.body?.active, actor: req.user });
   await writeSupplementalAdminAudit(req, 'store.staff.update', { targetUid: staff.uid, role: staff.role, active: staff.active });
   noStore(res);
   res.json({ ok: true, staff });
-});
+}));
 
-router.get('/admin/store/security', ...adminChain, requireStorePermission('store.security.read'), async (req, res) => {
+router.get('/admin/store/security', ...adminChain, requireStorePermission('store.security.read'), asyncRoute(async (req, res) => {
   const configuration = env.configurationReport();
   const gateSecurity = adminAuthRouter.securityPosture();
   const inventory = inventoryReadiness();
@@ -534,6 +524,6 @@ router.get('/admin/store/security', ...adminChain, requireStorePermission('store
       generatedAt: Date.now()
     }
   });
-});
+}));
 
 module.exports = router;

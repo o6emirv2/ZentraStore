@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const createAsyncRouter = require('../core/asyncRouter');
+const express = require('express');
 const env = require('../config/env');
 const { requireAuth, requireAdmin, adminAuthLimiter, adminBootstrapLimiter } = require('../core/security');
 const { trustedOrigin, createUserSession } = require('../core/userSessionService');
@@ -32,7 +32,7 @@ const {
   verifyGateFactor
 } = require('../core/adminGateService');
 
-const router = createAsyncRouter();
+const router = express.Router();
 const STEP_TTL_MS = 7 * 60_000;
 
 router.use((_req, res, next) => {
@@ -56,7 +56,7 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
     throw Object.assign(new Error('ADMIN_GATE_FACTOR_REQUIRED'), { code: 'ADMIN_GATE_FACTOR_REQUIRED', statusCode: 401 });
   }
   return sealAdminStep({
-    type: 'zentra-admin-step-v42',
+    type: 'shelby-admin-step-v42',
     stage: Number(stage),
     uid: String(identity.uid || '').trim(),
     email: String(identity.email || '').trim().toLowerCase(),

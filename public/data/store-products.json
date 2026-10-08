@@ -1,5 +1,5 @@
 {
-  "version": 67,
+  "version": 11,
   "currency": "TRY",
   "telegramUsername": "ZENTRA_STORE",
   "products": [
@@ -234,7 +234,7 @@
       "name": "H-KERNEL",
       "badge": "ROOTLU",
       "icon": "fa-microchip",
-      "image": "/public/assets/products/h-kernel.PNG",
+      "image": "/public/assets/products/h-kernel.jpeg",
       "accent": "39,161,255",
       "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI H-KERNEL PAKETLERİ.",
       "plans": [
@@ -259,6 +259,7 @@
       ],
       "badgeKey": "rooted"
     },
+
     {
       "id": "ios-kingmod",
       "platform": "ios",
@@ -423,12 +424,12 @@
       "id": "ios-dolphin",
       "platform": "ios",
       "game": "pubg",
-      "name": "DelphinİOS",
+      "name": "DOLPHİN",
       "badge": "PREMIUM",
       "icon": "fa-fish-fins",
       "image": "/public/assets/products/dolphin.jpeg",
       "accent": "255,185,36",
-      "description": "İPHONE VE iPAD CİHAZLAR İÇİN DelphinİOS PAKETLERİ.",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN DOLPHİN PAKETLERİ.",
       "plans": [
         {
           "key": "daily",
@@ -492,7 +493,7 @@
       "icon": "fa-tablet-screen-button",
       "image": "/public/assets/products/gbox.jpeg",
       "accent": "38,220,125",
-      "description": "İPAD CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YALNIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
+      "description": "İPAD CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YANLIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
       "plans": [
         {
           "key": "yearly",
@@ -513,7 +514,7 @@
       "icon": "fa-mobile-screen-button",
       "image": "/public/assets/products/gbox.jpeg",
       "accent": "38,220,125",
-      "description": "İPHONE CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YALNIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
+      "description": "İPHONE CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YANLIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
       "plans": [
         {
           "key": "yearly",
@@ -530,7 +531,7 @@
       "platform": "ios",
       "game": "oxide",
       "name": "ULTİMA OXİDE",
-      "image": "/public/assets/products/ultima-oxide.jpeg",
+      "image": "/public/assets/products/aq-oxide.jpeg",
       "icon": "fa-fire-flame-curved",
       "accent": "255,65,38",
       "description": "İPHONE VE İPAD İÇİN ULTİMA PAKETLERİ.",

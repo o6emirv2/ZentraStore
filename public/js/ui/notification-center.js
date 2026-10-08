@@ -152,7 +152,7 @@ export function createNotificationCenter({
   };
 
   const keepStackCompact = () => {
-    const notices = [...host.querySelectorAll('.zentra-notice')];
+    const notices = [...host.querySelectorAll('.shelby-notice')];
     const limit = window.matchMedia?.('(max-width: 560px)').matches
       ? 1
       : Math.max(1, Math.min(3, Number(maxVisible) || 2));
@@ -176,20 +176,20 @@ export function createNotificationCenter({
     const view = presentation(safeType, safeTitle, safeMessage, options);
 
     const notice = document.createElement('article');
-    notice.className = `zentra-notice zentra-notice--${safeType}`;
+    notice.className = `shelby-notice shelby-notice--${safeType}`;
     notice.style.setProperty('--notice-duration', `${duration}ms`);
     notice.setAttribute('role', safeType === 'error' ? 'alert' : 'status');
     notice.setAttribute('aria-label', `${safeTitle}. ${safeMessage}`);
 
     const symbol = document.createElement('span');
-    symbol.className = 'zentra-notice__symbol';
+    symbol.className = 'shelby-notice__symbol';
     symbol.append(iconNode(view.icon));
 
     const content = document.createElement('span');
-    content.className = 'zentra-notice__content';
+    content.className = 'shelby-notice__content';
 
     const meta = document.createElement('span');
-    meta.className = 'zentra-notice__meta';
+    meta.className = 'shelby-notice__meta';
     const brandName = document.createElement('b');
     brandName.textContent = safeText(brand, 'ZENTRA STORE', 36);
     const scope = document.createElement('em');
@@ -201,12 +201,12 @@ export function createNotificationCenter({
     const heading = document.createElement('strong');
     heading.textContent = safeTitle;
     const body = document.createElement('span');
-    body.className = 'zentra-notice__message';
+    body.className = 'shelby-notice__message';
     body.textContent = safeMessage;
     content.append(meta, heading, body);
 
     const close = document.createElement('button');
-    close.className = 'zentra-notice__close';
+    close.className = 'shelby-notice__close';
     close.type = 'button';
     close.setAttribute('aria-label', 'Bildirimi kapat');
     close.append(iconNode('fa-xmark'));
@@ -216,7 +216,7 @@ export function createNotificationCenter({
 
     if (actionLabel && typeof options.onAction === 'function') {
       const action = document.createElement('button');
-      action.className = 'zentra-notice__action';
+      action.className = 'shelby-notice__action';
       action.type = 'button';
       const label = document.createElement('span');
       label.textContent = actionLabel;
@@ -229,7 +229,7 @@ export function createNotificationCenter({
     }
 
     const progress = document.createElement('span');
-    progress.className = 'zentra-notice__progress';
+    progress.className = 'shelby-notice__progress';
     progress.setAttribute('aria-hidden', 'true');
     notice.append(progress);
 
@@ -248,7 +248,7 @@ export function createNotificationCenter({
   }
 
   function clear() {
-    [...host.querySelectorAll('.zentra-notice')].forEach((notice) => dismiss(notice, true));
+    [...host.querySelectorAll('.shelby-notice')].forEach((notice) => dismiss(notice, true));
   }
 
   function destroy() {

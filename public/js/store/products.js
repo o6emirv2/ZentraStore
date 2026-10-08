@@ -1,8 +1,13 @@
-import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v3';
+import { normalizeQuickLinks } from './social-links.js?v=audit-20260908-v1';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
+
+const CANONICAL_PRODUCT_NAMES = Object.freeze({
+  'android-contra-hax': 'CONTRAHAX',
+  'ios-dolphin': 'DelphinİOS'
+});
 
 export const CATALOG_FILTERS = Object.freeze({
   all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
@@ -103,8 +108,10 @@ function normalizePlan(source = {}) {
 function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   const badge = resolveBadge(source);
   const id = String(source.id || '').trim().slice(0, 80);
-  const name = String(source.name || '').trim().slice(0, 80);
-  const description = String(source.description || '').trim().slice(0, 240);
+  const name = CANONICAL_PRODUCT_NAMES[id] || String(source.name || '').trim().slice(0, 80);
+  let description = String(source.description || '').trim().slice(0, 240);
+  if (id === 'android-contra-hax') description = description.replace(/CONTRA\s+HAX/giu, 'CONTRAHAX');
+  if (id === 'ios-dolphin') description = description.replace(/DOLPHIN/giu, 'DelphinİOS');
   return Object.freeze({
     id,
     platform: source.platform === 'ios' ? 'ios' : 'android',
@@ -159,7 +166,11 @@ function normalizeAvatar(source = {}) {
   const label = String(source.label || '').trim().slice(0, 60);
   const image = String(source.image || '').trim().slice(0, 500);
   if (!/^\d{1,2}$/.test(id) || !image) return null;
-  if (!/^\/public\/assets\/avatars\/avatar-(?:0[1-9]|1[0-9]|2[0-5])\.svg$/.test(image)) return null;
+  try {
+    const url = new URL(image);
+    if (url.protocol !== 'https:' || url.hostname !== 'encrypted-tbn0.gstatic.com' || url.pathname !== '/images') return null;
+    if (!/^tbn:ANd9Gc/i.test(url.searchParams.get('q') || '') || url.searchParams.get('s') !== '10') return null;
+  } catch (_) { return null; }
   return Object.freeze({ id, label: label || `ZENTRA Profil ${id}`, image });
 }
 
@@ -172,9 +183,8 @@ function normalizeCatalog(source = {}) {
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(value.version) || 1)),
     currency: 'TRY',
-    telegramUsername: String(value.telegramUsername || '').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
+    telegramUsername: String(value.telegramUsername || 'shelbyios').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
-    stale: value.stale === true || value.stockVerified === false,
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),
     avatars: Object.freeze((Array.isArray(value.avatars) ? value.avatars : []).map(normalizeAvatar).filter(Boolean).slice(0, 25)),
@@ -193,15 +203,12 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
         source = await apiRequest('/api/store/catalog?v=11', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
-        window.ZENTRA_REPORT_ERROR?.(error, 'catalog');
-        if (catalogCache) return Object.freeze({ ...catalogCache, stockVerified: false, stale: true, storefront: { ...catalogCache.storefront, services: { automaticDelivery: false, balancePayment: false, telegramSupport: false } } });
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), 2500);
-        try {
-          const response = await fetch('/public/data/store-products.json', { cache: 'no-cache', credentials: 'same-origin', signal: controller.signal });
-          if (!response.ok) throw error;
-          source = await response.json();
-        } finally { window.clearTimeout(timer); }
+        if (catalogCache) {
+          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true });
+          catalogCachedAt = 0;
+          return catalogCache;
+        }
+        throw error;
       }
     } else {
       const response = await fetch('/public/data/store-products.json', { cache: 'no-cache', credentials: 'same-origin' });
@@ -210,12 +217,6 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     }
     if (source?.catalog && typeof source.catalog === 'object') source.catalog.stockVerified = stockVerified;
     else if (source && typeof source === 'object') source.stockVerified = stockVerified;
-    if (!stockVerified) {
-      const value = source?.catalog || source;
-      value.stale = true;
-      value.storefront = { ...value.storefront, services: { automaticDelivery: false, balancePayment: false, telegramSupport: false } };
-      value.products = (value.products || []).map((product) => ({ ...product, stock: { available: 0, state: 'unverified' }, plans: (product.plans || []).map((plan) => ({ ...plan, stock: { available: 0, state: 'unverified' } })) }));
-    }
     const catalog = normalizeCatalog(source);
     if (!Array.isArray((source?.catalog || source)?.products)) throw new Error('STORE_CATALOG_INVALID');
     catalogCache = catalog;

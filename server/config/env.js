@@ -2,7 +2,7 @@
 
 const { version: packageVersion } = require('../../package.json');
 
-const DEFAULT_SERVICE_ORIGIN = 'https://zentrastore.com.tr';
+const DEFAULT_SERVICE_ORIGIN = 'https://emirhan-siye.onrender.com';
 
 function integer(value, fallback, min, max) {
   const parsed = Number(value);
@@ -84,16 +84,14 @@ function secretMap(value = '') {
 }
 
 const serviceOrigin = normalizeOrigin(process.env.PUBLIC_BACKEND_ORIGIN || process.env.RENDER_EXTERNAL_URL || DEFAULT_SERVICE_ORIGIN);
-const publicBaseUrl = normalizeOrigin(process.env.PUBLIC_BASE_URL || (process.env.NODE_ENV === 'development' ? serviceOrigin : DEFAULT_SERVICE_ORIGIN));
+const publicBaseUrl = normalizeOrigin(process.env.PUBLIC_BASE_URL || serviceOrigin);
 const canonicalOrigin = normalizeOrigin(process.env.CANONICAL_ORIGIN || publicBaseUrl);
-const publicApiBase = normalizeOrigin(process.env.PUBLIC_API_BASE || publicBaseUrl);
+const publicApiBase = normalizeOrigin(process.env.PUBLIC_API_BASE || serviceOrigin);
 const allowedOrigins = unique([
   serviceOrigin,
-  normalizeOrigin(process.env.RENDER_EXTERNAL_URL),
   publicBaseUrl,
   canonicalOrigin,
   publicApiBase,
-  'https://www.zentrastore.com.tr',
   ...list(process.env.ALLOWED_ORIGINS)
 ]);
 
@@ -128,7 +126,7 @@ const serviceAccount = value(
 
 const env = {
   nodeEnv: process.env.NODE_ENV || 'production',
-  logLevel: 'error',
+  logLevel: process.env.LOG_LEVEL || 'info',
   serviceOrigin,
   publicBaseUrl,
   canonicalOrigin,
@@ -146,7 +144,6 @@ const env = {
   adminEmails: list(process.env.ADMIN_EMAILS).map((email) => email.toLowerCase()),
   adminUids: list(process.env.ADMIN_UIDS),
   security: {
-    trustProxyHops: integer(process.env.TRUST_PROXY_HOPS, process.env.RENDER_EXTERNAL_URL ? 1 : 0, 0, 3),
     adminMinimumScore: integer(process.env.ADMIN_SECURITY_MIN_SCORE, 90, 86, 100),
     adminSessionTtlMinutes: integer(process.env.ADMIN_SESSION_TTL_MINUTES, 120, 15, 720),
     strictCsp: process.env.SECURITY_CSP_STRICT !== '0',
@@ -194,7 +191,7 @@ function publicRuntimeConfig() {
       mode: env.firebase.appCheckMode
     },
     firebaseConfigSource: env.firebase.publicConfigSource,
-    brand: 'ZENTRA STORE',
+    brand: 'SHELBY STORE',
     version: integer(String(packageVersion || '').split('.')[0], 1, 1, 10_000),
     minimumPasswordLength: 8
   };

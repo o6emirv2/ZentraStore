@@ -49,7 +49,7 @@ function normalizedIdentity({ uid = '', email = '', gateSession = '', sourceOrig
 
 function associatedData(documentId, identity) {
   return Buffer.from([
-    'zentra-admin-handoff:v47',
+    'shelby-admin-handoff:v47',
     documentId,
     identity.uid,
     identity.email,

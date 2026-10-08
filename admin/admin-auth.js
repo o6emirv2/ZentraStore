@@ -1,8 +1,8 @@
 'use strict';
 
-window.ZENTRA_ADMIN_AUTH = (() => {
+window.SHELBY_ADMIN_AUTH = (() => {
   const FIREBASE_VERSION = '12.17.1';
-  const STOREFRONT_APP_NAME = 'zentra-store';
+  const STOREFRONT_APP_NAME = 'shelby-store';
   let auth = null;
   let sdk = null;
   let appSdk = null;
@@ -20,7 +20,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   }
 
   function fallbackBase() {
-    return normalizeBase(document.querySelector('meta[name="zentra-api-origin"]')?.content || '');
+    return normalizeBase(document.querySelector('meta[name="shelby-api-origin"]')?.content || 'https://emirhan-siye.onrender.com');
   }
 
   function apiUrl(path = '') {
@@ -38,7 +38,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       const timer = setTimeout(() => controller.abort(), base ? 6500 : 3200);
       try {
         const response = await fetch(`${base}/api/public/runtime-config`, {
-          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v67' },
+          headers: { Accept: 'application/json', 'X-Shelby-Store-Client': 'secure-admin-bootstrap-v66' },
           credentials: 'include', cache: 'no-store', signal: controller.signal
         });
         const type = String(response.headers.get('content-type') || '');
@@ -69,18 +69,9 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     return appSdk.getApps().find((app) => app.name === name) || appSdk.initializeApp(config, name);
   }
 
-  async function bounded(pending, timeoutMs = 8000) {
-    let timer;
-    try {
-      return await Promise.race([pending, new Promise((_, reject) => {
-        timer = setTimeout(() => reject(Object.assign(new Error('REQUEST_TIMEOUT'), { code: 'REQUEST_TIMEOUT' })), timeoutMs);
-      })]);
-    } finally { clearTimeout(timer); }
-  }
-
   async function waitForAuthState(targetAuth, assign, onSubscribe) {
     if (typeof targetAuth?.authStateReady === 'function') {
-      await bounded(targetAuth.authStateReady());
+      await targetAuth.authStateReady();
       assign(targetAuth.currentUser || null);
     } else {
       await new Promise((resolve) => {
@@ -110,7 +101,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     const headers = new Headers({ Accept: 'application/json' });
     if (appCheck && appCheckSdk) {
       try {
-        const verified = await bounded(appCheckSdk.getToken(appCheck, false), 4500);
+        const verified = await appCheckSdk.getToken(appCheck, false);
         if (verified?.token) headers.set('X-Firebase-AppCheck', verified.token);
       } catch (_) {}
     }
@@ -118,8 +109,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       method: 'GET',
       headers,
       credentials: 'include',
-      cache: 'no-store',
-      signal: AbortSignal.timeout(4500)
+      cache: 'no-store'
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.authenticated !== true || !payload?.user?.uid || !payload?.user?.email) {
@@ -136,11 +126,11 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     const pending = (async () => {
       const resolvedRuntime = await loadRuntime();
       if (!resolvedRuntime.firebaseReady) throw new Error('FIREBASE_CONFIGURATION_MISSING');
-      const modules = await bounded(Promise.all([
+      const modules = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`)
-      ]));
+      ]);
       [appSdk, sdk, appCheckSdk] = modules;
 
       const storefrontApp = resolveApp(resolvedRuntime.firebase, STOREFRONT_APP_NAME);
@@ -179,7 +169,6 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     try {
       return await pending;
     } catch (error) {
-      window.ZENTRA_REPORT_ERROR?.(error, 'admin');
       if (initialization === pending) initialization = null;
       throw error;
     }

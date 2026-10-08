@@ -1,6 +1,6 @@
-import { readApiJson, waitForSignal } from '../request-utils.js?v=zentra-20261008-v3';
+import { readApiJson, waitForSignal } from '../request-utils.js?v=audit-20260908-v1';
 
-const DEFAULT_API_BASE = '';
+const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
 
 let tokenProvider = null;
@@ -128,13 +128,13 @@ function normalizeBase(value = '') {
 }
 
 export function getStoreApiBase() {
-  const metaBase = document.querySelector('meta[name="zentra-api-origin"]')?.content || '';
-  return normalizeBase(window.__ZENTRA_RUNTIME__?.apiBase || metaBase || DEFAULT_API_BASE);
+  const metaBase = document.querySelector('meta[name="shelby-api-origin"]')?.content || '';
+  return normalizeBase(window.__SHELBY_RUNTIME__?.apiBase || metaBase || DEFAULT_API_BASE);
 }
 
 function runtimeCandidates() {
-  const metaBase = normalizeBase(document.querySelector('meta[name="zentra-api-origin"]')?.content || '');
-  const configured = normalizeBase(window.__ZENTRA_RUNTIME__?.apiBase || '');
+  const metaBase = normalizeBase(document.querySelector('meta[name="shelby-api-origin"]')?.content || '');
+  const configured = normalizeBase(window.__SHELBY_RUNTIME__?.apiBase || '');
   const values = [configured, '', metaBase, DEFAULT_API_BASE];
   return [...new Set(values.map(normalizeBase))];
 }
@@ -144,7 +144,7 @@ async function fetchRuntimeCandidate(base = '', timeoutMs = 5000) {
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${base}/api/public/runtime-config`, {
-      headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'runtime-bootstrap-v67' },
+      headers: { Accept: 'application/json', 'X-Shelby-Store-Client': 'runtime-bootstrap-v66' },
       credentials: 'include',
       cache: 'no-store',
       signal: controller.signal
@@ -161,16 +161,16 @@ async function fetchRuntimeCandidate(base = '', timeoutMs = 5000) {
 }
 
 export async function loadStoreRuntimeConfig({ force = false } = {}) {
-  if (!force && window.__ZENTRA_RUNTIME__?.firebaseReady) return window.__ZENTRA_RUNTIME__;
+  if (!force && window.__SHELBY_RUNTIME__?.firebaseReady) return window.__SHELBY_RUNTIME__;
   if (runtimePromise) return runtimePromise;
   runtimePromise = (async () => {
     for (const base of runtimeCandidates()) {
       const payload = await fetchRuntimeCandidate(base, base ? 6500 : 3200);
       if (!payload) continue;
       const apiBase = base === '' ? normalizeBase(window.location.origin) : normalizeBase(payload.apiBase || base);
-      window.__ZENTRA_RUNTIME__ = Object.assign({}, window.__ZENTRA_RUNTIME__ || {}, payload, { apiBase });
-      window.dispatchEvent(new CustomEvent('zentra:runtime-updated'));
-      return window.__ZENTRA_RUNTIME__;
+      window.__SHELBY_RUNTIME__ = Object.assign({}, window.__SHELBY_RUNTIME__ || {}, payload, { apiBase });
+      window.dispatchEvent(new CustomEvent('shelby:runtime-updated'));
+      return window.__SHELBY_RUNTIME__;
     }
     const error = new Error(USER_MESSAGES.NETWORK_ERROR);
     error.code = 'NETWORK_ERROR';
@@ -232,7 +232,7 @@ export async function storeApi(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set('Accept', 'application/json');
   headers.set('X-Request-Id', headers.get('X-Request-Id') || createRequestId());
-  headers.set('X-Zentra-Store-Client', 'premium-store-v67');
+  headers.set('X-Shelby-Store-Client', 'premium-store-v66');
   if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   const rawPath = String(path || '');
@@ -244,9 +244,7 @@ export async function storeApi(path, options = {}) {
       const token = await waitForSignal(Promise.resolve().then(() => tokenProvider()).catch(() => ''), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
-    const publicRead = options.auth === false && ['GET', 'HEAD'].includes(String(options.method || 'GET').toUpperCase())
-      && /^\/api\/(?:store\/catalog|public\/runtime-config)(?:[?]|$)/.test(rawPath);
-    if (appCheckTokenProvider && !publicRead) {
+    if (appCheckTokenProvider) {
       const appCheckToken = await waitForSignal(Promise.resolve().then(() => appCheckTokenProvider()).catch(() => ''), controller.signal);
       if (appCheckToken) headers.set('X-Firebase-AppCheck', appCheckToken);
     }
@@ -277,7 +275,6 @@ export async function storeApi(path, options = {}) {
     }
     return payload;
   } catch (error) {
-    window.ZENTRA_REPORT_ERROR?.({ ...error, code: controller.signal.aborted ? 'REQUEST_TIMEOUT' : error?.code || 'NETWORK_ERROR' }, 'api');
     if (controller.signal.aborted || error?.name === 'AbortError') {
       const timeoutError = new Error(USER_MESSAGES.REQUEST_TIMEOUT);
       timeoutError.code = 'REQUEST_TIMEOUT';

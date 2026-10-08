@@ -1,5 +1,5 @@
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261008-v3';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261008-v3';
+import { isUncertainMutationError } from '../request-utils.js?v=audit-20260908-v1';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=audit-20260908-v1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -13,12 +13,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-20261008-v3';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v3';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v3';
-import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v3';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v3';
-import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v3';
+} from './auth.js?v=audit-20260908-v1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=audit-20260908-v1';
+import { createNotificationCenter } from '../ui/notification-center.js?v=audit-20260908-v1';
+import { installProductGallery } from './product-gallery.js?v=audit-20260908-v1';
+import { installShowcaseSlider } from './showcase-slider.js?v=audit-20260908-v1';
+import { renderQuickLinks } from './social-links.js?v=audit-20260908-v1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -31,8 +31,8 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-20261008-v3';
-import { createCustomerAppController } from './customer-app.js?v=zentra-20261008-v3';
+} from './customer-app.js?v=audit-20260908-v1';
+import { createCustomerAppController } from './customer-app.js?v=audit-20260908-v1';
 import {
   renderAvatarPickerView,
   renderCartItemView,
@@ -40,11 +40,11 @@ import {
   renderCustomerEmpty,
   renderDeliveryCardView,
   renderOrderCardView
-} from './customer-renderers.js?v=zentra-20261008-v3';
+} from './customer-renderers.js?v=audit-20260908-v1';
 
-const STORE_VERSION = 'zentra-v67';
-const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
-const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v65', 'zentra-store-favorites-v64']);
+const STORE_VERSION = 'storefront-v66';
+const FAVORITES_STORAGE_KEY = 'shelby-store-favorites-v66';
+const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
 const FALLBACK_AVATAR_ICONS = Object.freeze({
   '1': 'fa-crown',
   '2': 'fa-bolt',
@@ -69,8 +69,6 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const state = {
   catalog: null,
-  catalogRetryTimer: 0,
-  catalogRetryCount: 0,
   activeFilter: 'all',
   searchQuery: '',
   selectedProduct: null,
@@ -257,7 +255,7 @@ function isTelegramEnabled(product = {}) {
 }
 
 function stockView(stock = {}, { verified = state.catalog?.stockVerified !== false, product = null } = {}) {
-  if (isTelegramOnly(product)) return { state: 'telegram-only', label: 'Otomatik teslimat desteklenmiyor', shortLabel: 'Destek', icon: 'fa-paper-plane', available: 0, applicable: false };
+  if (isTelegramOnly(product)) return { state: 'telegram-only', label: 'Otomatik teslimat desteklenmiyor', shortLabel: 'Telegram', icon: 'fa-paper-plane', available: 0, applicable: false };
   const available = Math.max(0, Math.trunc(Number(stock.available) || 0));
   if (!verified || String(stock.state || '') === 'unverified') return { state: 'unverified', label: 'Otomatik teslimat doğrulanamadı', shortLabel: 'Kontrol', icon: 'fa-circle-exclamation', available: 0, applicable: true };
   if (available < 1) return { state: 'out', label: 'Otomatik teslimat stoğu tükendi', shortLabel: 'Tükendi', icon: 'fa-circle-xmark', available: 0, applicable: true };
@@ -279,7 +277,7 @@ function salesChannelView(product = {}, stock = stockView(product.stock, { produ
     && automaticProductOpen
     && (stock.state === 'ready' || stock.state === 'low');
   const deliveryLabel = telegramOnly
-    ? 'Destek üzerinden teslimat'
+    ? 'Teslimat yalnızca Telegram'
     : !automaticProductOpen
       ? 'Otomatik teslimat bu üründe kapalı'
       : !automaticServiceOpen
@@ -290,12 +288,12 @@ function salesChannelView(product = {}, stock = stockView(product.stock, { produ
             ? 'Otomatik stok kontrol ediliyor'
             : 'Otomatik teslimat hazır';
   const telegramLabel = telegramOpen
-    ? (telegramOnly ? 'Destek siparişi zorunlu' : 'Destek talebi açık')
-    : 'Destek siparişi kapalı';
+    ? (telegramOnly ? 'Telegram siparişi zorunlu' : 'Telegram talebi açık')
+    : 'Telegram siparişi kapalı';
   const ctaLabel = automaticReady
     ? 'Detayları Gör'
     : telegramOpen
-      ? 'Destek ile Al'
+      ? 'Telegram ile Al'
       : stock.state === 'out'
         ? 'Stok Bildirimi'
         : 'Detayları Gör';
@@ -308,7 +306,7 @@ function salesChannelView(product = {}, stock = stockView(product.stock, { produ
     deliveryIcon: automaticReady ? 'fa-bolt' : telegramOnly ? 'fa-paper-plane' : 'fa-circle-xmark',
     telegramLabel,
     ctaLabel,
-    assuranceLabel: automaticReady ? 'Otomatik teslimat' : telegramOpen ? 'Destek teslimatı' : maintenance ? 'Satış geçici kapalı' : 'Stok bildirimi',
+    assuranceLabel: automaticReady ? 'Otomatik teslimat' : telegramOpen ? 'Telegram teslimatı' : maintenance ? 'Satış geçici kapalı' : 'Stok bildirimi',
     assuranceIcon: automaticReady ? 'fa-box' : telegramOpen ? 'fa-paper-plane' : maintenance ? 'fa-circle-xmark' : 'fa-bell'
   });
 }
@@ -349,7 +347,7 @@ function productCard(product) {
   const routeLabel = channel.automaticReady
     ? 'Otomatik teslimata hazır'
     : channel.telegramOpen
-      ? 'Destek siparişi açık'
+      ? 'Telegram siparişi açık'
       : channel.deliveryLabel;
   const routeIcon = channel.automaticReady ? 'fa-bolt' : channel.telegramOpen ? 'fa-paper-plane' : 'fa-circle-xmark';
   return `<article class="product-card product-card--${platformClass} product-card--stock-${stock.state}${featured ? ' product-card--featured' : ''}" data-store-product="${escapeHtml(product.id)}" style="--product-accent:${escapeHtml(product.accent)}">
@@ -427,9 +425,6 @@ function renderCatalog() {
 
 function renderStorefrontConfiguration() {
   const storefront = state.catalog?.storefront || {};
-  if ($('#heroProductCount')) $('#heroProductCount').textContent = String(state.catalog?.products?.length || 0);
-  if ($('#heroTitle') && storefront.home?.title) $('#heroTitle').textContent = storefront.home.title;
-  if ($('.zentra-hero__copy>p') && storefront.home?.message) $('.zentra-hero__copy>p').textContent = storefront.home.message;
   const announcement = storefront.announcement || {};
   const host = $('#storeAnnouncement');
   if (host) {
@@ -450,9 +445,9 @@ function renderStorefrontConfiguration() {
     if (officialChannel) link.href = officialChannel.url;
   });
   const requestedSupport = String(storefront.support?.telegramUsername || state.catalog?.telegramUsername || '').replace(/^@+/, '');
-  const supportUsername = /^[a-z][a-z0-9_]{4,31}$/i.test(requestedSupport) ? requestedSupport : '';
+  const supportUsername = /^[a-z][a-z0-9_]{4,31}$/i.test(requestedSupport) ? requestedSupport : 'shelbyios';
   $$('[data-telegram-support]').forEach((link) => {
-    link.href = supportUsername ? `https://t.me/${supportUsername}` : 'https://wa.me/905339673730';
+    link.href = `https://t.me/${supportUsername}`;
   });
 
   const status = $('.topbar-status strong');
@@ -694,8 +689,8 @@ function openPurchase(productId, planKey = '', trigger = null) {
       const selected = plan.key === state.selectedPlan?.key;
       const telegramRoute = !channel.automaticReady && channel.telegramOpen;
       const routeLabel = channel.automaticReady
-        ? (channel.telegramOpen ? 'Otomatik teslimat · Destek alternatifi' : 'Otomatik teslimat')
-        : channel.telegramOpen ? 'Destek ile sipariş' : channel.deliveryLabel;
+        ? (channel.telegramOpen ? 'Otomatik teslimat · Telegram alternatifi' : 'Otomatik teslimat')
+        : channel.telegramOpen ? 'Telegram ile sipariş' : channel.deliveryLabel;
       return `<button class="plan-option${selected ? ' is-selected' : ''}${telegramRoute ? ' is-telegram-route' : ''} is-stock-${stock.state}" type="button" data-purchase-plan="${escapeHtml(plan.key)}" aria-pressed="${String(selected)}">${iconMarkup('fa-clock')}<span><strong>${escapeHtml(plan.label)}</strong><small>${escapeHtml(plan.duration)} · ${escapeHtml(routeLabel)}</small></span><b>${escapeHtml(formatStorePrice(plan.priceKurus))}</b></button>`;
     }).join('');
   }
@@ -718,7 +713,7 @@ function renderPurchaseSummary() {
     const telegram = $('#buyTelegramButton');
     const notification = $('#notifyStockButton');
     if (add) { add.disabled = true; $('span', add).textContent = 'Satın Alınabilir Paket Yok'; }
-    if (telegram) { telegram.disabled = true; $('span', telegram).textContent = 'Destek Siparişi Kapalı'; }
+    if (telegram) { telegram.disabled = true; $('span', telegram).textContent = 'Telegram Siparişi Kapalı'; }
     if (notification) notification.hidden = true;
     return;
   }
@@ -728,8 +723,8 @@ function renderPurchaseSummary() {
   const automaticUnavailable = !channel.automaticReady;
   const telegramUnavailable = !channel.telegramOpen;
   const routeLabel = channel.automaticReady
-    ? (channel.telegramOpen ? 'Otomatik teslimat hazır · Destek alternatifi açık' : 'Otomatik teslimat hazır')
-    : channel.telegramOpen ? 'Destek siparişi açık' : channel.deliveryLabel;
+    ? (channel.telegramOpen ? 'Otomatik teslimat hazır · Telegram alternatifi açık' : 'Otomatik teslimat hazır')
+    : channel.telegramOpen ? 'Telegram siparişi açık' : channel.deliveryLabel;
   $('#purchaseSummary').innerHTML = `<span><small>SEÇİLEN PAKET</small><b>${escapeHtml(product.name)} · ${escapeHtml(platformName(product.platform))} · ${escapeHtml(plan.label)}</b><em class="purchase-stock is-${stock.state}">${escapeHtml(routeLabel)}</em></span><strong>${escapeHtml(formatStorePrice(plan.priceKurus))}</strong>`;
   if ($('#purchaseDeliveryAssurance')) $('#purchaseDeliveryAssurance').innerHTML = `${iconMarkup(channel.assuranceIcon)} ${escapeHtml(channel.assuranceLabel)}`;
   $$('#purchasePlans [data-purchase-plan]').forEach((button) => {
@@ -745,7 +740,7 @@ function renderPurchaseSummary() {
   }
   if (telegram) {
     telegram.disabled = telegramUnavailable;
-    $('span', telegram).textContent = telegramUnavailable ? 'Destek Siparişi Kapalı' : 'Destek ile Al';
+    $('span', telegram).textContent = telegramUnavailable ? 'Telegram Siparişi Kapalı' : 'Telegram ile Al';
   }
   const notification = $('#notifyStockButton');
   if (notification) {
@@ -843,7 +838,7 @@ function cartItemMarkup(line) {
   const stock = stockView(line.plan.stock, { product: line.product });
   const insufficient = !telegramOnly && stock.available < line.quantity;
   const lowStock = !telegramOnly && stock.available > 0 && stock.available <= 3;
-  const stockLabel = telegramOnly ? 'Destek ile sipariş' : lowStock ? `Son ${stock.available} ürün` : stock.label;
+  const stockLabel = telegramOnly ? 'Telegram ile sipariş' : lowStock ? `Son ${stock.available} ürün` : stock.label;
   return renderCartItemView({
     key: cartKey(line.product.id, line.plan.key),
     name: line.product.name,
@@ -983,7 +978,7 @@ function syncPaymentChoice() {
     if (walletDisabled) checkout.title = maintenance
       ? 'Mağaza bakım modunda'
       : hasTelegramOnlyProduct
-        ? 'Bu ürün destek üzerinden sipariş edilebilir'
+        ? 'Bu ürün yalnızca Telegram üzerinden sipariş edilebilir'
         : insufficientBalance
           ? 'Mevcut bakiyen bu sipariş için yetersiz'
           : 'Otomatik teslimat stoğu veya bakiye kanalı uygun değil';
@@ -991,11 +986,11 @@ function syncPaymentChoice() {
   }
   if (telegramCheckout) {
     telegramCheckout.disabled = telegramDisabled;
-    if (telegramDisabled) telegramCheckout.title = maintenance ? 'Mağaza bakım modunda' : 'Destek sipariş kanalı kapalı';
+    if (telegramDisabled) telegramCheckout.title = maintenance ? 'Mağaza bakım modunda' : 'Telegram sipariş kanalı kapalı';
     else telegramCheckout.removeAttribute('title');
   }
   if ($('#cartWalletAmount')) $('#cartWalletAmount').textContent = formatTopbarBalance(balance);
-  if ($('#cartWalletBalance')) $('#cartWalletBalance').textContent = `Mevcut bakiye: ${formatStorePrice(balance)}${hasTelegramOnlyProduct ? ' · Bu ürün için Destek siparişi gerekli' : insufficientBalance ? ' · Bakiye yetersiz' : invalidStock ? ' · Otomatik stok yetersiz' : ''}`;
+  if ($('#cartWalletBalance')) $('#cartWalletBalance').textContent = `Mevcut bakiye: ${formatStorePrice(balance)}${hasTelegramOnlyProduct ? ' · Bu ürün için Telegram siparişi gerekli' : insufficientBalance ? ' · Bakiye yetersiz' : invalidStock ? ' · Otomatik stok yetersiz' : ''}`;
 }
 
 function setButtonBusy(button, busy, busyLabel = 'İşlem yapılıyor...') {
@@ -1025,7 +1020,7 @@ function requireSignedIn(returnLayer = '') {
 }
 
 function openTelegramTarget(url, reservedWindow = null) {
-  if (!/^https:\/\/(?:t\.me\/[A-Za-z0-9_+]+|wa\.me\/905339673730)(?:\?[^#]*)?$/i.test(String(url || ''))) {
+  if (!/^https:\/\/t\.me\//i.test(String(url || ''))) {
     reservedWindow?.close();
     throw new Error('Telegram bağlantısı doğrulanamadı.');
   }
@@ -1045,7 +1040,7 @@ function reserveTelegramWindow() {
       target.opener = null;
       target.document.title = 'Telegram açılıyor';
       target.document.body.style.cssText = 'margin:0;background:#08050d;color:#fff;font:600 16px system-ui;display:grid;place-items:center;min-height:100vh';
-      target.document.body.textContent = 'Destek siparişin hazırlanıyor…';
+      target.document.body.textContent = 'Telegram siparişin hazırlanıyor…';
     }
     return target;
   } catch (_) {
@@ -1059,7 +1054,7 @@ async function submitOrder(lines, paymentMethod, options = {}) {
   const requestedUserId = String(state.auth.user?.uid || '');
   const button = options.button || $('#checkoutButton');
   const telegramWindow = paymentMethod === 'telegram' ? reserveTelegramWindow() : null;
-  setButtonBusy(button, true, paymentMethod === 'telegram' ? 'Destek siparişi hazırlanıyor...' : 'Bakiye doğrulanıyor...');
+  setButtonBusy(button, true, paymentMethod === 'telegram' ? 'Telegram siparişi hazırlanıyor...' : 'Bakiye doğrulanıyor...');
   try {
     const payload = await storeApi('/api/store/orders', {
       method: 'POST',
@@ -1147,7 +1142,7 @@ function formatOrderDate(value = 0) {
 }
 
 function clientTelegramMessage(order) {
-  const lines = ['Merhaba, ZENTRA STORE üzerinden Destek ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
+  const lines = ['Merhaba, ZENTRA STORE üzerinden Telegram ile sipariş vermek istiyorum.', `Sipariş No: ${order.orderNumber}`];
   (order.items || []).forEach((item, index) => {
     const prefix = (order.items || []).length > 1 ? `${index + 1}. ` : '';
     lines.push(
@@ -1168,9 +1163,8 @@ function clientTelegramMessage(order) {
 }
 
 function telegramOrderUrl(order) {
-  const username = state.catalog?.telegramUsername || '';
-  const message = encodeURIComponent(clientTelegramMessage(order));
-  return username ? `https://t.me/${encodeURIComponent(username)}?text=${message}` : `https://wa.me/905339673730?text=${message}`;
+  const username = state.catalog?.telegramUsername || 'shelbyios';
+  return `https://t.me/${encodeURIComponent(username)}?text=${encodeURIComponent(clientTelegramMessage(order))}`;
 }
 
 function orderProductVisual(order = {}) {
@@ -1258,7 +1252,10 @@ async function openDelivery(orderId = '', accessSequence = 0) {
   if (!id || !requestedUserId || state.orderOperationId) return;
   state.orderOperationId = id;
   try {
-    const payload = await storeApi(`/api/store/orders/${encodeURIComponent(id)}/delivery`, { auth: 'bearer', timeoutMs: 5_000 });
+    const [payload] = await Promise.all([
+      storeApi(`/api/store/orders/${encodeURIComponent(id)}/delivery`, { auth: 'bearer', timeoutMs: 5_000 }),
+      new Promise((resolve) => window.setTimeout(resolve, 3_000))
+    ]);
     if (String(state.auth.user?.uid || '') !== requestedUserId || state.deliveryAccessSequence !== accessSequence) return;
     if (payload.delivery?.items?.length) {
       const previousTimer = state.deliverySecretTimers.get(id);
@@ -2557,14 +2554,6 @@ function observeNavigation() {
   });
 }
 
-function scheduleCatalogRecovery() {
-  window.clearTimeout(state.catalogRetryTimer);
-  state.catalogRetryTimer = 0;
-  if (state.catalog?.stockVerified !== false || document.hidden || !navigator.onLine) return;
-  const delay = Math.min(60_000, 15_000 * 2 ** Math.min(2, state.catalogRetryCount++));
-  state.catalogRetryTimer = window.setTimeout(() => loadCatalog(true), delay);
-}
-
 async function loadCatalog(force = false) {
   if (force && $('#catalogLoading')) {
     $('#catalogLoading').hidden = false;
@@ -2586,10 +2575,7 @@ async function loadCatalog(force = false) {
         showNotice('warning', 'Ürün güncellendi', 'Bu ürün şu anda satışta değil. Güncel katalogdan seçim yapabilirsin.');
       }
     }
-    const connection = $('#catalogConnectionStatus');
-    if (connection) connection.hidden = state.catalog.stockVerified !== false;
-    if (state.catalog.stockVerified !== false) state.catalogRetryCount = 0;
-    scheduleCatalogRecovery();
+    if (state.catalog.stale) showNotice('warning', 'Güncel stok doğrulanamadı', 'Son alınan katalog gösteriliyor. Otomatik satın alma, bağlantı yenilenene kadar kapalı.');
   } catch (error) {
     if ($('#catalogLoading')) {
       $('#catalogLoading').hidden = false;
@@ -2667,9 +2653,6 @@ export async function bootStorefront() {
     }
   });
   observeNavigation();
-  window.addEventListener('online', () => { if (state.catalog?.stockVerified === false) void loadCatalog(true); });
-  document.addEventListener('visibilitychange', () => scheduleCatalogRecovery());
-  void initStoreAuth();
-  await loadCatalog();
+  await Promise.all([initStoreAuth(), loadCatalog()]);
   document.documentElement.dataset.storefrontStatus = 'ready';
 }

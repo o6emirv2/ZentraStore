@@ -2,24 +2,27 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
-  <meta name="theme-color" content="#f5f8fb" />
-  <meta name="color-scheme" content="light" />
-  <meta name="zentra-api-origin" content="" />
+  <meta name="theme-color" content="#070304" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="shelby-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/css/fonts.css?v=zentra-20261008-v3" />
-  <link rel="stylesheet" href="/public/css/icons.css?v=zentra-20261008-v3" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v3" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v3" />
-  <script src="./admin-auth.js?v=zentra-20261008-v3"></script>
-<script src="/public/js/ui/error-reporter.js?v=zentra-20261008-v3" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=audit-20260908-v1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=audit-20260908-v1" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=audit-20260908-v1" />
+  <script src="./admin-auth.js?v=audit-20260908-v1"></script>
 </head>
 <body>
-  <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/zentra-mark.svg?v=zentra-v67" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
+  <canvas id="ambientCanvas" aria-hidden="true"></canvas>
+  <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
 
   <header class="admin-topbar">
-      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/zentra-mark.svg?v=zentra-v67" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ · V67</small></span></button>
+      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ · V66</small></span></button>
     <div class="admin-topbar__actions">
       <span class="security-chip" id="securityChip"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><small>GÜVENLİK</small><strong id="securityChipScore">--/100</strong></span></span>
       <button class="icon-action" id="refreshAll" type="button" aria-label="Aktif paneli yenile"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button>
@@ -56,7 +59,7 @@
       </section>
 
       <section class="admin-panel" data-admin-panel="orders" hidden inert>
-        <header class="panel-title"><div><span>SİPARİŞ KONTROLÜ</span><h1>Siparişler</h1><p>Otomatik satışlar şifreli stok kasasından teslim edilir; Destek siparişleri ise otomatik stoktan bağımsız, yönetici onaylı manuel teslimat akışını kullanır.</p></div><button class="primary-action" type="button" data-refresh="orders"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
+        <header class="panel-title"><div><span>SİPARİŞ KONTROLÜ</span><h1>Siparişler</h1><p>Otomatik satışlar şifreli stok kasasından teslim edilir; Telegram siparişleri ise otomatik stoktan bağımsız, yönetici onaylı manuel teslimat akışını kullanır.</p></div><button class="primary-action" type="button" data-refresh="orders"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
         <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">0</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">0</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">0</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">0</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">0</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">0</strong></span></article></div>
         <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="Sipariş no, e-posta, kullanıcı veya UID ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
         <div class="order-list" id="adminOrderList" aria-live="polite"></div>
@@ -71,16 +74,8 @@
       </section>
 
       <section class="admin-panel" data-admin-panel="products" hidden inert>
-        <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="primary-action" id="newProductToggle" type="button" aria-expanded="false" aria-controls="newProductCard"><i class="fa-solid fa-plus"></i><span>Ürün ekle</span></button><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
-        <form class="admin-card admin-form product-create-card" id="newProductCard" hidden>
-  <header class="product-create-heading"><div><small>KOLEKSİYONUNU GENİŞLET</small><h2>Yeni ürün ekle</h2></div><button class="secondary-action" id="newProductClose" type="button" aria-label="Ürün ekleme formunu kapat"><i class="fa-solid fa-xmark"></i></button></header>
-  <div class="form-grid"><label><span>Ürün adı</span><input id="newProductName" maxlength="80" required placeholder="Örn. Premium paket" /></label><label><span>Ürün kimliği</span><input id="newProductId" pattern="[a-z0-9][a-z0-9-]{1,79}" maxlength="80" required placeholder="premium-paket-ios" /><small>Küçük harf, rakam ve tire kullanın. Kaydettikten sonra kimlik sabit kalır.</small></label></div>
-  <div class="form-grid"><label><span>Platform</span><select id="newProductPlatform"><option value="android">Android</option><option value="ios">iOS</option></select></label><label><span>Oyun</span><select id="newProductGame"><option value="pubg">PUBG</option><option value="oxide">Oxide</option><option value="other">Diğer</option></select></label><label><span>Satış etiketi</span><select id="newProductBadge"></select></label></div>
-  <div class="form-grid"><label><span>Görsel</span><select id="newProductImage" required></select></label><label><span>Stok türü</span><select id="newProductInventory"><option value="license">Lisans kodu</option><option value="account">Hesap bilgileri</option></select></label><label><span>Teslimat</span><select id="newProductDelivery"><option value="automatic">Şifreli stoktan otomatik</option><option value="telegram_only">Destek üzerinden sipariş</option></select></label></div>
-  <label><span>Açıklama</span><textarea id="newProductDescription" rows="3" maxlength="240" placeholder="Ürünü, cihaz uyumluluğunu ve paket kapsamını anlatın."></textarea></label>
-  <div class="product-create-heading"><h3>Paketler ve fiyatlar</h3><button class="secondary-action" id="newProductAddPlan" type="button"><i class="fa-solid fa-plus"></i> Paket ekle</button></div><div class="product-create-plans" id="newProductPlans"></div>
-  <button class="primary-action" id="newProductSubmit" type="submit"><i class="fa-solid fa-lock"></i> Doğrula ve ürünü oluştur</button><small>Otomatik satış için ürünü oluşturduktan sonra stok kaydı ekleyin.</small>
-</form><div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
+        <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
+        <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
       </section>
 
       <section class="admin-panel" data-admin-panel="users" hidden inert>
@@ -109,7 +104,7 @@
             <label class="toggle-row"><input id="contentAndroidVisible" type="checkbox" /><span><strong>Android kategorisi</strong><small>Android ürünlerini gösterir.</small></span></label>
             <label class="toggle-row"><input id="contentIosVisible" type="checkbox" /><span><strong>iOS kategorisi</strong><small>iOS ürünlerini gösterir.</small></span></label>
           </div>
-          <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
+          <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="shelbyios" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
           <label><span>Ana sayfa açıklaması</span><textarea id="contentHomeMessage" maxlength="240" rows="3" placeholder="Ana sayfada gösterilecek güvenli bilgi metni."></textarea></label>
           <div class="form-grid"><label><span>Duyuru başlığı</span><input id="announcementTitle" maxlength="80" placeholder="Yeni stoklar yayında" /></label><label><span>Ton</span><select id="announcementTone"><option value="info">Bilgi</option><option value="success">Başarılı</option><option value="warning">Uyarı</option></select></label></div>
           <label><span>Duyuru metni</span><textarea id="announcementMessage" maxlength="240" rows="4" placeholder="Kullanıcı dostu duyuru metnini yazın."></textarea></label>
@@ -170,6 +165,6 @@
 
   <div class="reauth-layer" id="secureActionLayer" hidden><div class="reauth-backdrop" data-secure-action-cancel></div><form class="reauth-card secure-action-card" id="secureActionForm" role="dialog" aria-modal="true" aria-labelledby="secureActionTitle"><button class="reauth-close" type="button" data-secure-action-cancel aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button><span class="reauth-icon"><i class="fa-solid fa-shield-halved"></i></span><span class="reauth-kicker" id="secureActionKicker">GÜVENLİ İŞLEM</span><h2 id="secureActionTitle">İşlemi doğrula.</h2><p id="secureActionSummary">Bu kritik işlem gerekçe ve hesap parolasıyla doğrulanacaktır.</p><label><span>Gerekçe kategorisi</span><div><i class="fa-solid fa-list-check"></i><select id="secureActionCategory" required></select></div></label><label><span>Denetim açıklaması</span><textarea id="secureActionReason" maxlength="200" rows="3" placeholder="İşlem gerekçesini en az 3 karakterle açıklayın." required></textarea></label><label><span>Hesap şifresi</span><div><i class="fa-solid fa-key"></i><input id="secureActionPassword" type="password" autocomplete="current-password" required /></div></label><div class="reauth-actions"><button type="button" data-secure-action-cancel>Vazgeç</button><button type="submit" id="secureActionConfirm">Doğrula ve Uygula</button></div></form></div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v3"></script>
+  <script type="module" src="./admin-dashboard.js?v=audit-20260908-v1"></script>
 </body>
 </html>

@@ -13,7 +13,7 @@ function sessionError(code = 'ADMIN_SESSION_UNAVAILABLE', statusCode = 503) {
 function sessionId(value = '') {
   const raw = String(value || '').trim();
   if (raw.length < 16 || raw.length > 120) throw sessionError('ADMIN_GATE_ACCESS_INVALID', 401);
-  return crypto.createHash('sha256').update(`zentra-admin-session\u0000${raw}`).digest('hex');
+  return crypto.createHash('sha256').update(`shelby-admin-session\u0000${raw}`).digest('hex');
 }
 
 function sessionReference(value) {

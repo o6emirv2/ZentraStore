@@ -54,7 +54,7 @@ function gateSessionFingerprint(uid = '', gateSession = '') {
   const safeSession = String(gateSession || '').trim();
   if (safeSession.length < 16 || safeSession.length > 120) return '';
   return crypto.createHash('sha256')
-    .update(`zentra-admin-totp-session\u0000${String(uid || '').trim()}\u0000${safeSession}`)
+    .update(`shelby-admin-totp-session\u0000${String(uid || '').trim()}\u0000${safeSession}`)
     .digest('hex');
 }
 
