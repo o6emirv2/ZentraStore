@@ -22,7 +22,9 @@ const DEFAULT_STOREFRONT = Object.freeze({
   services: Object.freeze({ automaticDelivery: true, telegramSupport: true, balancePayment: true }),
   support: Object.freeze({ telegramUsername: STORE_CATALOG.telegramUsername }),
   home: Object.freeze({ title: '', message: '' }),
-  categoryVisibility: Object.freeze({ android: true, ios: true }),
+  categoryVisibility: Object.freeze(Object.fromEntries(
+    ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account'].map((key) => [key, true])
+  )),
   quickLinks: DEFAULT_QUICK_LINKS
 });
 
@@ -135,10 +137,10 @@ function normalizeStorefront(source = {}) {
       title: safeText(home.title, 80),
       message: safeText(home.message, 240)
     },
-    categoryVisibility: {
-      android: categoryVisibility.android !== false,
-      ios: categoryVisibility.ios !== false
-    },
+    categoryVisibility: Object.fromEntries(
+      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+        .map((key) => [key, categoryVisibility[key] !== false])
+    ),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   };
 }

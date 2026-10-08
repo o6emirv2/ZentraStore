@@ -14,8 +14,8 @@ import {
   signInStore,
   subscribeStoreAuth
 } from './auth.js?v=zentra-20261008-v1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v1';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v3';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v3';
 import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v1';
 import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v1';
 import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v1';
@@ -112,7 +112,8 @@ const state = {
   couponFilter: 'available',
   deliveryAccessFocus: null,
   favorites: new Set(),
-  storeNavigationAction: 'storefront'
+  storeNavigationAction: 'storefront',
+  configuredCatalog: null
 };
 
 function loadFavoriteProducts() {
@@ -400,6 +401,7 @@ function renderCatalog() {
   if (!state.catalog) return;
   state.activeFilter = resolveCatalogFilter(state.activeFilter, state.catalog.storefront?.categoryVisibility || {});
   updateCatalogFilterControls();
+  renderCategoryNavigation();
   const products = filteredProducts();
   const androidProducts = products.filter((product) => product.platform === 'android');
   const iosProducts = products.filter((product) => product.platform === 'ios');
@@ -425,6 +427,8 @@ function renderCatalog() {
 }
 
 function renderStorefrontConfiguration() {
+  if (state.configuredCatalog === state.catalog) return;
+  state.configuredCatalog = state.catalog;
   const storefront = state.catalog?.storefront || {};
   const announcement = storefront.announcement || {};
   const host = $('#storeAnnouncement');
@@ -494,6 +498,20 @@ async function loadNotifications() {
   await storeApi(`/api/store/notifications/${encodeURIComponent(unread.id)}/read`, { method: 'PATCH', body: {} }).catch(() => null);
 }
 
+function renderCategoryNavigation() {
+  const catalog = state.catalog;
+  if (!catalog) return;
+  const visibility = catalog.storefront?.categoryVisibility || {};
+  const products = catalog.products || [];
+  $$('#gameCategories .game-category').forEach((control) => {
+    const key = control.dataset.filter;
+    const platform = CATALOG_FILTERS[key]?.platform;
+    control.hidden = visibility[key] === false || (platform && visibility[platform] === false);
+    const count = control.querySelector('[data-category-count]');
+    if (count) count.textContent = String(products.filter((product) => productMatchesCatalogFilter(product, key, state.favorites, visibility)).length);
+  });
+}
+
 function updateCatalogFilterControls() {
   $$('#catalog [data-filter]').forEach((button) => {
     const active = button.dataset.filter === state.activeFilter;
@@ -504,7 +522,6 @@ function updateCatalogFilterControls() {
 
 function setActiveFilter(value, { scroll = false } = {}) {
   state.activeFilter = resolveCatalogFilter(value, state.catalog?.storefront?.categoryVisibility || {});
-  updateCatalogFilterControls();
   renderCatalog();
   if (scroll) {
     const platform = CATALOG_FILTERS[state.activeFilter].platform;

@@ -37,3 +37,58 @@ test('six admin category presets and mobile top-position notifications are defin
   }
   assert.match(css, /@media\(max-width:560px\)[\s\S]*?\.notification-center\s*\{[^}]*top:max\(/);
 });
+
+test('new GBox listings follow both iOS game filters and their own GBox category', async () => {
+  const { productMatchesCatalogFilter: matches } = await modulePromise;
+  const created = { id: 'custom-gbox-premium', platform: 'ios', game: 'other', category: 'GBox', inventoryType: 'license' };
+  for (const key of ['ios', 'gbox', 'pubg-ios', 'oxide-ios']) assert.equal(matches(created, key), true, key);
+  for (const key of ['random-account', 'pubg-android', 'oxide-android']) assert.equal(matches(created, key), false, key);
+});
+
+test('Random Hesaplar collection uses category or account inventory rather than platform alone', async () => {
+  const { productMatchesCatalogFilter: matches } = await modulePromise;
+  const categoryAssigned = { id: 'random-ios', platform: 'ios', game: 'other', category: 'Random Hesap' };
+  const accountType = { id: 'a1', platform: 'android', game: 'pubg', category: 'PUBG Android', inventoryType: 'account' };
+  const ordinary = { id: 'normal', platform: 'android', game: 'pubg', category: 'PUBG Android', inventoryType: 'license' };
+  assert.equal(matches(categoryAssigned, 'random-account'), true);
+  assert.equal(matches(accountType, 'random-account'), true);
+  assert.equal(matches(ordinary, 'random-account'), false);
+  assert.equal(matches(categoryAssigned, 'gbox'), false);
+});
+
+test('category settings can disable a shortcut without disabling unrelated categories', async () => {
+  const { resolveCatalogFilter, productMatchesCatalogFilter: matches } = await modulePromise;
+  const visibility = { ios: true, android: true, gbox: false, 'random-account': true };
+  assert.equal(resolveCatalogFilter('gbox', visibility), 'all');
+  assert.equal(resolveCatalogFilter('random-account', visibility), 'random-account');
+  assert.equal(resolveCatalogFilter('oxide-ios', visibility), 'oxide-ios');
+  assert.equal(resolveCatalogFilter('oxide-ios', { ios: false }), 'all');
+  assert.equal(matches({ id: 'sample', platform: 'android', game: 'pubg', inventoryType: 'account' }, 'random-account', new Set(), { android: false }), false);
+});
+
+test('six storefront category cards and six admin visibility controls are wired together', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
+  const client = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
+  const adminClient = fs.readFileSync(path.join(__dirname, '../admin/admin-dashboard.js'), 'utf8');
+  for (const key of ['pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'random-account', 'gbox']) {
+    assert.ok(html.includes(`data-filter="${key}"`), `missing storefront card ${key}`);
+    assert.ok(admin.includes(`data-category-visibility="${key}"`), `missing admin control ${key}`);
+  }
+  assert.match(client, /function renderCategoryNavigation\(\)/);
+  assert.match(client, /control\.hidden = visibility\[key\] === false/);
+  assert.match(adminClient, /\[data-category-visibility\]/);
+});
+
+test('updated client bundles use fresh cache versions rather than stale immutable URLs', () => {
+  const index = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
+  const storefront = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
+  const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
+  assert.match(index, /\/style\.css\?v=zentra-20261008-v3/);
+  assert.match(index, /\/script\.js\?v=zentra-20261008-v3/);
+  assert.match(script, /\/storefront\.js\?v=zentra-20261008-v3/);
+  assert.match(storefront, /products\.js\?v=zentra-20261008-v3/);
+  assert.match(storefront, /notification-center\.js\?v=zentra-20261008-v3/);
+  assert.match(admin, /admin-dashboard\.js\?v=zentra-20261008-v3/);
+});

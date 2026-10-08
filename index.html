@@ -44,9 +44,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v67" fetchpriority="high" />
-  <link rel="stylesheet" href="/style.css?v=zentra-20261008-v1" />
+  <link rel="stylesheet" href="/style.css?v=zentra-20261008-v3" />
   <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-20261008-v1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v3" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v1" />
 </head>
 <body data-zentra-page="store" data-authenticated="false">
@@ -120,18 +120,32 @@
         <button class="game-category" type="button" data-filter="pubg-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
           <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
+                  <small class="game-category__count" data-category-count="pubg-ios" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="pubg-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
           <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
+                  <small class="game-category__count" data-category-count="pubg-android" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="oxide-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
           <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v67" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
+                  <small class="game-category__count" data-category-count="oxide-ios" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="oxide-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
           <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v67" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
+                  <small class="game-category__count" data-category-count="oxide-android" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="random-account" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <span class="game-category__icon game-category__icon--random" aria-hidden="true"><i class="fa-solid fa-dice"></i></span>
+          <span class="game-category__copy"><strong>RANDOM</strong><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i> HESAPLAR</span></span>
+          <small class="game-category__count" data-category-count="random-account" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="gbox" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <span class="game-category__icon game-category__icon--gbox" aria-hidden="true"><i class="fa-solid fa-mobile-screen-button"></i></span>
+          <span class="game-category__copy"><strong>GBOX</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS / IPAD</span></span>
+          <small class="game-category__count" data-category-count="gbox" aria-label="Ürün sayısı"></small>
         </button>
       </div>
       <section class="platform-switcher" aria-label="Ek ürün filtreleri"><div class="filter-row" id="filterRow" role="group" aria-label="Kategori ve platform filtresi"><button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true"><i class="fa-solid fa-border-all" aria-hidden="true"></i><span>Tümü</span></button><button class="filter-chip" type="button" data-filter="android" aria-pressed="false"><i class="fa-brands fa-android" aria-hidden="true"></i><span>Android</span></button><button class="filter-chip" type="button" data-filter="ios" aria-pressed="false"><i class="fa-brands fa-apple" aria-hidden="true"></i><span>iOS</span></button><button class="filter-chip" type="button" data-filter="favorites" aria-pressed="false"><i class="fa-solid fa-heart" aria-hidden="true"></i><span>Favoriler</span></button></div></section>
@@ -340,6 +354,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-20261008-v1"></script>
+  <script type="module" src="/script.js?v=zentra-20261008-v3"></script>
 </body>
 </html>

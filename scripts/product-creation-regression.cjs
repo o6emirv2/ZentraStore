@@ -113,3 +113,15 @@ test('newly created products can be edited through the existing bulk management 
     { productId: valid.id, settings: {} }, { productId: valid.id, settings: {} }
   ], actor), (error) => error.code === 'STORE_PRODUCT_BULK_DUPLICATE');
 });
+
+test('server normalizes all six category visibility flags with backwards-compatible defaults', () => {
+  const defaults = service.normalizeStorefront({});
+  for (const key of ['pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'random-account', 'gbox']) {
+    assert.equal(defaults.categoryVisibility[key], true);
+  }
+  const changed = service.normalizeStorefront({ categoryVisibility: { gbox: false, 'random-account': false, ios: true } });
+  assert.equal(changed.categoryVisibility.gbox, false);
+  assert.equal(changed.categoryVisibility['random-account'], false);
+  assert.equal(changed.categoryVisibility['pubg-ios'], true);
+  assert.equal(changed.categoryVisibility.ios, true);
+});

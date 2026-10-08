@@ -2900,33 +2900,6 @@ body[data-authenticated="true"] [data-guest-only] {
   border-radius:9px;
   background:#ff4126;
 }
- .game-category__icon {
-  width:44px;
-  height:44px;
-  flex:0 0 44px;
-  display:grid;
-  place-items:center;
-  border-radius:9px;
-  font-size:1.35rem;
-}
-.game-category__icon--random {
-  color:#ffc76d;
-  background:linear-gradient(145deg,#342515,#141b27);
-}
-.game-category__icon--gbox {
-  color:#7fdaff;
-  background:linear-gradient(145deg,#122f43,#11182c);
-}
-.game-category__count {
-  margin-left:auto;
-  align-self:flex-start;
-  color:var(--text-soft);
-  font-size:.7rem;
-  font-weight:750;
-}
-.game-category__count:empty {display:none}
-.game-category[hidden] {display:none!important}
-.game-category:focus-visible {outline:2px solid var(--red-bright);outline-offset:3px}
 .game-category__image--pubg {
   padding:5px;
   background:var(--gold)
@@ -2973,7 +2946,7 @@ body[data-authenticated="true"] [data-guest-only] {
     padding:10px 8px;
     gap:8px
   }
-  .game-category__image,.game-category__icon {
+  .game-category__image {
     width:34px;
     height:34px;
     flex-basis:34px
@@ -2984,7 +2957,7 @@ body[data-authenticated="true"] [data-guest-only] {
 }
 @media(min-width:680px) {
   .game-categories {
-    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-columns:repeat(4,minmax(0,1fr));
     gap:10px
   }
 }

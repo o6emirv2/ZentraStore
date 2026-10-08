@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v2" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v2" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v3" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v2" />
   <script src="./admin-auth.js?v=zentra-20261008-v2"></script>
 </head>
@@ -103,6 +103,12 @@
             <label class="toggle-row"><input id="serviceBalance" type="checkbox" /><span><strong>Bakiye ödemesi</strong><small>Güvenli bakiye yöntemini yönetir.</small></span></label>
             <label class="toggle-row"><input id="contentAndroidVisible" type="checkbox" /><span><strong>Android kategorisi</strong><small>Android ürünlerini gösterir.</small></span></label>
             <label class="toggle-row"><input id="contentIosVisible" type="checkbox" /><span><strong>iOS kategorisi</strong><small>iOS ürünlerini gösterir.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="pubg-ios" type="checkbox" /><span><strong>PUBG iOS</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="pubg-android" type="checkbox" /><span><strong>PUBG Android</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="oxide-ios" type="checkbox" /><span><strong>Oxide iOS</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="oxide-android" type="checkbox" /><span><strong>Oxide Android</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="random-account" type="checkbox" /><span><strong>Random Hesaplar</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="gbox" type="checkbox" /><span><strong>GBox</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
           </div>
           <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="ZENTRA_STORE" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
           <label><span>Ana sayfa açıklaması</span><textarea id="contentHomeMessage" maxlength="240" rows="3" placeholder="Ana sayfada gösterilecek güvenli bilgi metni."></textarea></label>
@@ -192,6 +198,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v2"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v3"></script>
 </body>
 </html>

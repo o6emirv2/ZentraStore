@@ -1,4 +1,4 @@
-import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-20261008-v1';
+import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-20261008-v3';
 import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v1';
 
 window.__ZENTRA_RUNTIME__ = window.__ZENTRA_RUNTIME__ || { apiBase: '' };

@@ -16,14 +16,16 @@ export const CATALOG_FILTERS = Object.freeze({
   favorites: Object.freeze({ label: 'Favori Ürünlerin', platform: '', game: '' }),
   'pubg-ios': Object.freeze({ label: 'PUBG İOS', platform: 'ios', game: 'pubg' }),
   'pubg-android': Object.freeze({ label: 'PUBG ANDROİD', platform: 'android', game: 'pubg' }),
-  'oxide-ios': Object.freeze({ label: 'OKSİDE İOS', platform: 'ios', game: 'oxide' }),
-  'oxide-android': Object.freeze({ label: 'OKSİDE ANDROİD', platform: 'android', game: 'oxide' })
+  'oxide-ios': Object.freeze({ label: 'OXİDE İOS', platform: 'ios', game: 'oxide' }),
+  'oxide-android': Object.freeze({ label: 'OXİDE ANDROİD', platform: 'android', game: 'oxide' }),
+  gbox: Object.freeze({ label: 'GBOX', platform: 'ios', game: '' }),
+  'random-account': Object.freeze({ label: 'RANDOM HESAPLAR', platform: '', game: '' })
 });
 
 export function resolveCatalogFilter(value = 'all', visibility = {}) {
   const key = Object.prototype.hasOwnProperty.call(CATALOG_FILTERS, value) ? value : 'all';
   const filter = CATALOG_FILTERS[key];
-  return filter.platform && visibility[filter.platform] === false ? 'all' : key;
+  return (filter.platform && visibility[filter.platform] === false) || visibility[key] === false ? 'all' : key;
 }
 
 export function productMatchesCatalogFilter(product = {}, value = 'all', favorites = new Set(), visibility = {}) {
@@ -31,8 +33,14 @@ export function productMatchesCatalogFilter(product = {}, value = 'all', favorit
   const key = resolveCatalogFilter(value, visibility);
   const filter = CATALOG_FILTERS[key];
   if (key === 'favorites' && !favorites.has(String(product.id))) return false;
-  // GBox is an iOS companion product offered under both game collections.
-  const isGbox = product.platform === 'ios' && /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || ''));
+  const category = String(product.category || '').trim().toLocaleLowerCase('tr-TR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
+  // Legacy GBox products have game=other; new GBox entries are identified by the admin category.
+  const isGbox = product.platform === 'ios' && (category === 'gbox' || /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || '')));
+  const isRandomAccount = product.inventoryType === 'account' || /^(?:random hesap(?:lar)?|random account)$/.test(category);
+  if (key === 'gbox') return isGbox;
+  if (key === 'random-account') return isRandomAccount;
+  // A GBox listing participates in both iOS game collections, but not Android.
   return (!filter.platform || product.platform === filter.platform)
     && (!filter.game || product.game === filter.game || (isGbox && (filter.game === 'pubg' || filter.game === 'oxide')));
 }
@@ -158,7 +166,10 @@ function normalizeStorefront(source = {}) {
     services: Object.freeze({ automaticDelivery: services.automaticDelivery !== false, telegramSupport: services.telegramSupport !== false, balancePayment: services.balancePayment !== false }),
     support: Object.freeze({ telegramUsername: String(support.telegramUsername || '').replace(/^@+/, '').replace(/[^a-z0-9_]/gi, '').slice(0, 32) }),
     home: Object.freeze({ title: String(home.title || '').slice(0, 80), message: String(home.message || '').slice(0, 240) }),
-    categoryVisibility: Object.freeze({ android: categoryVisibility.android !== false, ios: categoryVisibility.ios !== false }),
+    categoryVisibility: Object.freeze(Object.fromEntries(
+      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+        .map((key) => [key, categoryVisibility[key] !== false])
+    )),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   });
 }

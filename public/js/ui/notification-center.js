@@ -33,6 +33,30 @@ function safeText(value, fallback, limit) {
     .slice(0, limit);
 }
 
+function noticeBody(type, message, fallback) {
+  const value = safeText(message, fallback, 220);
+  if (type !== 'error') return value;
+  if (/networkerror|failed to fetch|network request failed|load failed|internet bağlantısı yok/i.test(value)) {
+    return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip yeniden deneyin.';
+  }
+  if (/request_timeout|timeout|timed out|zaman aşım/i.test(value)) {
+    return 'İşlem beklenenden uzun sürdü. Bağlantınızı kontrol ederek yeniden deneyin.';
+  }
+  if (/too_many_requests|http[ _-]?429|rate.limit/i.test(value)) {
+    return 'Çok sayıda deneme yapıldı. Bir süre bekleyip yeniden deneyin.';
+  }
+  if (/http[ _-]?403|permission.denied/i.test(value)) {
+    return 'Bu işlemi gerçekleştirme yetkiniz bulunmuyor.';
+  }
+  if (/http[ _-]?401|unauthenticated/i.test(value)) {
+    return 'Oturumunuz doğrulanamadı. Yeniden giriş yapmayı deneyin.';
+  }
+  if (/http[ _-]?50[023]|service.unavailable/i.test(value)) {
+    return 'Sunucu geçici olarak yanıt veremiyor. Kısa süre sonra yeniden deneyin.';
+  }
+  return value;
+}
+
 function safeIcon(value = '') {
   const icon = String(value || '').trim().toLowerCase();
   return /^fa-[a-z0-9-]{2,48}$/.test(icon) ? icon : '';
@@ -163,7 +187,7 @@ export function createNotificationCenter({
     const safeType = NOTICE_TYPES.has(type) ? type : 'info';
     const fallback = TYPE_META[safeType];
     const safeTitle = safeText(title, fallback.title, 86);
-    const safeMessage = safeText(message, fallback.message, 220);
+    const safeMessage = noticeBody(safeType, message, fallback.message);
     const fingerprint = `${safeType}:${safeTitle}:${safeMessage}`;
     const now = Date.now();
     if (fingerprint === lastFingerprint && now - lastShownAt < 1_500) return null;

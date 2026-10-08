@@ -29,6 +29,16 @@ const adminAuthRouter = require('./server/routes/admin-auth.routes');
 const storeRouter = require('./server/routes/store.routes');
 
 const app = express();
+function safeExceptionInfo(error) {
+  const value = error && typeof error === 'object' ? error : {};
+  const name = String(value.name || 'Error').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+  const code = String(value.code || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+  // Stack frame locations aid diagnosis; intentionally omit untrusted messages and parameters.
+  const frames = String(value.stack || '').split('\n').slice(1, 5)
+    .map((line) => line.trim()).filter((line) => /^at [\w.$<> ]+ \([^\n]{1,200}\)$|^at \/[^\n]{1,200}$/.test(line))
+    .map((line) => line.replace(/[^A-Za-z0-9_\- ./():\[\]<>]/g, '').slice(0, 180));
+  return { name, ...(code ? { code } : {}), ...(frames.length ? { frames } : {}) };
+}
 const root = __dirname;
 const port = Math.max(1, Number(process.env.PORT || 10000) || 10000);
 const host = '0.0.0.0';
@@ -356,6 +366,7 @@ app.use((error, req, res, _next) => {
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
   };
   res.locals.errorCode = code;
+  if (status >= 500) console.error('[zentra-store:exception]', JSON.stringify({ status, requestId: req.requestId, ...safeExceptionInfo(error) }));
   const message = publicMessages[code];
   return res.status(status).json({ ok: false, error: code, code, ...(message ? { message } : {}), requestId: req.requestId });
 });
@@ -364,6 +375,14 @@ let server = null;
 
 function startServer() {
   if (server) return server;
+  for (const eventName of ['uncaughtException', 'unhandledRejection']) {
+    process.once(eventName, (cause) => {
+      console.error('[zentra-store:fatal]', JSON.stringify({ event: eventName, ...safeExceptionInfo(cause) }));
+      process.exitCode = 1;
+      if (server) shutdown(eventName);
+      else process.exit(1);
+    });
+  }
   server = configureHttpServer(app.listen(port, host, () => {
     const report = env.configurationReport();
     if (!report.ready) console.error('[zentra-store:configuration]', JSON.stringify({ code: 'CONFIGURATION_INCOMPLETE', missing: report.missing }));
@@ -383,7 +402,7 @@ function startServer() {
 
 function shutdown(signal) {
   if (!server) return;
-  server.close(() => process.exit(0));
+  server.close(() => process.exit(process.exitCode || 0));
   server.closeIdleConnections?.();
   setTimeout(() => {
     server.closeAllConnections?.();
