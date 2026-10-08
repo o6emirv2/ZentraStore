@@ -1,8 +1,6 @@
-import { bootStorefront } from '/public/js/store/storefront.js?v=audit-20260908-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=audit-20260908-v1';
+import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-20261008-v2';
 
-window.__SHELBY_RUNTIME__ = window.__SHELBY_RUNTIME__ || { apiBase: '' };
-installInteractionGuard();
+window.__ZENTRA_RUNTIME__ = window.__ZENTRA_RUNTIME__ || { apiBase: '' };
 
 function showStorefrontFailure() {
   document.documentElement.dataset.storefrontStatus = 'error';

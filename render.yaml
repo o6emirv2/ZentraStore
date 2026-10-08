@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: shelby-ios-store
+    name: zentra-store
     runtime: node
     buildCommand: npm ci --omit=dev --no-audit --no-fund && npm run build
     startCommand: node server.js
@@ -8,18 +8,20 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: TRUST_PROXY_HOPS
+        value: "1"
       - key: LOG_LEVEL
         value: info
       - key: PUBLIC_BASE_URL
-        sync: false
+        value: https://zentrastore.com.tr
       - key: CANONICAL_ORIGIN
-        sync: false
+        value: https://zentrastore.com.tr
       - key: PUBLIC_BACKEND_ORIGIN
-        value: https://emirhan-siye.onrender.com
+        value: https://zentrastore.com.tr
       - key: PUBLIC_API_BASE
-        value: https://emirhan-siye.onrender.com
+        value: https://zentrastore.com.tr
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://zentrastore.com.tr,https://www.zentrastore.com.tr
       - key: FIREBASE_PROJECT_ID
         sync: false
       - key: FIREBASE_STORAGE_BUCKET

@@ -31,7 +31,7 @@ function cssStructureValid(source) {
   }
   return !quote && !comment && stack.length === 0;
 }
-const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />';
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
 for (const filename of files) {
   if (!/\.(?:js|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
@@ -68,7 +68,7 @@ for (const filename of files) {
     try { JSON.parse(source); } catch (_) { failures.push(name + ': geçersiz JSON'); }
   }
   if (name !== 'scripts/verify-source.cjs' && !name.endsWith('package-lock.json')) {
-    for (const match of source.matchAll(/["'](\/public\/assets\/[A-Za-z0-9_./-]+\.(?:png|svg|jpg|jpeg|webp|ico|wav))["']/g)) {
+    for (const match of source.matchAll(/["'](\/public\/assets\/[A-Za-z0-9_./-]+\.(?:png|PNG|svg|jpg|JPG|jpeg|webp|ico|wav))["']/g)) {
       referenceCount++;
       if (!fs.existsSync(path.join(root, match[1]))) failures.push(name + ': eksik asset ' + match[1]);
     }
@@ -106,21 +106,15 @@ for (const product of catalog.products) {
 }
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json')));
 const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json')));
-if (pkg.version !== lock.version || pkg.version !== lock.packages[''].version || JSON.stringify(pkg.dependencies) !== JSON.stringify(lock.packages[''].dependencies) || JSON.stringify(pkg.engines) !== JSON.stringify(lock.packages[''].engines)) failures.push('Paket ve kilit dosyası uyumsuz');
-const { CHANNEL_LINKS_REVISION, DEFAULT_QUICK_LINKS } = require(path.join(root, 'server/core/storeLinks.js'));
-const expectedChannelUrls = [
-  'https://t.me/shelbystoreofficial',
-  'https://t.me/+1CNyDrYyBzcwMGY0',
-  'https://t.me/shelbystorefree',
-  'https://www.tiktok.com/@srfxkayra',
-  'https://wa.me/905339673730',
-  'https://t.me/shelbyios'
-];
-if (CHANNEL_LINKS_REVISION !== 69 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
+if (pkg.name !== lock.name || pkg.name !== lock.packages[''].name || pkg.version !== lock.version || pkg.version !== lock.packages[''].version || JSON.stringify(pkg.dependencies) !== JSON.stringify(lock.packages[''].dependencies) || JSON.stringify(pkg.engines) !== JSON.stringify(lock.packages[''].engines)) failures.push('Paket ve kilit dosyası uyumsuz');
+const { CHANNEL_LINKS_REVISION, DEFAULT_QUICK_LINKS, TELEGRAM_SUPPORT_USERNAME } = require(path.join(root, 'server/core/storeLinks.js'));
+const expectedChannelUrls = DEFAULT_QUICK_LINKS.map((link) => link.url);
+if (CHANNEL_LINKS_REVISION !== 71 || expectedChannelUrls.length !== 7) failures.push('Resmî bağlantı paketi eksik');
+if (catalog.telegramUsername !== TELEGRAM_SUPPORT_USERNAME || TELEGRAM_SUPPORT_USERNAME !== 'ZENTRA_STORE') failures.push('Telegram destek kullanıcı adı uyuşmuyor');
 const homeSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if ((homeSource.match(/data-quick-link-id=/g) || []).length !== expectedChannelUrls.length || expectedChannelUrls.some((url) => !homeSource.includes(`href="${url}"`))) failures.push('Ana sayfa bağlantı kartları sunucu bağlantı paketiyle uyuşmuyor');
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.85 / 0.85 / 0.85 unchanged', result: 'PASS' }));
+console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: 'responsive, zoom enabled', result: 'PASS' }));

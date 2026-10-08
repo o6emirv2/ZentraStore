@@ -106,7 +106,7 @@ router.post('/auth/login', authLoginLimiter, async (req, res, next) => {
     const { auth } = initFirebaseAdmin();
     const authUser = await auth.getUser(uid).catch(() => null);
     if (!authUser || authUser.disabled) throw authInvalid();
-    const customToken = await auth.createCustomToken(uid, { shelbyLogin: true });
+    const customToken = await auth.createCustomToken(uid, { zentraLogin: true });
     return res.json({ ok: true, customToken });
   } catch (error) {
     if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED'].includes(String(error?.code || ''))) return next(error);

@@ -1,8 +1,8 @@
 'use strict';
 
-window.SHELBY_ADMIN_AUTH = (() => {
+window.ZENTRA_ADMIN_AUTH = (() => {
   const FIREBASE_VERSION = '12.17.1';
-  const STOREFRONT_APP_NAME = 'shelby-store';
+  const STOREFRONT_APP_NAME = 'zentra-store';
   let auth = null;
   let sdk = null;
   let appSdk = null;
@@ -20,7 +20,7 @@ window.SHELBY_ADMIN_AUTH = (() => {
   }
 
   function fallbackBase() {
-    return normalizeBase(document.querySelector('meta[name="shelby-api-origin"]')?.content || 'https://emirhan-siye.onrender.com');
+    return normalizeBase(document.querySelector('meta[name="zentra-api-origin"]')?.content || '');
   }
 
   function apiUrl(path = '') {
@@ -38,7 +38,7 @@ window.SHELBY_ADMIN_AUTH = (() => {
       const timer = setTimeout(() => controller.abort(), base ? 6500 : 3200);
       try {
         const response = await fetch(`${base}/api/public/runtime-config`, {
-          headers: { Accept: 'application/json', 'X-Shelby-Store-Client': 'secure-admin-bootstrap-v66' },
+          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v67' },
           credentials: 'include', cache: 'no-store', signal: controller.signal
         });
         const type = String(response.headers.get('content-type') || '');

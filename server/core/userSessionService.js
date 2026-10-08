@@ -3,7 +3,7 @@
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 
-const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-shelby_session' : 'shelby_session';
+const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-zentra_session' : 'zentra_session';
 const REMEMBER_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const BROWSER_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -50,6 +50,13 @@ async function createUserSession(idToken, remember = false) {
   if (!token) throw Object.assign(new Error('ID_TOKEN_REQUIRED'), { code: 'ID_TOKEN_REQUIRED', statusCode: 400 });
   const expiresIn = remember ? REMEMBER_TTL_MS : BROWSER_TTL_MS;
   const decoded = await auth.verifyIdToken(token, true);
+  const now = Math.floor(Date.now() / 1000);
+  const authTime = Number(decoded?.auth_time || 0);
+  if (!Number.isSafeInteger(authTime) || authTime > now + 30 || now - authTime > 300) {
+    throw Object.assign(new Error('AUTH_FRESH_TOKEN_REQUIRED'), { code: 'AUTH_FRESH_TOKEN_REQUIRED', statusCode: 401 });
+  }
+  const account = await auth.getUser(decoded.uid || decoded.sub);
+  if (account.disabled === true) throw Object.assign(new Error('AUTH_INVALID'), { code: 'AUTH_INVALID', statusCode: 401 });
   const sessionCookie = await auth.createSessionCookie(token, { expiresIn });
   return { sessionCookie, decoded, remember: !!remember, expiresIn };
 }

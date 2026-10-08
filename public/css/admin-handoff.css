@@ -1,13 +1,13 @@
 :root {
-  color-scheme:dark;
-  --red:#f21d41;
-  --red-bright:#ff3658;
-  --green:#4dde9d;
-  --danger:#ff5a6f;
-  --line:#252d3b;
-  --text:#f7f8fb;
-  --soft:#b7becb;
-  --dim:#98a4b6;
+  color-scheme:light;
+  --accent:#087f84;
+  --accent-bright:#0b8a8e;
+  --green:#13815d;
+  --danger:#c8344f;
+  --line:#dce5ed;
+  --text:#102a43;
+  --soft:#4b637a;
+  --dim:#61788c;
   --safe-top:env(safe-area-inset-top,0px);
   --safe-right:env(safe-area-inset-right,0px);
   --safe-bottom:env(safe-area-inset-bottom,0px);
@@ -18,7 +18,7 @@
 }
 html {
   min-width:320px;
-  background:#03050a;
+  background:#f5f8fb;
   -webkit-text-size-adjust:100%
 }
 body {
@@ -29,7 +29,7 @@ body {
   padding:max(16px,var(--safe-top)) max(14px,var(--safe-right)) max(16px,var(--safe-bottom)) max(14px,var(--safe-left));
   display:grid;
   place-items:center;
-  background:radial-gradient(circle at 4% 0,rgba(242,29,65,.18),transparent 26rem),radial-gradient(circle at 100% 80%,rgba(53,212,244,.055),transparent 26rem),linear-gradient(155deg,#080b12,#03050a 55%,#05070c);
+  background:radial-gradient(circle at 4% 0,rgba(8,127,132,.18),transparent 26rem),radial-gradient(circle at 100% 80%,rgba(18,122,147,.055),transparent 26rem),linear-gradient(155deg,#fff,#f5f8fb 55%,#f7f9fc);
   color:var(--text);
   font:500 15px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
   -webkit-font-smoothing:antialiased
@@ -39,10 +39,10 @@ body {
   width:min(100%,470px);
   padding:16px;
   overflow:hidden;
-  border:1px solid rgba(255,255,255,.1);
+  border:1px solid rgba(16,42,67,.1);
   border-radius:22px;
-  background:linear-gradient(150deg,rgba(17,23,34,.985),rgba(5,8,14,.99));
-  box-shadow:0 28px 90px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.04)
+  background:linear-gradient(150deg,rgba(255,255,255,.985),rgba(255,255,255,.99));
+  box-shadow:0 28px 90px rgba(0,0,0,.55),inset 0 1px rgba(16,42,67,.04)
 }
 .gate::before {
   content:"";
@@ -50,20 +50,20 @@ body {
   inset:0 auto auto 0;
   width:65%;
   height:2px;
-  background:linear-gradient(90deg,var(--red),transparent)
+  background:linear-gradient(90deg,var(--accent),transparent)
 }
 .brand {
   padding-bottom:14px;
   display:flex;
   align-items:center;
   gap:10px;
-  border-bottom:1px solid rgba(255,255,255,.075)
+  border-bottom:1px solid rgba(16,42,67,.075)
 }
 .brand img {
   width:48px;
   height:48px;
   object-fit:contain;
-  filter:drop-shadow(0 0 13px rgba(242,29,65,.3))
+  filter:drop-shadow(0 0 13px rgba(8,127,132,.3))
 }
 .brand>span {
   display:grid;
@@ -74,7 +74,7 @@ body {
   letter-spacing:.09em
 }
 .brand small {
-  color:var(--red-bright);
+  color:var(--accent-bright);
   font-size:0.75rem;
   font-weight:900;
   letter-spacing:.1em
@@ -93,13 +93,13 @@ body {
   font-weight:900
 }
 .status.is-success {
-  border-color:rgba(77,222,157,.25);
-  background:rgba(77,222,157,.08);
+  border-color:rgba(19,129,93,.25);
+  background:rgba(19,129,93,.08);
   color:var(--green)
 }
 .eyebrow {
   display:block;
-  color:var(--red-bright);
+  color:var(--accent-bright);
   font-size:0.75rem;
   font-weight:900;
   letter-spacing:.12em
@@ -127,11 +127,11 @@ a {
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  border:1px solid rgba(242,29,65,.4);
+  border:1px solid rgba(8,127,132,.4);
   border-radius:12px;
-  background:linear-gradient(135deg,var(--red-bright),#c91031);
-  box-shadow:0 14px 32px rgba(242,29,65,.2);
-  color:#fff;
+  background:linear-gradient(135deg,var(--accent-bright),#087f84);
+  box-shadow:0 14px 32px rgba(8,127,132,.2);
+  color:#102a43;
   text-decoration:none;
   font-size:0.875rem;
   font-weight:900
@@ -145,14 +145,14 @@ main>small {
   padding:8px;
   border:1px solid var(--line);
   border-radius:9px;
-  background:#070b12;
+  background:#f6f9fc;
   color:var(--dim);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:0.75rem;
   overflow-wrap:anywhere
 }
 a:focus-visible {
-  outline:3px solid rgba(53,212,244,.8);
+  outline:3px solid rgba(18,122,147,.8);
   outline-offset:3px
 }
 @media(min-width:600px) {

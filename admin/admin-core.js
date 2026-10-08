@@ -1,73 +1,4 @@
-import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=audit-20260908-v1';
-
-export function lockAdminInteractions() {
-  document.documentElement.dataset.adminProtected = 'true';
-}
-
-export function startAmbientCanvas(canvas) {
-  if (!canvas) return;
-  const context = canvas.getContext('2d', { alpha: true });
-  if (!context) return;
-  const reduced = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  let width = 0;
-  let height = 0;
-  let points = [];
-  let animation = 0;
-  let previous = 0;
-  let stopped = false;
-  const resize = () => {
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
-    width = canvas.width = Math.round(innerWidth * ratio);
-    height = canvas.height = Math.round(innerHeight * ratio);
-    canvas.style.width = `${innerWidth}px`;
-    canvas.style.height = `${innerHeight}px`;
-    points = Array.from({ length: Math.min(54, Math.max(20, Math.round(innerWidth / 24))) }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: 1 + Math.random() * 2.2,
-      speed: .12 + Math.random() * .36,
-      alpha: .14 + Math.random() * .5
-    }));
-  };
-  const draw = (time = 0) => {
-    animation = 0;
-    if (stopped || document.hidden) return;
-    if (!reduced) animation = requestAnimationFrame(draw);
-    if (time && time - previous < 40) return;
-    previous = time;
-    context.clearRect(0, 0, width, height);
-    points.forEach((point) => {
-      point.y -= point.speed;
-      if (point.y < -10) { point.y = height + 10; point.x = Math.random() * width; }
-      context.beginPath();
-      context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
-      context.fillStyle = `rgba(255,55,72,${point.alpha})`;
-      context.shadowBlur = 10;
-      context.shadowColor = '#e51f32';
-      context.fill();
-    });
-    context.shadowBlur = 0;
-  };
-  const visibility = () => {
-    if (document.hidden) {
-      cancelAnimationFrame(animation);
-      animation = 0;
-    } else if (!animation && !stopped) {
-      previous = 0;
-      draw();
-    }
-  };
-  resize();
-  draw();
-  addEventListener('resize', resize, { passive: true });
-  document.addEventListener('visibilitychange', visibility);
-  return () => {
-    stopped = true;
-    cancelAnimationFrame(animation);
-    removeEventListener('resize', resize);
-    document.removeEventListener('visibilitychange', visibility);
-  };
-}
+import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261008-v2';
 
 function errorMessage(payload = {}, status = 0) {
   const code = String(payload.error || payload.code || '');
@@ -176,7 +107,7 @@ function errorMessage(payload = {}, status = 0) {
     STORE_USER_IDENTIFIER_REQUIRED: 'Kullanıcı aramak için e-posta, UID veya kullanıcı adı yazın.',
     APP_CHECK_REQUIRED: 'Güvenli istek doğrulaması gerekli. Sayfayı yenileyin.',
     APP_CHECK_INVALID: 'Güvenli istek doğrulaması geçersiz veya süresi dolmuş.',
-    STORE_TELEGRAM_ONLY_PRODUCT: 'Bu ürün yalnızca Telegram üzerinden sipariş edilebilir; otomatik teslimat ve bakiye ile otomatik satın alma kullanılamaz.',
+    STORE_TELEGRAM_ONLY_PRODUCT: 'Bu ürün yalnızca destek üzerinden sipariş edilebilir; otomatik teslimat ve bakiye ile otomatik satın alma kullanılamaz.',
     STORE_PRODUCT_FULFILLMENT_REQUIRED: 'Satışta olan bir üründe otomatik teslimat veya Telegram satış kanallarından en az biri açık olmalıdır.',
     STORE_PRODUCT_PRICE_INVALID: 'Paket fiyatı geçersiz. Fiyat sıfırdan büyük ve desteklenen sınırlar içinde olmalıdır.',
     STORE_PRODUCT_SETTINGS_INVALID: 'Ürün alanlarının türü veya paket biçimi geçersiz. Formu yenileyip tekrar deneyin.',
@@ -188,7 +119,7 @@ function errorMessage(payload = {}, status = 0) {
     STORE_PRODUCT_IMAGE_INVALID: 'Ürün görseli yalnızca güvenli /public/assets/products/ yolundan seçilebilir.',
     STORE_PRODUCT_BULK_INVALID: 'Toplu kayıt listesi boş veya izin verilen ürün sınırını aşıyor.',
     STORE_PRODUCT_BULK_DUPLICATE: 'Aynı ürün toplu kayıt isteğinde birden fazla kez gönderilemez.',
-    STORE_AUTOMATIC_INVENTORY_DISABLED: 'Bu ürün için otomatik stok kasası kapalıdır; teslimat yalnızca Telegram üzerinden yönetilir.',
+    STORE_AUTOMATIC_INVENTORY_DISABLED: 'Bu ürün için otomatik stok kasası kapalıdır; teslimat yalnızca destek üzerinden yönetilir.',
     ADMIN_OWNER_REQUIRED: 'Bu bölüm yalnızca korunan mağaza sahibi hesabı tarafından yönetilebilir.',
     AUTH_REQUIRED: 'Lütfen yönetici oturumunuzu yeniden doğrulayın.',
     AUTH_UNAVAILABLE: 'Hesap doğrulaması şu anda kullanıma hazır değil.',
@@ -210,16 +141,16 @@ export async function adminFetch(path, options = {}) {
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('X-Shelby-Store-Client', 'secure-admin-v66');
-    const url = window.SHELBY_ADMIN_AUTH?.apiUrl?.(path) || path;
+    headers.set('X-Zentra-Store-Client', 'secure-admin-v67');
+    const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
     let sameOrigin = false;
     try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin; } catch (_) {}
     if (!sameOrigin || method !== 'GET') {
-      const token = await waitForSignal(Promise.resolve().then(() => window.SHELBY_ADMIN_AUTH?.token?.()).catch(() => ''), controller.signal);
+      const token = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.token?.()).catch(() => ''), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
-    const appCheckToken = await waitForSignal(Promise.resolve().then(() => window.SHELBY_ADMIN_AUTH?.appCheckToken?.()).catch(() => ''), controller.signal);
+    const appCheckToken = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.appCheckToken?.()).catch(() => ''), controller.signal);
     if (appCheckToken) headers.set('X-Firebase-AppCheck', appCheckToken);
     let body = options.body;
     if (body && typeof body !== 'string') {
@@ -237,7 +168,7 @@ export async function adminFetch(path, options = {}) {
       error.payload = payload;
       error.requestId = String(payload.requestId || response.headers.get('x-request-id') || '');
       if ([401, 403].includes(response.status) && ['AUTH_REQUIRED', 'AUTH_INVALID', 'ADMIN_REQUIRED', 'ADMIN_GATE_REQUIRED', 'ADMIN_GATE_ACCESS_INVALID', 'ADMIN_ACTIVE_SESSION_MISMATCH'].includes(String(error.code))) {
-        window.dispatchEvent(new CustomEvent('shelby:admin-session-invalid', { detail: { code: error.code } }));
+        window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: error.code } }));
       }
       throw error;
     }

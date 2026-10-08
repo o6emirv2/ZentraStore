@@ -56,7 +56,7 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
     throw Object.assign(new Error('ADMIN_GATE_FACTOR_REQUIRED'), { code: 'ADMIN_GATE_FACTOR_REQUIRED', statusCode: 401 });
   }
   return sealAdminStep({
-    type: 'shelby-admin-step-v42',
+    type: 'zentra-admin-step-v42',
     stage: Number(stage),
     uid: String(identity.uid || '').trim(),
     email: String(identity.email || '').trim().toLowerCase(),

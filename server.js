@@ -34,7 +34,7 @@ const port = Math.max(1, Number(process.env.PORT || 10000) || 10000);
 const host = '0.0.0.0';
 
 
-const ADMIN_ENTRY_BLOCK_COOKIE = env.nodeEnv === 'production' ? '__Host-shelby_admin_block' : 'shelby_admin_block';
+const ADMIN_ENTRY_BLOCK_COOKIE = env.nodeEnv === 'production' ? '__Host-zentra_admin_block' : 'zentra_admin_block';
 const ADMIN_ENTRY_BLOCK_SECONDS = 5 * 60;
 
 function readCookie(req, name) {
@@ -64,19 +64,19 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     : 'Güvenli yönetici geçişi tamamlanamadı. Lütfen son doğrulama adımını yeniden deneyin.'));
   const safeCode = escapeHtml(code);
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8" />\n`
-    + `<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover" />\n`
+    + `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />\n`
     + `<meta name="color-scheme" content="dark" />\n`
     + `<meta name="theme-color" content="#070304" />\n`
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=audit-20260908-v1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=audit-20260908-v1" /></head><body>'
-    + '<main class="gate"><div class="brand"><img src="/public/assets/images/shelby-mark.svg?v=brand-v66" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261008-v2" /></head><body>'
+    + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.svg?v=zentra-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=audit-20260908-v1"></script></body></html>';
+    + '</main></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -117,7 +117,7 @@ async function requireAdminDashboardEntry(req, res, next) {
 }
 
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+app.set('trust proxy', env.security.trustProxyHops);
 app.set('query parser', 'simple');
 app.set('etag', false);
 app.set('json escape', true);
@@ -140,6 +140,7 @@ function contentSecurityPolicy() {
   return {
     useDefaults: true,
     directives: {
+      'upgrade-insecure-requests': env.nodeEnv === 'production' ? [] : null,
       'default-src': ["'self'"],
       'base-uri': ["'self'"],
       'object-src': ["'none'"],
@@ -147,10 +148,10 @@ function contentSecurityPolicy() {
       'form-action': ["'self'"],
       'script-src': ["'self'", 'https://www.gstatic.com', 'https://www.google.com', 'https://www.recaptcha.net'],
       'script-src-attr': ["'none'"],
-      'style-src': ["'self'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+      'style-src': ["'self'"],
       'style-src-attr': ["'unsafe-inline'"],
-      'img-src': ["'self'", 'data:', 'blob:', 'https://encrypted-tbn0.gstatic.com'],
-      'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
+      'img-src': ["'self'", 'data:', 'blob:'],
+      'font-src': ["'self'"],
       'connect-src': [...new Set(connect)],
       'media-src': ["'self'"],
       'worker-src': ["'self'", 'blob:'],
@@ -334,7 +335,7 @@ app.use((error, req, res, _next) => {
   const status = parserStatus || Math.max(400, Math.min(599, Number(error?.statusCode || error?.status || 500) || 500));
   const code = String(parserCode || error?.code || (status >= 500 ? 'SERVER_ERROR' : 'REQUEST_REJECTED')).replace(/[^A-Z0-9_:-]/gi, '').slice(0, 80);
   if (status >= 500) {
-    console.error('[shelby-store:error]', JSON.stringify({
+    console.error('[zentra-store:error]', JSON.stringify({
       method: req.method,
       path: String(req.route?.path || 'api').replace(/[\u0000-\u001F\u007F<>]/g, '').slice(0, 120),
       status,
@@ -360,16 +361,16 @@ function startServer() {
   if (server) return server;
   server = configureHttpServer(app.listen(port, host, () => {
     const report = env.configurationReport();
-    console.info(`[shelby-store] Sunucu ${host}:${port} adresinde bağlantı kabul ediyor.`);
-    if (!report.ready) console.warn('[shelby-store] Güvenli servis hazırlığı için eksik ortam değişkenleri:', report.missing.join(', '));
+    console.info(`[zentra-store] Sunucu ${host}:${port} adresinde bağlantı kabul ediyor.`);
+    if (!report.ready) console.warn('[zentra-store] Güvenli servis hazırlığı için eksik ortam değişkenleri:', report.missing.join(', '));
   }));
 
   setImmediate(() => {
     scheduleCatalogRetirementCleanup()
       .then((report) => {
-        if (report?.retiredProducts) console.warn('[shelby-store] Katalog dışında kalan ürün kayıtları bulundu; otomatik silme yapılmadı. Bakım öncesi yedek ve kapsam incelemesi gerekli.');
+        if (report?.retiredProducts) console.warn('[zentra-store] Katalog dışında kalan ürün kayıtları bulundu; otomatik silme yapılmadı. Bakım öncesi yedek ve kapsam incelemesi gerekli.');
       })
-      .catch(() => console.error('[shelby-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
+      .catch(() => console.error('[zentra-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
   });
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
@@ -378,7 +379,7 @@ function startServer() {
 
 function shutdown(signal) {
   if (!server) return;
-  console.info(`[shelby-store] ${signal} alındı; bağlantılar güvenli şekilde kapatılıyor.`);
+  console.info(`[zentra-store] ${signal} alındı; bağlantılar güvenli şekilde kapatılıyor.`);
   server.close(() => process.exit(0));
   server.closeIdleConnections?.();
   setTimeout(() => {

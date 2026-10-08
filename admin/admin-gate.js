@@ -1,10 +1,8 @@
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=audit-20260908-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=audit-20260908-v1';
+import { adminFetch } from './admin-core.js?v=zentra-20261008-v2';
 
-installInteractionGuard();
 
 const state = { step: 1, ticket: '', busy: false, automaticRunning: false };
-const ADMIN_BLOCK_KEY = 'shelby_admin_entry_block_until_v47';
+const ADMIN_BLOCK_KEY = 'zentra_admin_entry_block_until_v47';
 const ADMIN_BLOCK_MS = 5 * 60_000;
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -16,7 +14,7 @@ function googleAuthenticatorCode(value = '') {
 
 function prepareFirstPartyHandoff(handoff = {}) {
   const action = new URL(String(handoff?.action || ''), window.location.href);
-  const service = new URL(window.SHELBY_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href);
+  const service = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href);
   const code = String(handoff?.code || '').trim();
   const expiresAt = Math.max(0, Number(handoff?.expiresAt || 0) || 0);
   if (handoff?.required !== true || handoff?.mode !== 'single-use-first-party-post'
@@ -78,7 +76,7 @@ function clearExpiredBlock() {
 }
 
 function storefrontUrl() {
-  const origin = window.SHELBY_ADMIN_AUTH?.canonicalOrigin?.() || window.location.origin;
+  const origin = window.ZENTRA_ADMIN_AUTH?.canonicalOrigin?.() || window.location.origin;
   return `${String(origin || window.location.origin).replace(/\/+$/, '')}/`;
 }
 
@@ -161,9 +159,9 @@ async function runAutomaticVerification() {
   activateStep(1);
 
   try {
-    const active = window.SHELBY_ADMIN_AUTH.activeSession();
+    const active = window.ZENTRA_ADMIN_AUTH.activeSession();
     if (!active?.uid || !active?.email) {
-      const missing = new Error('Ana sayfada aktif bir SHELBY STORE oturumu bulunamadı.');
+      const missing = new Error('Ana sayfada aktif bir ZENTRA STORE oturumu bulunamadı.');
       missing.code = 'AUTH_REQUIRED';
       throw missing;
     }
@@ -187,14 +185,14 @@ async function runAutomaticVerification() {
     if (!state.ticket) throw new Error('UID doğrulama oturumu oluşturulamadı.');
     const verifiedUid = String(uidResult.verification?.value || active.uid || '').trim();
     verificationView(2, true, `Doğrulandı: ${maskUid(verifiedUid)}`);
-    setStatus('#uidStatus', 'Aktif SHELBY STORE UID değeri yönetici rol politikasıyla eşleşti.', 'success');
+    setStatus('#uidStatus', 'Aktif ZENTRA STORE UID değeri yönetici rol politikasıyla eşleşti.', 'success');
 
     await pause(420);
     activateStep(3);
     setStatus('#firebaseStatus', 'Otomatik kimlik kontrolleri tamamlandı.', 'success');
   } catch (error) {
     if (isUnauthorizedSessionError(error)) {
-      setStatus('#emailStatus', 'Aktif SHELBY STORE oturumu yetkili yönetici hesabıyla eşleşmedi. Ana sayfaya yönlendiriliyorsunuz.', 'error');
+      setStatus('#emailStatus', 'Aktif ZENTRA STORE oturumu yetkili yönetici hesabıyla eşleşmedi. Ana sayfaya yönlendiriliyorsunuz.', 'error');
       await pause(350);
       redirectToStorefront({ block: true });
       return;
@@ -333,8 +331,8 @@ function togglePassword(button) {
 }
 
 async function boot() {
-  lockAdminInteractions();
-  startAmbientCanvas($('#ambientCanvas'));
+
+
 
   if (clearExpiredBlock() > Date.now()) {
     redirectToStorefront();
@@ -352,11 +350,11 @@ async function boot() {
   $$('[data-password-toggle]').forEach((button) => button.addEventListener('click', () => togglePassword(button)));
 
   try {
-    await window.SHELBY_ADMIN_AUTH.init();
+    await window.ZENTRA_ADMIN_AUTH.init();
     const status = await adminFetch('/api/auth/admin/gate/status');
     securityView(status.security);
-    const apiOrigin = new URL(window.SHELBY_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
-    if (status.authenticated && window.SHELBY_ADMIN_AUTH.activeSession() && apiOrigin === window.location.origin) {
+    const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
+    if (status.authenticated && window.ZENTRA_ADMIN_AUTH.activeSession() && apiOrigin === window.location.origin) {
           activateStep(6);
       return setTimeout(() => location.replace('/admin/admin.html'), 420);
     }

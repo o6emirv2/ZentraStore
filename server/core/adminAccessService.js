@@ -3,8 +3,8 @@
 const crypto = require('crypto');
 const env = require('../config/env');
 
-const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-shelby_admin_access' : 'shelby_admin_access';
-const GATE_FACTOR_COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-shelby_admin_gate' : 'shelby_admin_gate';
+const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-zentra_admin_access' : 'zentra_admin_access';
+const GATE_FACTOR_COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-zentra_admin_gate' : 'zentra_admin_gate';
 const TTL_MS = env.security.adminSessionTtlMinutes * 60 * 1000;
 const GATE_FACTOR_TTL_MS = 7 * 60 * 1000;
 
@@ -24,7 +24,7 @@ function purposeKey(purpose = '') {
   return Buffer.from(crypto.hkdfSync(
     'sha256',
     Buffer.from(signingSecret(), 'utf8'),
-    Buffer.from('shelby-ios-admin-root:v42', 'utf8'),
+    Buffer.from('zentra-ios-admin-root:v42', 'utf8'),
     Buffer.from(String(purpose || 'default'), 'utf8'),
     32
   ));
@@ -97,7 +97,7 @@ function readAdminStep(token = '') {
     decipher.setAuthTag(tag);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
     const payload = JSON.parse(plaintext);
-    if (!payload || payload.type !== 'shelby-admin-step-v42' || Number(payload.expiresAt || 0) <= Date.now()) return null;
+    if (!payload || payload.type !== 'zentra-admin-step-v42' || Number(payload.expiresAt || 0) <= Date.now()) return null;
     return payload;
   } catch (_) {
     return null;
@@ -107,7 +107,7 @@ function readAdminStep(token = '') {
 function issueAdminAccess({ uid = '', email = '', gateSession = '' } = {}) {
   const issuedAt = Date.now();
   const claims = {
-    type: 'shelby-admin-access-v42',
+    type: 'zentra-admin-access-v42',
     uid: String(uid || '').trim().slice(0, 160),
     email: String(email || '').trim().toLowerCase().slice(0, 254),
     gateSession: String(gateSession || '').trim().slice(0, 120),
@@ -122,7 +122,7 @@ function issueAdminGateFactor({ uid = '', email = '', gateSession = '', expiresA
   const issuedAt = Date.now();
   const requestedExpiry = Math.max(0, Number(expiresAt || 0) || 0);
   const claims = {
-    type: 'shelby-admin-gate-factor-v45',
+    type: 'zentra-admin-gate-factor-v45',
     uid: String(uid || '').trim().slice(0, 160),
     email: String(email || '').trim().toLowerCase().slice(0, 254),
     gateSession: String(gateSession || '').trim().slice(0, 120),
@@ -159,12 +159,12 @@ function getRequestAdminGateFactorToken(req) {
 
 function readAdminAccess(token = '') {
   const payload = verifySignedPayload(token);
-  return payload?.type === 'shelby-admin-access-v42' && payload.gateSession ? payload : null;
+  return payload?.type === 'zentra-admin-access-v42' && payload.gateSession ? payload : null;
 }
 
 function readAdminGateFactor(token = '') {
   const payload = verifyPurposePayload(token, 'gate-factor-proof-signing');
-  return payload?.type === 'shelby-admin-gate-factor-v45'
+  return payload?.type === 'zentra-admin-gate-factor-v45'
     && payload.uid && payload.email && payload.gateSession ? payload : null;
 }
 

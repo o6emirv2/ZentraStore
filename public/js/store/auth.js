@@ -1,10 +1,10 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=audit-20260908-v1';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261008-v2';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
 const FIREBASE_AUTH_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`;
 const FIREBASE_APP_CHECK_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`;
-const REMEMBER_COOKIE = 'shelby_store_remember';
+const REMEMBER_COOKIE = 'zentra_store_remember';
 const subscribers = new Set();
 let initPromise = null;
 let pendingRegistration = null;
@@ -141,9 +141,9 @@ export async function initStoreAuth() {
         error.code = 'AUTH_UNAVAILABLE';
         throw error;
       }
-      window.__SHELBY_RUNTIME__ = Object.assign(window.__SHELBY_RUNTIME__ || {}, runtime, { apiBase: runtime.apiBase || '', firebase: firebaseConfig });
-      const existing = appSdk.getApps().find((app) => app.name === 'shelby-store');
-      const app = existing || appSdk.initializeApp(firebaseConfig, 'shelby-store');
+      window.__ZENTRA_RUNTIME__ = Object.assign(window.__ZENTRA_RUNTIME__ || {}, runtime, { apiBase: runtime.apiBase || '', firebase: firebaseConfig });
+      const existing = appSdk.getApps().find((app) => app.name === 'zentra-store');
+      const app = existing || appSdk.initializeApp(firebaseConfig, 'zentra-store');
       const appCheckSiteKey = String(runtime?.appCheck?.siteKey || '').trim();
       if (appCheckSiteKey) {
         try {

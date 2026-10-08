@@ -76,8 +76,9 @@ async function resolveAuthenticatedUser(req) {
       req.authSource = 'firebase-bearer';
       req.firebaseIdToken = bearer;
       return { ...decoded, uid: decoded.uid || decoded.sub };
-    } catch (_) {}
+    } catch (_) { return null; }
   }
+  if (bearer) return null;
   const session = await verifyUserSession(req, { checkRevoked: true });
   if (!session?.uid) return null;
   if (!['GET', 'HEAD', 'OPTIONS'].includes(String(req.method || '').toUpperCase()) && !trustedOrigin(req)) return { originBlocked: true };

@@ -34,7 +34,7 @@ function initFirebaseAdmin() {
   const serviceAccount = parseServiceAccount(env.firebase.serviceAccount);
   if (!serviceAccount) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    console.warn('[shelby-store] Firebase Admin yapılandırması bulunamadı.');
+    console.warn('[zentra-store] Firebase Admin yapılandırması bulunamadı.');
     return initialized;
   }
   try {
@@ -51,10 +51,10 @@ function initFirebaseAdmin() {
       appCheck: admin.appCheck(app),
       enabled: true
     };
-    console.info('[shelby-store] Firebase Admin hazır.');
+    console.info('[zentra-store] Firebase Admin hazır.');
   } catch (_) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    console.error('[shelby-store] Güvenli veri hizmeti başlatılamadı. Yapılandırmayı kontrol edin.');
+    console.error('[zentra-store] Güvenli veri hizmeti başlatılamadı. Yapılandırmayı kontrol edin.');
   }
   return initialized;
 }

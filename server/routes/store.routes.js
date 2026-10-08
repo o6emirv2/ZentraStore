@@ -36,6 +36,7 @@ const {
   markNotificationRead
 } = require('../core/storeInventoryService');
 const {
+  createProduct,
   getEffectiveCatalog,
   updateProductSettings,
   updateProductsBulk,
@@ -156,6 +157,9 @@ router.get('/store/orders', requireAuth, asyncRoute(async (req, res) => {
 }));
 
 router.post('/store/orders', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
+  if (!req.body || Object.keys(req.body).some((key) => !['items', 'paymentMethod', 'idempotencyKey', 'promotionCode'].includes(key))) {
+    return res.status(400).json({ ok: false, error: 'STORE_ORDER_INPUT_INVALID' });
+  }
   const result = await createOrder({
     uid: req.user.uid,
     authUser: req.user,
@@ -236,6 +240,12 @@ router.get('/admin/store/catalog', ...adminChain, requireStorePermission('store.
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, catalog: req.query.stock === '0' ? catalog : await decorateCatalogWithStock(catalog, { fresh: true }) });
+}));
+
+router.post('/admin/store/products', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
+  const product = await createProduct(req.body || {}, req.user);
+  noStore(res);
+  res.status(201).json({ ok: true, product });
 }));
 
 router.patch('/admin/store/products/:productId', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {

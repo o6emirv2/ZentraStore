@@ -1,6 +1,7 @@
 'use strict';
 
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
+const { getEffectiveCatalog } = require('./storeCatalogService');
 const { STORE_CATALOG } = require('./storeCatalog');
 
 const PAGE_SIZE = 200;
@@ -187,6 +188,7 @@ async function reconcileRetiredCatalogData({ apply = false } = {}) {
   const { db, admin, enabled } = initFirebaseAdmin();
   if (!enabled || !db || !admin) return { skipped: true, reason: 'storage-unavailable' };
 
+  const effectiveCatalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   const settingsRef = db.collection('storefrontSettings').doc('main');
   const [settingsSnapshot, legacySnapshot, summarySnapshot] = await Promise.all([
     settingsRef.get(),
@@ -198,7 +200,8 @@ async function reconcileRetiredCatalogData({ apply = false } = {}) {
   const plan = buildCatalogRetirementPlan({
     settingsProducts: settings.catalog?.products || {},
     legacyRows: legacySnapshot.docs.map((document) => ({ id: document.id, data: document.data() || {} })),
-    summaries: summaryRows
+    summaries: summaryRows,
+    catalog: effectiveCatalog
   });
   const retiredProductIds = [...plan.retiredProductIds];
   const retiredSkus = [...plan.retiredSkus];

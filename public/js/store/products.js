@@ -1,11 +1,11 @@
-import { normalizeQuickLinks } from './social-links.js?v=audit-20260908-v1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v2';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
 
 const CANONICAL_PRODUCT_NAMES = Object.freeze({
-  'android-contra-hax': 'CONTRAHAX',
+  'contra-hax': 'CONTRAHAX',
   'ios-dolphin': 'DelphinİOS'
 });
 
@@ -110,7 +110,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   const id = String(source.id || '').trim().slice(0, 80);
   const name = CANONICAL_PRODUCT_NAMES[id] || String(source.name || '').trim().slice(0, 80);
   let description = String(source.description || '').trim().slice(0, 240);
-  if (id === 'android-contra-hax') description = description.replace(/CONTRA\s+HAX/giu, 'CONTRAHAX');
+  if (id === 'contra-hax') description = description.replace(/CONTRA\s+HAX/giu, 'CONTRAHAX');
   if (id === 'ios-dolphin') description = description.replace(/DOLPHIN/giu, 'DelphinİOS');
   return Object.freeze({
     id,
@@ -166,11 +166,7 @@ function normalizeAvatar(source = {}) {
   const label = String(source.label || '').trim().slice(0, 60);
   const image = String(source.image || '').trim().slice(0, 500);
   if (!/^\d{1,2}$/.test(id) || !image) return null;
-  try {
-    const url = new URL(image);
-    if (url.protocol !== 'https:' || url.hostname !== 'encrypted-tbn0.gstatic.com' || url.pathname !== '/images') return null;
-    if (!/^tbn:ANd9Gc/i.test(url.searchParams.get('q') || '') || url.searchParams.get('s') !== '10') return null;
-  } catch (_) { return null; }
+  if (!/^\/public\/assets\/avatars\/avatar-(?:0[1-9]|1[0-9]|2[0-5])\.svg$/.test(image)) return null;
   return Object.freeze({ id, label: label || `ZENTRA Profil ${id}`, image });
 }
 
@@ -183,7 +179,7 @@ function normalizeCatalog(source = {}) {
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(value.version) || 1)),
     currency: 'TRY',
-    telegramUsername: String(value.telegramUsername || 'shelbyios').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
+    telegramUsername: String(value.telegramUsername || '').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),

@@ -1,6 +1,6 @@
-import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=audit-20260908-v1';
+import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-20261008-v2';
 
-const AUTOPLAY_DELAY_MS = 3000;
+const AUTOPLAY_DELAY_MS = 6000;
 const SWIPE_THRESHOLD_PX = 42;
 const instances = new WeakMap();
 
@@ -60,7 +60,7 @@ function renderShowcaseGroups(root) {
     button.setAttribute('aria-label', `${group.label} slayt grubuna git`);
     button.textContent = group.label;
     fragment.append(button);
-    startIndex += group.images.length;
+    startIndex += 1;
   });
   navigation.replaceChildren(fragment);
   return [...navigation.querySelectorAll('[data-showcase-group-target]')];
@@ -125,12 +125,13 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
   }
 
   function show(candidate, { restart = true } = {}) {
+    const previousIndex = index;
     index = normalizeIndex(candidate, slides.length);
     const item = SHOWCASE_MEDIA[index];
     hydrateSlide(slides[index]);
     hydrateSlide(slides[normalizeIndex(index + 1, slides.length)]);
     track.style.transform = `translate3d(-${index * 100}%, 0, 0)`;
-    for (let position = 0; position < slides.length; position += 1) {
+    for (const position of new Set([previousIndex, index])) {
       const active = position === index;
       slides[position].classList.toggle('is-active', active);
       slides[position].setAttribute('aria-hidden', String(!active));
@@ -147,7 +148,11 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
       const active = button.dataset.showcaseGroupKey === item.groupKey;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', String(active));
-      if (active) button.scrollIntoView({ behavior: reducedMotion?.matches ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+      if (active) {
+        const navigation = button.parentElement;
+        const left = Math.max(0, button.offsetLeft - navigation.offsetLeft - (navigation.clientWidth - button.offsetWidth) / 2);
+        navigation.scrollTo({ left, behavior: reducedMotion?.matches ? 'auto' : 'smooth' });
+      }
     });
     if (progress) progress.style.setProperty('--showcase-progress', String((index + 1) / slides.length));
     root.dataset.showcaseIndex = String(index);
@@ -207,7 +212,7 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
     const image = event.target;
     if (!image?.matches?.('[data-showcase-slide] img') || image.dataset.showcaseFallback === '1') return;
     image.dataset.showcaseFallback = '1';
-    image.src = '/public/assets/images/shelby-store-brand.jpeg';
+    image.src = '/public/assets/images/zentra-store-brand.jpeg';
     image.alt = 'ZENTRA STORE premium oyun mağazası';
   }
 

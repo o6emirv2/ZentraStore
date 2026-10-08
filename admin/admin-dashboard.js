@@ -1,10 +1,8 @@
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=audit-20260908-v1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=audit-20260908-v1';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=audit-20260908-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=audit-20260908-v1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=audit-20260908-v1';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v2';
+import { adminFetch } from './admin-core.js?v=zentra-20261008-v2';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v2';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v2';
 
-installInteractionGuard();
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -20,7 +18,7 @@ const state = {
 };
 
 const STATUS = Object.freeze({
-  awaiting_payment: { label: 'TELEGRAM İLETİŞİM / ÖDEME BEKLİYOR', icon: 'fa-clock' },
+  awaiting_payment: { label: 'DESTEK / ÖDEME BEKLİYOR', icon: 'fa-clock' },
   payment_review: { label: 'ÖDEME KONTROL EDİLİYOR', icon: 'fa-magnifying-glass-dollar' },
   paid: { label: 'ÖDEME ONAYLANDI', icon: 'fa-circle-check' },
   processing: { label: 'ÜRÜN TEMİN EDİLİYOR', icon: 'fa-gears' },
@@ -95,6 +93,7 @@ function applyAdminPermissions() {
   const roleLabel = $('#adminRoleLabel');
   if (roleLabel) roleLabel.textContent = String(state.adminPolicy?.role || 'admin').toLocaleUpperCase('tr-TR') + ' OTURUMU';
   const staticWriteControls = [
+    ['#newProductToggle, #newProductCard input, #newProductCard select, #newProductCard textarea, #newProductCard button', 'store.catalog.write'],
     ['#inventoryKeys, #inventoryImportForm button[type="submit"], #inventoryMigrateShared, #inventoryRotateKeys', 'store.inventory.write'],
     ['#walletForm input, #walletForm select, #walletForm textarea, #walletForm button, #paymentConnectionForm input, #paymentConnectionForm button', 'store.wallet.write'],
     ['#contentForm input, #contentForm select, #contentForm textarea, #contentForm button, #promotionForm input, #promotionForm select, #promotionForm textarea, #promotionForm button, #quickLinksForm input, #quickLinksForm select, #quickLinksForm textarea, #quickLinksForm button', 'store.content.write'],
@@ -150,7 +149,7 @@ let notificationCenter = null;
 function toast(type, title, message, options = {}) {
   notificationCenter ||= createNotificationCenter({
     host: $('#adminToasts'),
-    brand: 'SHELBY STORE · YÖNETİM',
+    brand: 'ZENTRA STORE · YÖNETİM',
     soundUrl: '/public/assets/sounds/bildirim.wav'
   });
   return notificationCenter.notify(type, title, message, options);
@@ -238,7 +237,7 @@ async function reauthenticateAdmin(password = '') {
   const value = String(password || '');
   if (!value) return false;
   try {
-    await window.SHELBY_ADMIN_AUTH.reauthenticate(value);
+    await window.ZENTRA_ADMIN_AUTH.reauthenticate(value);
     return true;
   } catch (error) {
     toast('error', 'Kimliğinizi doğrulayamadık', error?.message || 'Lütfen hesap şifrenizi kontrol edip yeniden deneyin.');
@@ -327,10 +326,10 @@ function orderMarkup(order) {
   const canAttachManualDelivery = telegram && !deliveryAttached && !locked
     && transitions.some((value) => ['paid', 'processing', 'delivery_pending', 'delivered'].includes(value));
   const manualDelivery = canAttachManualDelivery
-    ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya random hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Telegram siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
+    ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya random hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Destek siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
     : telegram && deliveryAttached ? `<div class="form-hint"><i class="fa-solid fa-lock"></i>Manuel teslimat bu siparişe şifreli olarak bağlandı (${escapeHtml(order.delivery.itemCount)} kayıt).</div>` : '';
   const deliveryPlaceholder = telegram ? 'Müşteriye gösterilecek açıklama/not. Key veya şifreyi bu alana yazmayın.' : 'Teslimat bilgisini buraya yazmayın; sistem güvenli şekilde otomatik teslim eder.';
-  const paymentLabel = order.paymentMethod === 'wallet' ? 'SHELBY STORE Bakiye' : 'Telegram';
+  const paymentLabel = order.paymentMethod === 'wallet' ? 'ZENTRA STORE Bakiye' : 'Destek';
   const salesChannelLabel = telegram ? 'Telegram · manuel teslimat' : 'Otomatik teslimat';
   return `<article class="admin-order" data-admin-order="${escapeHtml(order.id)}"><header class="admin-order__head"><div><small>OLUŞTURULDU · ${escapeHtml(formatDate(order.createdAt))}</small><strong>${escapeHtml(order.orderNumber)}</strong><em>Son güncelleme · ${escapeHtml(formatDate(order.updatedAt || order.createdAt))}</em></div><span class="order-state order-state--${escapeHtml(order.status)}"><i class="fa-solid ${status.icon}"></i>${escapeHtml(status.label)}</span></header><div class="admin-order__meta"><span><small>KULLANICI</small><strong>${escapeHtml(order.username || '—')}</strong></span><span><small>E-POSTA</small><strong title="${escapeHtml(order.email)}">${escapeHtml(order.email || '—')}</strong></span><span><small>HESAP KİMLİĞİ</small><strong title="${escapeHtml(order.uid)}">…${escapeHtml(String(order.uid || '').slice(-10))}</strong></span><span><small>ÖDEME</small><strong>${escapeHtml(paymentLabel)}</strong></span><span><small>SATIŞ KANALI</small><strong>${escapeHtml(salesChannelLabel)}</strong></span><span><small>TESLİMAT</small><strong>${escapeHtml(order.delivery?.status || (telegram ? 'bekliyor' : 'otomatik'))}</strong></span></div><div class="admin-order__items">${items || '<span><em>Ürün bilgisi bulunamadı</em><b>—</b></span>'}</div><div class="admin-order__total"><span>Sipariş toplamı</span><strong>${escapeHtml(formatPrice(order.totalKurus))}</strong></div><div class="admin-order__editor"><label><span>Yeni durum</span><select data-order-status ${locked ? 'disabled' : permissionDisabled('store.orders.write')}>${options}</select></label>${manualDelivery}<label><span>Kullanıcıya teslimat notu</span><textarea data-delivery-message maxlength="500" placeholder="${escapeHtml(deliveryPlaceholder)}" ${locked ? 'disabled' : ''}>${escapeHtml(order.delivery?.message || '')}</textarea></label><button class="primary-action" type="button" data-save-order="${escapeHtml(order.id)}" ${locked || state.busyOrder === order.id ? 'disabled' : permissionDisabled('store.orders.write')}><i class="fa-solid ${state.busyOrder === order.id ? 'fa-spinner fa-spin' : 'fa-lock'}"></i>${state.busyOrder === order.id ? 'Güncelleniyor' : ['awaiting_payment', 'payment_review'].includes(order.status) ? 'Ödemeyi Onayla / Güncelle' : 'Güvenli Şekilde Güncelle'}</button></div></article>`;
 }
@@ -478,7 +477,7 @@ async function loadOverview() {
     ['delivered', 'TESLİM EDİLDİ', 'fa-box-open', 'green'],
     ['cancelled', 'İPTAL', 'fa-ban', ''],
     ['refunded', 'İADE', 'fa-rotate-left', ''],
-    ['telegramOrders', 'TELEGRAM SİPARİŞ', 'fa-paper-plane', ''],
+    ['telegramOrders', 'DESTEK SİPARİŞİ', 'fa-paper-plane', ''],
     ['automaticOrders', 'OTOMATİK SİPARİŞ', 'fa-bolt', 'cyan'],
     ['users', 'TOPLAM KULLANICI', 'fa-users', ''],
     ['activeUsers', 'AKTİF KULLANICI', 'fa-user-check', 'green'],
@@ -500,19 +499,19 @@ async function loadOverview() {
     return metricCard(icon, sampled ? label + ' · SON ' + m.ordersAnalyzed : label, key.endsWith('Kurus') ? formatPrice(m[key]) : m[key] || 0, tone);
   }).join('');
   $('#overviewFinanceChart').innerHTML = overviewBarChart([
-    ['Brüt satış', m.grossRevenueKurus, '#ff6573'],
-    ['Net satış', m.netRevenueKurus, '#70efb5'],
-    ['İade tutarı', m.refundedKurus, '#ffd36e'],
-    ['Bakiye yükümlülüğü', m.walletLiabilityKurus, '#72caff']
+    ['Brüt satış', m.grossRevenueKurus, '#087f84'],
+    ['Net satış', m.netRevenueKurus, '#148368'],
+    ['İade tutarı', m.refundedKurus, '#ae7108'],
+    ['Bakiye yükümlülüğü', m.walletLiabilityKurus, '#346ca5']
   ].filter((row) => Number.isFinite(row[1])), { currency: true, title: partialOrders ? 'Son yüklenen siparişlerin finansal özeti' : 'Satış ve bakiye özeti' });
   $('#overviewOperationsChart').innerHTML = overviewBarChart([
-    ['Ödeme bekliyor', m.awaitingPayment, '#ffd36e'],
-    ['Hazırlanıyor', m.processing, '#72caff'],
-    ['Teslim edildi', m.delivered, '#70efb5'],
-    ['Düşük stok', m.lowStockSkus, '#ff6573']
+    ['Ödeme bekliyor', m.awaitingPayment, '#ae7108'],
+    ['Hazırlanıyor', m.processing, '#346ca5'],
+    ['Teslim edildi', m.delivered, '#148368'],
+    ['Düşük stok', m.lowStockSkus, '#d64060']
   ].filter((row) => Number.isFinite(row[1])), { title: 'Sipariş ve stok özeti' });
   const stock = Array.isArray(overview.stock) ? overview.stock : [];
-  $('#overviewStock').innerHTML = stock.length ? stock.map((row) => '<div><span><strong>' + escapeHtml(row.productName) + ' · ' + escapeHtml(row.planLabel) + '</strong><small>' + escapeHtml(row.duration) + ' · Rezerve ' + escapeHtml(row.reserved || 0) + ' · Teslim ' + escapeHtml(row.delivered || 0) + '</small></span><b class="stock-count ' + (row.available < 1 ? 'is-empty' : row.available <= 3 ? 'is-low' : '') + '">' + escapeHtml(row.available) + '</b></div>').join('') : emptyMarkup('Otomatik stok kaydı yok', 'Telegram ürünleri otomatik stok toplamına dahil değildir.', 'fa-vault');
+  $('#overviewStock').innerHTML = stock.length ? stock.map((row) => '<div><span><strong>' + escapeHtml(row.productName) + ' · ' + escapeHtml(row.planLabel) + '</strong><small>' + escapeHtml(row.duration) + ' · Rezerve ' + escapeHtml(row.reserved || 0) + ' · Teslim ' + escapeHtml(row.delivered || 0) + '</small></span><b class="stock-count ' + (row.available < 1 ? 'is-empty' : row.available <= 3 ? 'is-low' : '') + '">' + escapeHtml(row.available) + '</b></div>').join('') : emptyMarkup('Otomatik stok kaydı yok', 'Destek üzerinden satılan ürünler otomatik stok toplamına dahil değildir.', 'fa-vault');
   const system = overview.system || {};
   const checks = [
     ['Hesap doğrulama', system.firebaseAuth, 'fa-user-shield'],
@@ -520,7 +519,7 @@ async function loadOverview() {
     ['Mağaza ayarları', system.configurationReady, 'fa-sliders'],
     ['Şifreli stok kasası', system.keyVault, 'fa-vault'],
     ['Otomatik teslimat', system.automaticDelivery, 'fa-bolt'],
-    ['Telegram sipariş', system.telegram, 'fa-paper-plane'],
+    ['Destek sipariş', system.telegram, 'fa-paper-plane'],
     ['Zorunlu uygulama doğrulaması', system.appCheckConfigured && system.appCheckMode === 'enforce', 'fa-shield']
   ];
   $('#overviewSystem').innerHTML = checks.map(([label, ok, icon]) => '<article><i class="fa-solid ' + icon + '"></i><span><strong>' + escapeHtml(label) + '</strong><small>' + (ok ? 'Yapılandırma hazır' : 'Kontrol edilmeli') + '</small></span></article>').join('');
@@ -908,7 +907,7 @@ function productMarkup(product) {
     const duplicate = product.badgeKey === name;
     return `<label class="mini-check${duplicate ? ' is-disabled' : ''}"><input type="checkbox" data-product-tag="${name}" ${(product.tags || []).includes(name) && !duplicate ? 'checked' : ''} ${duplicate ? 'disabled' : ''}/><span>${label}</span></label>`;
   };
-  return `<form class="product-admin-card" data-product-form="${escapeHtml(product.id)}"><header><img src="${escapeHtml(product.image)}" alt=""/><div><small>${escapeHtml(product.platform.toUpperCase())} · ${escapeHtml(product.id)}</small><h2>${escapeHtml(product.name)}</h2><p>${deliveryLabel} · Telegram ${product.telegramEnabled !== false ? 'açık' : 'kapalı'}</p></div><span class="account-state ${product.archived ? 'is-suspended' : product.active !== false ? 'is-active' : 'is-purchase_blocked'}">${product.archived ? 'ARŞİV' : product.active !== false ? 'AKTİF' : 'PASİF'}</span></header><div class="toggle-grid"><label class="toggle-row"><input type="checkbox" data-product-active ${product.active !== false ? 'checked' : ''}/><span><strong>Satışta aktif</strong><small>Kullanıcı kataloğunda satış durumunu yönetir.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-archived ${product.archived ? 'checked' : ''}/><span><strong>Arşivle</strong><small>Geçmiş siparişleri silmeden ürünü vitrinden kaldırır.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-automatic ${product.automaticEnabled !== false && !product.immutableFulfillment ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Otomatik teslimat</strong><small>${product.immutableFulfillment ? 'Bu ürün mağaza politikasıyla yalnızca Telegram üzerinden satılır.' : 'Şifreli stok kasasını kullanır.'}</small></span></label><label class="toggle-row"><input type="checkbox" data-product-telegram ${product.telegramEnabled !== false ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Telegram satışı</strong><small>${product.immutableFulfillment ? 'GBOX için zorunlu ve değiştirilemez.' : 'Talep üzerine Telegram siparişine izin verir.'}</small></span></label></div><div class="form-grid"><label><span>Ürün adı</span><input data-product-name maxlength="80" value="${escapeHtml(product.name || '')}"/></label><label><span>Platform</span><select data-product-platform ${product.immutablePlatform ? 'disabled' : ''}><option value="android" ${product.platform === 'android' ? 'selected' : ''}>Android</option><option value="ios" ${product.platform === 'ios' ? 'selected' : ''}>iOS</option></select></label><label><span>Kategori</span><input data-product-category maxlength="50" value="${escapeHtml(product.category || '')}"/></label>${productBadgeField(product)}<label><span>Sıralama</span><input data-product-sort type="number" min="0" max="10000" value="${escapeHtml(product.sortOrder || 500)}"/></label></div><label><span>Ürün görsel yolu</span><input data-product-image maxlength="300" value="${escapeHtml(product.image || '')}" placeholder="Katalogdaki /public/assets/products/ görsel yolu"/></label><label><span>Açıklama</span><textarea data-product-description maxlength="240" rows="3">${escapeHtml(product.description || '')}</textarea></label><div class="tag-row">${tag('new', 'Yeni')}${tag('popular', 'Çok Tercih Edilen')}${tag('discounted', 'İndirimli')}<label class="mini-check"><input type="checkbox" data-product-featured ${product.featured ? 'checked' : ''}/><span>Öne Çıkan</span></label></div><div class="plan-admin-list">${(product.plans || []).map((plan) => `<div data-plan="${escapeHtml(plan.key)}"><label class="mini-check"><input type="checkbox" data-plan-active ${plan.active !== false ? 'checked' : ''}/><span>${escapeHtml(plan.key)}</span></label><label><span>Paket adı</span><input data-plan-label maxlength="50" value="${escapeHtml(plan.label)}"/></label><label><span>Süre</span><input data-plan-duration maxlength="50" value="${escapeHtml(plan.duration)}"/></label><label><span>Fiyat (₺)</span><input data-plan-price type="text" inputmode="decimal" value="${escapeHtml((plan.priceKurus / 100).toFixed(2).replace('.', ','))}"/></label><b>${telegramOnly ? 'Yalnızca Telegram' : `Stok ${escapeHtml(plan.stock?.available || 0)}`}</b></div>`).join('')}</div><div class="product-admin-card__save-hint"><i class="fa-solid fa-layer-group"></i><span>Bu karttaki değişiklikler üstteki <strong>Toplu Kayıt</strong> ile diğer ürünlerle birlikte kaydedilir.</span></div></form>`;
+  return `<form class="product-admin-card" data-product-form="${escapeHtml(product.id)}"><header><img src="${escapeHtml(product.image)}" alt=""/><div><small>${escapeHtml(product.platform.toUpperCase())} · ${escapeHtml(product.id)}</small><h2>${escapeHtml(product.name)}</h2><p>${deliveryLabel} · Destek ${product.telegramEnabled !== false ? 'açık' : 'kapalı'}</p></div><span class="account-state ${product.archived ? 'is-suspended' : product.active !== false ? 'is-active' : 'is-purchase_blocked'}">${product.archived ? 'ARŞİV' : product.active !== false ? 'AKTİF' : 'PASİF'}</span></header><details class="product-editor"><summary><span>Ürünü ve paketleri düzenle</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary><div class="toggle-grid"><label class="toggle-row"><input type="checkbox" data-product-active ${product.active !== false ? 'checked' : ''}/><span><strong>Satışta aktif</strong><small>Kullanıcı kataloğunda satış durumunu yönetir.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-archived ${product.archived ? 'checked' : ''}/><span><strong>Arşivle</strong><small>Geçmiş siparişleri silmeden ürünü vitrinden kaldırır.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-automatic ${product.automaticEnabled !== false && !product.immutableFulfillment ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Otomatik teslimat</strong><small>${product.immutableFulfillment ? 'Bu ürün mağaza politikasıyla destek üzerinden satılır.' : 'Şifreli stok kasasını kullanır.'}</small></span></label><label class="toggle-row"><input type="checkbox" data-product-telegram ${product.telegramEnabled !== false ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Destek siparişi</strong><small>${product.immutableFulfillment ? 'Bu ürün için destek siparişi zorunludur.' : 'Talep üzerine Destek siparişine izin verir.'}</small></span></label></div><div class="form-grid"><label><span>Ürün adı</span><input data-product-name maxlength="80" value="${escapeHtml(product.name || '')}"/></label><label><span>Platform</span><select data-product-platform ${product.immutablePlatform ? 'disabled' : ''}><option value="android" ${product.platform === 'android' ? 'selected' : ''}>Android</option><option value="ios" ${product.platform === 'ios' ? 'selected' : ''}>iOS</option></select></label><label><span>Kategori</span><input data-product-category maxlength="50" value="${escapeHtml(product.category || '')}"/></label>${productBadgeField(product)}<label><span>Sıralama</span><input data-product-sort type="number" min="0" max="10000" value="${escapeHtml(product.sortOrder || 500)}"/></label></div><label><span>Ürün görsel yolu</span><input data-product-image maxlength="300" value="${escapeHtml(product.image || '')}" placeholder="Katalogdaki /public/assets/products/ görsel yolu"/></label><label><span>Açıklama</span><textarea data-product-description maxlength="240" rows="3">${escapeHtml(product.description || '')}</textarea></label><div class="tag-row">${tag('new', 'Yeni')}${tag('popular', 'Çok Tercih Edilen')}${tag('discounted', 'İndirimli')}<label class="mini-check"><input type="checkbox" data-product-featured ${product.featured ? 'checked' : ''}/><span>Öne Çıkan</span></label></div><div class="plan-admin-list">${(product.plans || []).map((plan) => `<div data-plan="${escapeHtml(plan.key)}"><label class="mini-check"><input type="checkbox" data-plan-active ${plan.active !== false ? 'checked' : ''}/><span>${escapeHtml(plan.key)}</span></label><label><span>Paket adı</span><input data-plan-label maxlength="50" value="${escapeHtml(plan.label)}"/></label><label><span>Süre</span><input data-plan-duration maxlength="50" value="${escapeHtml(plan.duration)}"/></label><label><span>Fiyat (₺)</span><input data-plan-price type="text" inputmode="decimal" value="${escapeHtml((plan.priceKurus / 100).toFixed(2).replace('.', ','))}"/></label><b>${telegramOnly ? 'Destek üzerinden' : `Stok ${escapeHtml(plan.stock?.available || 0)}`}</b></div>`).join('')}</div><div class="product-admin-card__save-hint"><i class="fa-solid fa-layer-group"></i><span>Bu karttaki değişiklikler üstteki <strong>Toplu Kayıt</strong> ile diğer ürünlerle birlikte kaydedilir.</span></div></details></form>`;
 }
 
 function productFormBody(form) {
@@ -983,9 +982,57 @@ async function loadProducts() {
   const archived = products.filter((product) => product.archived === true).length;
   const plans = products.reduce((sum, product) => sum + (product.plans || []).length, 0);
   const telegramOnly = products.filter((product) => product.fulfillmentMode === 'telegram_only').length;
-  renderLiveStatus('#productMetrics', { icon: 'fa-tags', title: `${active} aktif ürün · ${plans} paket`, detail: `${inactive} pasif · ${archived} arşiv · ${telegramOnly} yalnız Telegram ürünü · güncel katalog ve stok bilgisi`, tone: 'ok', meta: `${products.length} ÜRÜN` });
+  renderLiveStatus('#productMetrics', { icon: 'fa-tags', title: `${active} aktif ürün · ${plans} paket`, detail: `${inactive} pasif · ${archived} arşiv · ${telegramOnly} destek üzerinden ürünü · güncel katalog ve stok bilgisi`, tone: 'ok', meta: `${products.length} ÜRÜN` });
   $('#adminProductGrid').innerHTML = products.map(productMarkup).join('') || emptyMarkup('Ürün bulunamadı', 'Katalog yapılandırmasını kontrol edin.');
+  if (!hasPermission('store.catalog.write')) $$('#adminProductGrid input, #adminProductGrid select, #adminProductGrid textarea').forEach((control) => { control.disabled = true; });
+  initializeProductCreation();
   updateProductBulkButton();
+}
+
+function appendNewProductPlan() {
+  const host = $('#newProductPlans');
+  if (host.children.length >= 8) return;
+  const row = document.createElement('div');
+  row.className = 'product-create-plan';
+  row.innerHTML = '<label><span>Paket adı</span><input data-new-plan-label maxlength="50" placeholder="Haftalık" required /></label><label><span>Süre</span><input data-new-plan-duration maxlength="50" placeholder="7 gün" required /></label><label><span>Fiyat (₺)</span><input data-new-plan-price inputmode="decimal" placeholder="250,00" required /></label><button class="secondary-action" data-new-plan-remove type="button" aria-label="Paketi kaldır"><i class="fa-solid fa-trash"></i></button>';
+  host.append(row);
+}
+
+function initializeProductCreation() {
+  $('#newProductImage').innerHTML = (state.catalog?.assetOptions || []).map((asset) => `<option value="${escapeHtml(asset.path)}">${escapeHtml(asset.name)}</option>`).join('');
+  $('#newProductBadge').innerHTML = (state.catalog?.badgeOptions || []).map((badge) => `<option value="${escapeHtml(badge.key)}">${escapeHtml(badge.label)}</option>`).join('');
+  if (!$('#newProductPlans').children.length) appendNewProductPlan();
+}
+
+async function submitNewProduct(event) {
+  event.preventDefault();
+  if (!requirePermission('store.catalog.write', 'Ürün oluşturma')) return;
+  const button = $('#newProductSubmit');
+  if (button.disabled) return;
+  let body;
+  try {
+    const rows = [...$('#newProductPlans').children];
+    body = {
+      id: $('#newProductId').value.trim(), name: $('#newProductName').value.trim(),
+      platform: $('#newProductPlatform').value, game: $('#newProductGame').value,
+      image: $('#newProductImage').value, badgeKey: $('#newProductBadge').value,
+      description: $('#newProductDescription').value.trim(),
+      inventoryType: $('#newProductInventory').value, fulfillmentMode: $('#newProductDelivery').value,
+      plans: rows.map((row, index) => ({ key: `plan-${index + 1}`, label: $('[data-new-plan-label]', row).value.trim(), duration: $('[data-new-plan-duration]', row).value.trim(), priceKurus: Math.round(parseMoneyInput($('[data-new-plan-price]', row).value) * 100) }))
+    };
+    if (!body.plans.length || body.plans.some((plan) => !Number.isSafeInteger(plan.priceKurus) || plan.priceKurus < 1 || !plan.label || !plan.duration)) throw new Error('Paket adı, süre ve fiyat alanlarını kontrol edin.');
+  } catch (error) { return toast('error', 'Ürün bilgilerini kontrol edin', error.message); }
+  button.disabled = true;
+  try {
+    if (!(await requestAdminReauth())) return;
+    await adminFetch('/api/admin/store/products', { method: 'POST', body });
+    event.target.reset(); $('#newProductPlans').replaceChildren();
+    $('#newProductCard').hidden = true; $('#newProductToggle').setAttribute('aria-expanded', 'false');
+    state.catalog = null; state.loaded.delete('overview'); state.loaded.delete('inventory');
+    toast('success', 'Yeni ürün oluşturuldu', 'Ürün kataloğa eklendi. Otomatik teslimat için stok ekleyebilirsiniz.');
+    await loadProducts();
+  } catch (error) { toast('error', 'Ürün oluşturulamadı', error.message); }
+  finally { button.disabled = false; }
 }
 
 async function saveAllProducts() {
@@ -1438,7 +1485,7 @@ function generateCouponCode() {
   if (!window.crypto?.getRandomValues) return toast('error', 'Kupon kodu oluşturulamadı', 'Tarayıcının güvenli rastgele sayı üreticisi kullanılamıyor.');
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const bytes = window.crypto.getRandomValues(new Uint8Array(8));
-  $('#promotionCode').value = `SHELBY-${Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')}`;
+  $('#promotionCode').value = `ZENTRA-${Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('')}`;
   $('#promotionTitle')?.focus();
 }
 
@@ -1638,7 +1685,7 @@ async function logout() {
 
 function bind() {
   let redirecting = false;
-  window.addEventListener('shelby:admin-session-invalid', () => {
+  window.addEventListener('zentra:admin-session-invalid', () => {
     if (redirecting) return;
     redirecting = true;
     toast('warning', 'Yönetici oturumunuz sona erdi', 'Güvenliğiniz için giriş sayfasına yönlendiriliyorsunuz.');
@@ -1686,6 +1733,16 @@ function bind() {
   $('#inventoryMigrateShared').addEventListener('click', migrateSharedInventory);
   $('#inventoryRotateKeys').addEventListener('click', rotateInventoryKeys);
   $('#adminProductGrid').addEventListener('submit', (event) => event.preventDefault());
+  $('#newProductToggle').addEventListener('click', () => {
+    if (!requirePermission('store.catalog.write', 'Ürün oluşturma')) return;
+    const card = $('#newProductCard'); card.hidden = !card.hidden;
+    $('#newProductToggle').setAttribute('aria-expanded', String(!card.hidden));
+    if (!card.hidden) $('#newProductName').focus({ preventScroll: true });
+  });
+  $('#newProductClose').addEventListener('click', () => { $('#newProductCard').hidden = true; $('#newProductToggle').setAttribute('aria-expanded', 'false'); $('#newProductToggle').focus(); });
+  $('#newProductAddPlan').addEventListener('click', appendNewProductPlan);
+  $('#newProductPlans').addEventListener('click', (event) => { const button = event.target.closest('[data-new-plan-remove]'); if (button && $('#newProductPlans').children.length > 1) button.closest('.product-create-plan').remove(); });
+  $('#newProductCard').addEventListener('submit', submitNewProduct);
   $('#adminProductGrid').addEventListener('input', (event) => { const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });
   $('#adminProductGrid').addEventListener('change', (event) => { if (event.target.matches?.('[data-product-badge-key]')) syncProductBadgePreview(event.target); const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });
   $('#productBulkSave')?.addEventListener('click', saveAllProducts);
@@ -1745,7 +1802,7 @@ function renderAdminEntryFailure(error) {
   retry.textContent = requiresHandoff ? 'Yönetici Girişine Dön' : 'Yeniden Dene';
   retry.addEventListener('click', () => {
     if (requiresHandoff) {
-      const origin = String(window.SHELBY_ADMIN_AUTH.canonicalOrigin() || window.location.origin).replace(/\/+$/, '');
+      const origin = String(window.ZENTRA_ADMIN_AUTH.canonicalOrigin() || window.location.origin).replace(/\/+$/, '');
       window.location.replace(`${origin}/admin/index.html`);
       return;
     }
@@ -1757,10 +1814,10 @@ function renderAdminEntryFailure(error) {
 }
 
 async function boot() {
-  lockAdminInteractions(); startAmbientCanvas($('#ambientCanvas')); installAdminChromeStability();
+  installAdminChromeStability();
   try {
-    await window.SHELBY_ADMIN_AUTH.init();
-    const apiOrigin = new URL(window.SHELBY_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
+    await window.ZENTRA_ADMIN_AUTH.init();
+    const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
     if (apiOrigin !== window.location.origin) {
       throw Object.assign(new Error('Yönetim merkezi güvenli sunucu alanında açılmalıdır. Yönetici girişinden devam edin.'), {
         code: 'ADMIN_HANDOFF_REQUIRED'

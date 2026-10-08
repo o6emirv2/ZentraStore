@@ -1,5 +1,6 @@
 'use strict';
 
+const { normalizeCustomProduct, productAssetExists, productAssetOptions } = require('./storeProductValidation');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -40,7 +41,14 @@ function integer(value, fallback, min, max) {
 
 function safeImage(value = '', fallback = '') {
   const image = safeText(value, 300);
-  return /^\/public\/assets\/products\/[a-zA-Z0-9._-]+$/.test(image) ? image : fallback;
+  return productAssetExists(image) ? image : fallback;
+}
+
+function resolveBaseProduct(id, rows = {}) {
+  const base = findBaseProduct(id);
+  if (base) return base;
+  const row = rows instanceof Map ? rows.get(id) : rows[id];
+  return row?.custom === true && row.definition ? normalizeCustomProduct(row.definition) : null;
 }
 
 function normalizeTags(value = []) {
@@ -252,7 +260,10 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
     const generation = cacheGeneration;
     const pending = (async () => {
       const overrides = await readOverrides();
-      const products = STORE_CATALOG.products
+      const custom = [...overrides.products.entries()]
+        .filter(([id, row]) => !findBaseProduct(id) && row.custom === true)
+        .map(([id]) => resolveBaseProduct(id, overrides.products));
+      const products = [...STORE_CATALOG.products, ...custom]
         .map((product) => mergeProduct(product, overrides.products.get(product.id), true))
         .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, 'tr'));
       const common = {
@@ -272,7 +283,7 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
             .map((product) => ({ ...product, plans: product.plans.filter((plan) => plan.active !== false) }))
             .filter((product) => product.plans.length > 0)
         },
-        admin: { ...common, products }
+        admin: { ...common, products, assetOptions: productAssetOptions() }
       };
     })();
     catalogLoad = pending.finally(() => { catalogLoad = null; });
@@ -287,9 +298,9 @@ function invalidateCatalogCache() {
   cache = null;
 }
 
-function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt = Date.now()) {
+function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt = Date.now(), productBase = null) {
   const id = safeText(productId, 80).toLowerCase();
-  const base = findBaseProduct(id);
+  const base = productBase || findBaseProduct(id);
   if (!base) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
   const body = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const plansInput = body.plans && typeof body.plans === 'object' && !Array.isArray(body.plans) ? body.plans : {};
@@ -359,9 +370,31 @@ function mergeProductInput(previous = {}, input = {}) {
   return { ...previous, ...input, plans };
 }
 
+async function createProduct(input = {}, actor = {}) {
+  if (!actor?.uid) throw serviceError('ADMIN_REQUIRED', 403);
+  const base = normalizeCustomProduct(input);
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
+  await readOverrides();
+  const reference = db.collection('storefrontSettings').doc('main');
+  const product = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = catalogState(snapshot.exists ? snapshot.data() : {});
+    if (!current) throw serviceError('STORE_CATALOG_PERSISTENCE_UNAVAILABLE', 503);
+    if (findBaseProduct(base.id) || Object.hasOwn(current.products, base.id)) throw serviceError('STORE_PRODUCT_EXISTS', 409);
+    if (Object.keys(current.products).length >= 100) throw serviceError('STORE_PRODUCT_LIMIT', 409);
+    const now = Date.now();
+    const row = { ...productSettingsPatch(base.id, { ...base, plans: Object.fromEntries(base.plans.map((plan) => [plan.key, plan])) }, actor, now, base).patch, custom: true, definition: { ...input }, createdAt: now };
+    transaction.set(reference, { catalog: { ...current, updatedAt: now, products: { ...current.products, [base.id]: row } } }, { merge: true });
+    recordMutationAudit(transaction, db, 'store.product.create', actor, { productId: base.id, after: row });
+    return mergeProduct(base, row, true);
+  });
+  invalidateCatalogCache();
+  return product;
+}
+
 async function updateProductSettings(productId = '', input = {}, actor = {}) {
   const id = safeText(productId, 80).toLowerCase();
-  if (!findBaseProduct(id)) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
   const { db } = initFirebaseAdmin();
   if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
   await readOverrides();
@@ -370,7 +403,9 @@ async function updateProductSettings(productId = '', input = {}, actor = {}) {
     const snapshot = await transaction.get(reference);
     const current = catalogState(snapshot.exists ? snapshot.data() : {});
     if (!current) throw serviceError('STORE_CATALOG_PERSISTENCE_UNAVAILABLE', 503);
-    const prepared = productSettingsPatch(id, mergeProductInput(current.products[id], input), actor);
+    const base = resolveBaseProduct(id, current.products);
+    const prepared = productSettingsPatch(id, mergeProductInput(current.products[id], input), actor, Date.now(), base);
+    prepared.patch = { ...current.products[id], ...prepared.patch };
     transaction.set(reference, {
       catalog: {
         ...current,
@@ -379,7 +414,7 @@ async function updateProductSettings(productId = '', input = {}, actor = {}) {
       }
     }, { merge: true });
     recordMutationAudit(transaction, db, 'store.product.update', actor, { productId: id, before: current.products[id] || null, after: prepared.patch });
-    return mergeProduct(findBaseProduct(id), prepared.patch, true);
+    return mergeProduct(base, prepared.patch, true);
   });
   invalidateCatalogCache();
   return saved;
@@ -390,7 +425,7 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
   const now = Date.now();
   const prepared = updates.map((entry) => {
     const id = safeText(entry?.productId, 80).toLowerCase();
-    if (!findBaseProduct(id)) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
+    if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(id)) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
     return { id };
   });
   if (new Set(prepared.map((entry) => entry.id)).size !== prepared.length) throw serviceError('STORE_PRODUCT_BULK_DUPLICATE', 409);
@@ -417,13 +452,15 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
     const products = { ...current.products };
     updates.forEach((entry) => {
       const id = safeText(entry.productId, 80).toLowerCase();
-      products[id] = productSettingsPatch(id, mergeProductInput(current.products[id], entry.settings), actor, now).patch;
+      const base = resolveBaseProduct(id, current.products);
+      if (!base) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
+      products[id] = { ...current.products[id], ...productSettingsPatch(id, mergeProductInput(current.products[id], entry.settings), actor, now, base).patch };
     });
     transaction.set(settingsRef, {
       catalog: { ...current, updatedAt: now, products }
     }, { merge: true });
     transaction.create(auditRef, audit);
-    return prepared.map(({ id }) => mergeProduct(findBaseProduct(id), products[id], true));
+    return prepared.map(({ id }) => mergeProduct(resolveBaseProduct(id, products), products[id], true));
   });
   invalidateCatalogCache();
   const ids = new Set(prepared.map((entry) => entry.id));
@@ -485,6 +522,7 @@ async function updateStorefrontQuickLinks(input, actor = {}) {
 
 module.exports = {
   PRODUCT_TAGS,
+  createProduct,
   DEFAULT_STOREFRONT,
   getEffectiveCatalog,
   updateProductSettings,
