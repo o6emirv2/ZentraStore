@@ -1,5 +1,5 @@
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261008-v2';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261008-v2';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261008-v3';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261008-v3';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -13,12 +13,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-20261008-v2';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v2';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v2';
-import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v2';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v2';
-import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v2';
+} from './auth.js?v=zentra-20261008-v3';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v3';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v3';
+import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v3';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v3';
+import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v3';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -31,8 +31,8 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-20261008-v2';
-import { createCustomerAppController } from './customer-app.js?v=zentra-20261008-v2';
+} from './customer-app.js?v=zentra-20261008-v3';
+import { createCustomerAppController } from './customer-app.js?v=zentra-20261008-v3';
 import {
   renderAvatarPickerView,
   renderCartItemView,
@@ -40,7 +40,7 @@ import {
   renderCustomerEmpty,
   renderDeliveryCardView,
   renderOrderCardView
-} from './customer-renderers.js?v=zentra-20261008-v2';
+} from './customer-renderers.js?v=zentra-20261008-v3';
 
 const STORE_VERSION = 'zentra-v67';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
@@ -69,6 +69,8 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const state = {
   catalog: null,
+  catalogRetryTimer: 0,
+  catalogRetryCount: 0,
   activeFilter: 'all',
   searchQuery: '',
   selectedProduct: null,
@@ -2555,6 +2557,14 @@ function observeNavigation() {
   });
 }
 
+function scheduleCatalogRecovery() {
+  window.clearTimeout(state.catalogRetryTimer);
+  state.catalogRetryTimer = 0;
+  if (state.catalog?.stockVerified !== false || document.hidden || !navigator.onLine) return;
+  const delay = Math.min(60_000, 15_000 * 2 ** Math.min(2, state.catalogRetryCount++));
+  state.catalogRetryTimer = window.setTimeout(() => loadCatalog(true), delay);
+}
+
 async function loadCatalog(force = false) {
   if (force && $('#catalogLoading')) {
     $('#catalogLoading').hidden = false;
@@ -2576,7 +2586,10 @@ async function loadCatalog(force = false) {
         showNotice('warning', 'Ürün güncellendi', 'Bu ürün şu anda satışta değil. Güncel katalogdan seçim yapabilirsin.');
       }
     }
-    if (state.catalog.stale) showNotice('warning', 'Güncel stok doğrulanamadı', 'Son alınan katalog gösteriliyor. Otomatik satın alma, bağlantı yenilenene kadar kapalı.');
+    const connection = $('#catalogConnectionStatus');
+    if (connection) connection.hidden = state.catalog.stockVerified !== false;
+    if (state.catalog.stockVerified !== false) state.catalogRetryCount = 0;
+    scheduleCatalogRecovery();
   } catch (error) {
     if ($('#catalogLoading')) {
       $('#catalogLoading').hidden = false;
@@ -2654,6 +2667,9 @@ export async function bootStorefront() {
     }
   });
   observeNavigation();
-  await Promise.all([initStoreAuth(), loadCatalog()]);
+  window.addEventListener('online', () => { if (state.catalog?.stockVerified === false) void loadCatalog(true); });
+  document.addEventListener('visibilitychange', () => scheduleCatalogRecovery());
+  void initStoreAuth();
+  await loadCatalog();
   document.documentElement.dataset.storefrontStatus = 'ready';
 }

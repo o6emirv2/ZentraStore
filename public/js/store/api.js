@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal } from '../request-utils.js?v=zentra-20261008-v2';
+import { readApiJson, waitForSignal } from '../request-utils.js?v=zentra-20261008-v3';
 
 const DEFAULT_API_BASE = '';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -244,7 +244,9 @@ export async function storeApi(path, options = {}) {
       const token = await waitForSignal(Promise.resolve().then(() => tokenProvider()).catch(() => ''), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
-    if (appCheckTokenProvider) {
+    const publicRead = options.auth === false && ['GET', 'HEAD'].includes(String(options.method || 'GET').toUpperCase())
+      && /^\/api\/(?:store\/catalog|public\/runtime-config)(?:[?]|$)/.test(rawPath);
+    if (appCheckTokenProvider && !publicRead) {
       const appCheckToken = await waitForSignal(Promise.resolve().then(() => appCheckTokenProvider()).catch(() => ''), controller.signal);
       if (appCheckToken) headers.set('X-Firebase-AppCheck', appCheckToken);
     }
@@ -275,6 +277,7 @@ export async function storeApi(path, options = {}) {
     }
     return payload;
   } catch (error) {
+    window.ZENTRA_REPORT_ERROR?.({ ...error, code: controller.signal.aborted ? 'REQUEST_TIMEOUT' : error?.code || 'NETWORK_ERROR' }, 'api');
     if (controller.signal.aborted || error?.name === 'AbortError') {
       const timeoutError = new Error(USER_MESSAGES.REQUEST_TIMEOUT);
       timeoutError.code = 'REQUEST_TIMEOUT';

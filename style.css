@@ -3123,3 +3123,12 @@ body[data-authenticated="true"] [data-guest-only] {
  .showcase-socials { grid-template-columns:repeat(4,minmax(0,1fr)); }
  .showcase-social[data-quick-link-id="telegram-support"] { grid-column:span 2; }
 }
+
+.catalog-connection { display:flex; align-items:center; gap:16px; padding:20px; margin:0 0 24px; border:1px solid #d7e4e7; border-radius:18px; background:#f2f8f8; color:#17363d; }
+.catalog-connection[hidden] { display:none; }
+.catalog-connection__icon { display:grid; place-items:center; width:44px; height:44px; flex-shrink:0; border-radius:13px; background:#e0eeee; color:#087f84; font-size:19px; }
+.catalog-connection strong { font-size:14px; }
+.catalog-connection p { margin:6px 0 0; font-size:12px; line-height:1.7; color:#587078; }
+.catalog-connection > div { flex:1; min-width:0; }
+.catalog-connection .button { min-height:42px; flex-shrink:0; }
+@media(max-width:600px) { .catalog-connection { flex-wrap:wrap; padding:16px; gap:12px; } .catalog-connection .button { width:100%; } }

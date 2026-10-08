@@ -28,8 +28,8 @@ function sanitizeCatalog() {
     const seenPlans = new Set();
     const plans = (Array.isArray(source?.plans) ? source.plans : []).map((plan) => {
       const key = String(plan?.key || '').trim().toLowerCase();
-      const priceKurus = Math.trunc(Number(plan?.priceKurus) || 0);
-      if (!SAFE_PLAN_KEY.test(key) || seenPlans.has(key) || priceKurus < 1 || priceKurus > 100_000_000) {
+      const priceKurus = Number(plan?.priceKurus);
+      if (!SAFE_PLAN_KEY.test(key) || seenPlans.has(key) || !Number.isSafeInteger(priceKurus) || priceKurus < 1 || priceKurus > 100_000_000) {
         throw new Error(`STORE_CATALOG_INVALID_PLAN:${id}:${key || 'missing'}`);
       }
       seenPlans.add(key);

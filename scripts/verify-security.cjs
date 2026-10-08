@@ -207,6 +207,14 @@ test('custom products persist and remain editable after catalog refresh', async 
   assert.equal((await liveCatalog.getEffectiveCatalog({ fresh: true })).products.find((product) => product.id === input.id)?.name, 'Güncel Zentra');
   await assert.rejects(liveCatalog.createProduct(input, actor), errorCode('STORE_PRODUCT_EXISTS'));
 });
+test('promotion scope accepts custom catalog products and rejects unknown IDs', async () => {
+  seed(); const promotions = require('../server/core/storePromotionService');
+  const result = await promotions.savePromotion('ZENTRA10', { type: 'percent', value: 10, productIds: [sampleProduct.id] }, { uid: 'owner-uid' });
+  assert.deepEqual(result.productIds, [sampleProduct.id]);
+  assert.deepEqual(db.rows.get('storePromotions/ZENTRA10').productIds, [sampleProduct.id]);
+  await assert.rejects(promotions.savePromotion('ZENTRA20', { type: 'percent', value: 10, productIds: ['unknown-product'] }), errorCode('STORE_PROMOTION_SCOPE_INVALID'));
+  assert.equal(db.rows.has('storePromotions/ZENTRA20'), false);
+});
 let httpServer;
 after(() => new Promise((resolve) => httpServer ? httpServer.close(resolve) : resolve()));
 test('HTTP endpoints deny forged identities, cross-origin writes and customer admin access', async () => {

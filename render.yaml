@@ -2,7 +2,7 @@ services:
   - type: web
     name: zentra-store
     runtime: node
-    buildCommand: npm ci --omit=dev --no-audit --no-fund && npm run build
+    buildCommand: npm ci --omit=dev --include=optional --no-audit --no-fund && npm run build
     startCommand: node server.js
     healthCheckPath: /healthz
     envVars:
@@ -11,7 +11,9 @@ services:
       - key: TRUST_PROXY_HOPS
         value: "1"
       - key: LOG_LEVEL
-        value: info
+        value: error
+      - key: CATALOG_RETIREMENT_SCAN
+        value: "0"
       - key: PUBLIC_BASE_URL
         value: https://zentrastore.com.tr
       - key: CANONICAL_ORIGIN

@@ -23,6 +23,8 @@ const { consumeAdminHandoff } = require('./server/core/adminHandoffService');
 const { resolveStaffPolicy } = require('./server/core/adminStoreService');
 const { writeAdminAudit } = require('./server/core/adminReauthService');
 const { scheduleCatalogRetirementCleanup } = require('./server/core/storeCatalogCleanupService');
+const rateLimit = require('express-rate-limit');
+const { logError, observeErrors, identifier } = require('./server/core/errorLogger');
 const authRouter = require('./server/routes/auth.routes');
 const identityRouter = require('./server/routes/identity.routes');
 const adminAuthRouter = require('./server/routes/admin-auth.routes');
@@ -70,7 +72,7 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261008-v2" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261008-v3" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.svg?v=zentra-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
@@ -122,8 +124,11 @@ app.set('query parser', 'simple');
 app.set('etag', false);
 app.set('json escape', true);
 initFirebaseAdmin();
+app.use(observeErrors);
 
 function contentSecurityPolicy() {
+  const authOrigin = env.normalizeOrigin(env.firebase.publicConfig.authDomain);
+  const firebaseFrame = authOrigin.startsWith('https://') ? authOrigin : '';
   const connect = [
     "'self'",
     env.serviceOrigin,
@@ -155,7 +160,7 @@ function contentSecurityPolicy() {
       'connect-src': [...new Set(connect)],
       'media-src': ["'self'"],
       'worker-src': ["'self'", 'blob:'],
-      'frame-src': ["'self'", 'https://www.google.com', 'https://www.recaptcha.net'],
+      'frame-src': ["'self'", 'https://www.google.com', 'https://www.recaptcha.net', firebaseFrame].filter(Boolean),
       'manifest-src': ["'self'"]
     }
   };
@@ -245,6 +250,24 @@ app.post('/admin/session/handoff', adminAuthLimiter, express.urlencoded({
 
 app.use('/api', cors(corsOptions));
 app.options('/api/*', cors(corsOptions));
+// Browser diagnostics carry only bounded error codes, never user data or secrets.
+app.post('/api/public/client-errors', rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }), apiRequestGuard,
+  express.json({ limit: '2kb', strict: true, inflate: false }), bodySafetyGuard, (req, res) => {
+    if (!trustedOrigin(req)) return res.status(403).json({ ok: false, error: 'ORIGIN_NOT_ALLOWED' });
+    const body = req.body || {};
+    if (Object.keys(body).some((key) => !['code', 'context', 'page', 'requestId'].includes(key))
+      || !/^[A-Z][A-Z0-9_:/.-]{0,79}$/i.test(body.code || '')
+      || !['browser', 'asset', 'api', 'catalog', 'auth', 'admin'].includes(body.context)
+      || !['store', 'admin'].includes(body.page)
+      || (body.requestId && !/^[A-Za-z0-9_-]{1,100}$/.test(body.requestId))) {
+      return res.status(400).json({ ok: false, error: 'CLIENT_ERROR_REPORT_INVALID' });
+    }
+    logError('CLIENT_REPORTED_ERROR', { requestId: req.requestId, fields: {
+      source: 'untrusted-browser', clientCode: identifier(body.code), context: body.context,
+      page: body.page, relatedRequestId: body.requestId || ''
+    } });
+    return res.status(202).json({ ok: true });
+  });
 app.use('/api', apiLimiter);
 app.use('/api', apiRequestGuard);
 app.use('/api', appCheckGuard);
@@ -334,19 +357,9 @@ app.use((error, req, res, _next) => {
   const parserStatus = parserCode === 'INVALID_JSON' ? 400 : parserCode === 'REQUEST_BODY_TOO_LARGE' ? 413 : 0;
   const status = parserStatus || Math.max(400, Math.min(599, Number(error?.statusCode || error?.status || 500) || 500));
   const code = String(parserCode || error?.code || (status >= 500 ? 'SERVER_ERROR' : 'REQUEST_REJECTED')).replace(/[^A-Z0-9_:-]/gi, '').slice(0, 80);
-  if (status >= 500) {
-    console.error('[zentra-store:error]', JSON.stringify({
-      method: req.method,
-      path: String(req.route?.path || 'api').replace(/[\u0000-\u001F\u007F<>]/g, '').slice(0, 120),
-      status,
-      code,
-      requestId: req.requestId,
-      ...(error?.providerCode ? { providerCode: String(error.providerCode).replace(/[^A-Z0-9_:-]/gi, '').slice(0, 32) } : {}),
-      ...(error?.providerCorrelationId
-        ? { providerCorrelationId: String(error.providerCorrelationId).replace(/[^A-Z0-9_.:-]/gi, '').slice(0, 80) }
-        : {})
-    }));
-  }
+  res.locals.failure = error;
+  res.locals.errorCode = code;
+  if (res.headersSent) return _next(error);
   const publicMessages = {
     INVALID_JSON: 'Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip tekrar deneyin.',
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
@@ -361,17 +374,15 @@ function startServer() {
   if (server) return server;
   server = configureHttpServer(app.listen(port, host, () => {
     const report = env.configurationReport();
-    console.info(`[zentra-store] Sunucu ${host}:${port} adresinde bağlantı kabul ediyor.`);
-    if (!report.ready) console.warn('[zentra-store] Güvenli servis hazırlığı için eksik ortam değişkenleri:', report.missing.join(', '));
+    if (!report.ready) logError('SERVER_CONFIGURATION_INCOMPLETE', { fields: { missing: report.missing } });
   }));
-
-  setImmediate(() => {
-    scheduleCatalogRetirementCleanup()
-      .then((report) => {
-        if (report?.retiredProducts) console.warn('[zentra-store] Katalog dışında kalan ürün kayıtları bulundu; otomatik silme yapılmadı. Bakım öncesi yedek ve kapsam incelemesi gerekli.');
-      })
-      .catch(() => console.error('[zentra-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
+  server.once('error', (error) => { logError('HTTP_SERVER_START_FAILED', { error }); process.exitCode = 1; });
+  // Catalog-wide maintenance scans are an explicit operator task, not startup work.
+  if (process.env.CATALOG_RETIREMENT_SCAN === '1') setImmediate(() => {
+    scheduleCatalogRetirementCleanup().catch((error) => logError('CATALOG_MAINTENANCE_FAILED', { error }));
   });
+  process.once('uncaughtException', (error) => { logError('PROCESS_UNCAUGHT_EXCEPTION', { error }); shutdown('fatal'); });
+  process.once('unhandledRejection', (error) => { logError('PROCESS_UNHANDLED_REJECTION', { error }); shutdown('fatal'); });
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
   return server;
@@ -379,8 +390,7 @@ function startServer() {
 
 function shutdown(signal) {
   if (!server) return;
-  console.info(`[zentra-store] ${signal} alındı; bağlantılar güvenli şekilde kapatılıyor.`);
-  server.close(() => process.exit(0));
+  server.close(() => process.exit(signal === 'fatal' ? 1 : 0));
   server.closeIdleConnections?.();
   setTimeout(() => {
     server.closeAllConnections?.();

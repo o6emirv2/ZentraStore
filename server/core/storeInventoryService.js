@@ -7,6 +7,8 @@ const { getEffectiveCatalog } = require('./storeCatalogService');
 const { STORE_CATALOG } = require('./storeCatalog');
 const keyVault = require('./storeKeyVault');
 const { recordMutationAudit } = require('./storeMutationAudit');
+const { withReadDeadline } = require('./deadline');
+const { logDependencyError } = require('./errorLogger');
 
 const INVENTORY_STATUSES = Object.freeze(['available', 'reserved', 'released', 'delivered', 'revoked', 'expired']);
 const INVENTORY_TYPES = Object.freeze(['license', 'account']);
@@ -18,6 +20,7 @@ const INVENTORY_IMPORT_RECEIPT_TTL_MS = 30 * 86_400_000;
 const STORE_CATALOG_PRODUCTS = STORE_CATALOG.products || [];
 const INVENTORY_PATH_PATTERN = /^storeInventory\/([a-z0-9][a-z0-9-]{1,79}__[a-z0-9][a-z0-9-]{1,39})\/items\/([A-Za-z0-9_-]{8,160})$/;
 let stockCache = null;
+let stockGeneration = 0;
 const stockLoads = new Map();
 
 function serviceError(code, statusCode = 400, details = {}) {
@@ -86,6 +89,7 @@ function allocationSourceSkus(item = {}) {
 }
 
 function invalidateStockCache() {
+  stockGeneration += 1;
   stockCache = null;
 }
 
@@ -241,9 +245,11 @@ async function summaryMapForCatalog(catalog, { fresh = false } = {}) {
   }
   const sourceSkus = [...new Set([...targets.values()].flatMap((target) => target.sourceSkus))].sort();
   const signature = sourceSkus.join('|');
+  const generation = stockGeneration;
+  const loadKey = `${generation}:${signature}`;
   if (!fresh && stockCache && stockCache.signature === signature && now - stockCache.at < STOCK_CACHE_TTL_MS) return stockCache.map;
-  if (stockLoads.has(signature)) return stockLoads.get(signature);
-  const loading = (async () => {
+  if (stockLoads.has(loadKey)) return stockLoads.get(loadKey);
+  const loading = withReadDeadline((async () => {
     const { db, admin } = firebaseStore();
     const collection = db.collection('storeInventorySummary');
     const documents = new Map();
@@ -287,14 +293,14 @@ async function summaryMapForCatalog(catalog, { fresh = false } = {}) {
         state: stockState(aggregate.available)
       });
     }
-    stockCache = { at: Date.now(), signature, map };
+    if (generation === stockGeneration) stockCache = { at: Date.now(), signature, map };
     return map;
-  })();
-  stockLoads.set(signature, loading);
+  })(), 1400, 'STORE_STOCK_READ_TIMEOUT');
+  stockLoads.set(loadKey, loading);
   try {
     return await loading;
   } finally {
-    if (stockLoads.get(signature) === loading) stockLoads.delete(signature);
+    if (stockLoads.get(loadKey) === loading) stockLoads.delete(loadKey);
   }
 }
 
@@ -588,7 +594,10 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
   const unifiedAvailable = Math.max(0, Number(unifiedSummary.get(sku)?.available || availableAfter) || 0);
   let notificationsQueued = 0;
   if (!idempotentReplay && duplicateReentries === 0 && unifiedAvailable > 0 && previousAvailable === 0) {
-    notificationsQueued = await queueRestockNotifications({ sourceSkus, product, plan }).catch(() => 0);
+    notificationsQueued = await queueRestockNotifications({ sourceSkus, product, plan }).catch((error) => {
+      logDependencyError('STORE_RESTOCK_NOTIFICATION_FAILED', error);
+      return 0;
+    });
   }
   return {
     sku, inventoryPoolId: poolId, sharedPool: shared,

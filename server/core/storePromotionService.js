@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { findProduct } = require('./storeCatalog');
+const { logDependencyError } = require('./errorLogger');
 
 const MAX_DISCOUNT_KURUS = 100_000_000;
 const MAX_WALLET_PROMOTIONS = 50;
@@ -71,7 +72,7 @@ function publicPromotion(row = {}, { customer = false } = {}) {
   return result;
 }
 
-function normalizePromotion(code, input = {}, previous = {}) {
+function normalizePromotion(code, input = {}, previous = {}, validProductIds = null) {
   const type = input.type === 'fixed' ? 'fixed' : 'percent';
   const amount = positiveInteger(input.value, 0, type === 'percent' ? 90 : MAX_DISCOUNT_KURUS);
   if (amount < 1) throw promotionError('STORE_PROMOTION_VALUE_INVALID');
@@ -86,7 +87,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
   const platforms = [...new Set(requestedPlatforms.map((value) => safeText(value, 20).toLowerCase()))];
   const productIds = [...new Set(requestedProducts.map((value) => safeText(value, 80).toLowerCase()))];
   if (platforms.some((value) => !['android', 'ios'].includes(value))
-    || productIds.some((value) => !/^[a-z0-9][a-z0-9-]{1,79}$/.test(value) || !findProduct(value))) {
+    || productIds.some((value) => !/^[a-z0-9][a-z0-9-]{1,79}$/.test(value) || !(validProductIds ? validProductIds.has(value) : findProduct(value)))) {
     throw promotionError('STORE_PROMOTION_SCOPE_INVALID');
   }
   const usageLimit = positiveInteger(input.usageLimit);
@@ -239,18 +240,20 @@ async function listWalletPromotions(uid = '') {
 async function listPromotions() {
   const { db } = database();
   const snapshot = await db.collection('storePromotions').orderBy('updatedAt', 'desc').limit(100).get()
-    .catch(() => db.collection('storePromotions').limit(100).get());
+    .catch((error) => { logDependencyError('STORE_PROMOTION_QUERY_FALLBACK', error); return db.collection('storePromotions').limit(100).get(); });
   return snapshot.docs.map((doc) => publicPromotion(doc.data())).sort((left, right) => right.updatedAt - left.updatedAt);
 }
 
 async function savePromotion(code = '', input = {}, actor = {}) {
   const normalized = normalizeCode(code);
   const { db } = database();
+  const catalog = await require('./storeCatalogService').getEffectiveCatalog({ includeInactive: true, fresh: true });
+  const validProductIds = new Set(catalog.products.map((product) => product.id));
   const reference = db.collection('storePromotions').doc(normalized);
   let result = null;
   await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(reference);
-    const row = normalizePromotion(normalized, input, snapshot.exists ? snapshot.data() : {});
+    const row = normalizePromotion(normalized, input, snapshot.exists ? snapshot.data() : {}, validProductIds);
     row.updatedBy = { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() };
     transaction.set(reference, row, { merge: false });
     recordMutationAudit(transaction, db, 'store.promotion.update', actor, { code: normalized, before: snapshot.exists ? publicPromotion(snapshot.data()) : null, after: publicPromotion(row) });

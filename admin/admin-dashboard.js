@@ -1,7 +1,7 @@
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v2';
-import { adminFetch } from './admin-core.js?v=zentra-20261008-v2';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v2';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v2';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v3';
+import { adminFetch } from './admin-core.js?v=zentra-20261008-v3';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261008-v3';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v3';
 
 
 const $ = (selector, root = document) => root.querySelector(selector);

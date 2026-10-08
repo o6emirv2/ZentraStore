@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261008-v2';
+import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261008-v3';
 
 function errorMessage(payload = {}, status = 0) {
   const code = String(payload.error || payload.code || '');
@@ -174,6 +174,7 @@ export async function adminFetch(path, options = {}) {
     }
     return payload;
   } catch (error) {
+    window.ZENTRA_REPORT_ERROR?.({ code: controller.signal.aborted ? 'REQUEST_TIMEOUT' : error?.code || 'NETWORK_ERROR', requestId: error?.requestId }, 'admin');
     if (controller.signal.aborted || error?.name === 'AbortError') {
       const timeout = new Error('Yanıt zamanında alınamadı. Tekrar işlem yapmadan önce güncel kaydı kontrol edin.');
       timeout.code = 'REQUEST_TIMEOUT';

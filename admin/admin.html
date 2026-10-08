@@ -8,11 +8,12 @@
   <meta name="color-scheme" content="light" />
   <meta name="zentra-api-origin" content="" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/css/fonts.css?v=zentra-20261008-v2" />
-  <link rel="stylesheet" href="/public/css/icons.css?v=zentra-20261008-v2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v2" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v2" />
-  <script src="./admin-auth.js?v=zentra-20261008-v2"></script>
+  <link rel="stylesheet" href="/public/css/fonts.css?v=zentra-20261008-v3" />
+  <link rel="stylesheet" href="/public/css/icons.css?v=zentra-20261008-v3" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v3" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v3" />
+  <script src="./admin-auth.js?v=zentra-20261008-v3"></script>
+<script src="/public/js/ui/error-reporter.js?v=zentra-20261008-v3" defer></script>
 </head>
 <body>
   <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/zentra-mark.svg?v=zentra-v67" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
@@ -169,6 +170,6 @@
 
   <div class="reauth-layer" id="secureActionLayer" hidden><div class="reauth-backdrop" data-secure-action-cancel></div><form class="reauth-card secure-action-card" id="secureActionForm" role="dialog" aria-modal="true" aria-labelledby="secureActionTitle"><button class="reauth-close" type="button" data-secure-action-cancel aria-label="Kapat"><i class="fa-solid fa-xmark"></i></button><span class="reauth-icon"><i class="fa-solid fa-shield-halved"></i></span><span class="reauth-kicker" id="secureActionKicker">GÜVENLİ İŞLEM</span><h2 id="secureActionTitle">İşlemi doğrula.</h2><p id="secureActionSummary">Bu kritik işlem gerekçe ve hesap parolasıyla doğrulanacaktır.</p><label><span>Gerekçe kategorisi</span><div><i class="fa-solid fa-list-check"></i><select id="secureActionCategory" required></select></div></label><label><span>Denetim açıklaması</span><textarea id="secureActionReason" maxlength="200" rows="3" placeholder="İşlem gerekçesini en az 3 karakterle açıklayın." required></textarea></label><label><span>Hesap şifresi</span><div><i class="fa-solid fa-key"></i><input id="secureActionPassword" type="password" autocomplete="current-password" required /></div></label><div class="reauth-actions"><button type="button" data-secure-action-cancel>Vazgeç</button><button type="submit" id="secureActionConfirm">Doğrula ve Uygula</button></div></form></div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v2"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v3"></script>
 </body>
 </html>

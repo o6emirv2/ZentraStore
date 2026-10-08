@@ -1,5 +1,7 @@
 'use strict';
 
+const { logDependencyError } = require('./errorLogger');
+
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAccount } = require('./storeService');
@@ -197,7 +199,7 @@ async function updateProfileEmail(uid = '', authUser = {}, input = {}) {
     const now = Date.now();
     await userRef.set({ email, storeUpdatedAt: now, updatedAt: now }, { merge: true });
   } catch (_) {
-    await auth.updateUser(safeUid, { email: previousEmail }).catch(() => null);
+    await auth.updateUser(safeUid, { email: previousEmail }).catch((error) => { logDependencyError('PROFILE_EMAIL_ROLLBACK_FAILED', error); });
     throw profileError('EMAIL_UPDATE_UNAVAILABLE', 503);
   }
   return readAccount(safeUid, { ...authUser, email });

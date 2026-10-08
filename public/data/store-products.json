@@ -423,12 +423,12 @@
       "id": "ios-dolphin",
       "platform": "ios",
       "game": "pubg",
-      "name": "DOLPHİN",
+      "name": "DelphinİOS",
       "badge": "PREMIUM",
       "icon": "fa-fish-fins",
       "image": "/public/assets/products/dolphin.jpeg",
       "accent": "255,185,36",
-      "description": "İPHONE VE iPAD CİHAZLAR İÇİN DOLPHİN PAKETLERİ.",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN DelphinİOS PAKETLERİ.",
       "plans": [
         {
           "key": "daily",

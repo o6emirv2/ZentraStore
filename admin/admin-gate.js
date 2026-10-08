@@ -1,4 +1,4 @@
-import { adminFetch } from './admin-core.js?v=zentra-20261008-v2';
+import { adminFetch } from './admin-core.js?v=zentra-20261008-v3';
 
 
 const state = { step: 1, ticket: '', busy: false, automaticRunning: false };

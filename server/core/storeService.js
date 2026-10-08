@@ -1,5 +1,9 @@
 'use strict';
 
+const { withReadDeadline } = require('./deadline');
+const { logDependencyError } = require('./errorLogger');
+const { displayFallbackCatalog } = require('./storeCatalogService');
+
 const crypto = require('crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -893,15 +897,17 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
 }
 
 async function publicCatalog() {
-  const catalog = await getEffectiveCatalog({ includeInactive: false });
   const firebase = initFirebaseAdmin();
+  let catalog;
   let stockVerified = true;
   let stocked;
   try {
-    stocked = await decorateCatalogWithStock(catalog);
+    catalog = await getEffectiveCatalog({ includeInactive: false });
+    stocked = await withReadDeadline(decorateCatalogWithStock(catalog), 1500, 'STORE_STOCK_READ_TIMEOUT');
   } catch (error) {
-    if (String(error?.code || error?.message) !== 'STORE_STORAGE_UNAVAILABLE') throw error;
+    logDependencyError('STORE_PUBLIC_CATALOG_DEGRADED', error);
     stockVerified = false;
+    catalog = catalog || displayFallbackCatalog();
     stocked = {
       ...catalog,
       products: catalog.products.map((product) => ({
@@ -911,7 +917,7 @@ async function publicCatalog() {
       }))
     };
   }
-  const backendReady = firebase.enabled === true && !!firebase.db && !!firebase.admin;
+  const backendReady = stockVerified && firebase.enabled === true && !!firebase.db && !!firebase.admin;
   const deliveryReady = backendReady && env.storeKeys.configured === true;
   const configuredServices = stocked.storefront?.services || {};
   const storefront = {
@@ -964,6 +970,7 @@ async function publicCatalog() {
     telegramUsername: safeText(stocked.telegramUsername, 40).replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, ''),
     storefront,
     stockVerified,
+    stale: !stockVerified,
     badgeOptions: (Array.isArray(stocked.badgeOptions) ? stocked.badgeOptions : []).map((badge) => ({
       key: safeText(badge.key, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''),
       label: safeText(badge.label, 40),

@@ -1,8 +1,9 @@
-import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-20261008-v2';
+import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-20261008-v3';
 
 window.__ZENTRA_RUNTIME__ = window.__ZENTRA_RUNTIME__ || { apiBase: '' };
 
-function showStorefrontFailure() {
+function showStorefrontFailure(error) {
+  window.ZENTRA_REPORT_ERROR?.(error, 'browser');
   document.documentElement.dataset.storefrontStatus = 'error';
   const loading = document.getElementById('catalogLoading');
   if (!loading) return;

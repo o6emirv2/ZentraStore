@@ -1,4 +1,5 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261008-v2';
+import { waitForSignal } from '../request-utils.js?v=zentra-20261008-v3';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261008-v3';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
@@ -84,7 +85,7 @@ export async function refreshStoreAccount() {
 }
 
 async function restoreAuthenticatedState(user) {
-  state.user = user || null;
+  state.user = null;
   state.account = null;
   setStoreTokenProvider(user ? () => user.getIdToken() : null);
   if (!user) {
@@ -95,10 +96,15 @@ async function restoreAuthenticatedState(user) {
   }
   try {
     const session = await storeApi('/api/auth/session', { auth: false, timeoutMs: 4500 });
-    if (session?.authenticated !== true) await syncServerSession(user);
-  } catch (_) {
-    await syncServerSession(user).catch(() => null);
+    if (session?.authenticated !== true || String(session.user?.uid || '') !== String(user.uid)) await syncServerSession(user);
+  } catch (error) {
+    try { await syncServerSession(user); } catch (sessionError) {
+      state.ready = true; state.error = friendlyStoreError(sessionError);
+      setStoreTokenProvider(null); emit(); return;
+    }
   }
+  if (String(state.auth?.currentUser?.uid || '') !== String(user.uid)) return;
+  state.user = user;
   try {
     await refreshStoreAccount();
     state.error = '';
@@ -120,6 +126,13 @@ export function getStoreAuthSnapshot() {
   return snapshot();
 }
 
+async function boundedBootstrap(pending, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try { return await waitForSignal(pending, controller.signal); }
+  finally { window.clearTimeout(timer); }
+}
+
 export async function initStoreAuth() {
   if (state.sdk && state.auth) return snapshot();
   if (initPromise) return initPromise;
@@ -129,12 +142,12 @@ export async function initStoreAuth() {
   emit();
   initPromise = (async () => {
     try {
-      const [runtime, appSdk, authSdk, appCheckSdk] = await Promise.all([
+      const [runtime, appSdk, authSdk, appCheckSdk] = await boundedBootstrap(Promise.all([
         loadStoreRuntimeConfig(),
         import(FIREBASE_APP_URL),
         import(FIREBASE_AUTH_URL),
         import(FIREBASE_APP_CHECK_URL)
-      ]);
+      ]));
       const firebaseConfig = runtime?.firebase;
       if (!runtime?.firebaseReady || !firebaseConfig?.apiKey || !firebaseConfig?.authDomain || !firebaseConfig?.projectId || !firebaseConfig?.appId) {
         const error = new Error('Hesap yapılandırması tamamlanmamış.');
@@ -158,18 +171,18 @@ export async function initStoreAuth() {
       }
       const auth = authSdk.getAuth(app);
       auth.useDeviceLanguage();
-      state.auth = auth;
-      state.sdk = authSdk;
       state.available = true;
       if (typeof auth.authStateReady === 'function') {
-        await auth.authStateReady();
+        await boundedBootstrap(auth.authStateReady());
       } else {
-        await new Promise((resolve) => {
+        await boundedBootstrap(new Promise((resolve) => {
           let stop = null;
           const finish = () => { resolve(); queueMicrotask(() => stop?.()); };
           stop = authSdk.onAuthStateChanged(auth, finish, finish);
-        });
+        }));
       }
+      state.auth = auth;
+      state.sdk = authSdk;
       await restoreAuthenticatedState(auth.currentUser || null);
       let skipInitialUid = String(auth.currentUser?.uid || '');
       authSdk.onAuthStateChanged(auth, (user) => {
@@ -178,14 +191,7 @@ export async function initStoreAuth() {
           return;
         }
         skipInitialUid = '';
-        if (state.busy && user) {
-          state.user = user;
-          setStoreTokenProvider(() => user.getIdToken());
-          state.ready = true;
-          state.error = '';
-          emit();
-          return;
-        }
+        if (state.busy) return;
         restoreAuthenticatedState(user).catch((error) => {
           state.ready = true;
           state.error = friendlyStoreError(error);
@@ -193,6 +199,7 @@ export async function initStoreAuth() {
         });
       });
     } catch (error) {
+      window.ZENTRA_REPORT_ERROR?.(error, 'auth');
       state.available = false;
       state.ready = true;
       state.error = friendlyStoreError(error, 'Hesap hizmeti şu anda başlatılamadı. Lütfen sayfayı yenile.');

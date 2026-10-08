@@ -69,9 +69,18 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     return appSdk.getApps().find((app) => app.name === name) || appSdk.initializeApp(config, name);
   }
 
+  async function bounded(pending, timeoutMs = 8000) {
+    let timer;
+    try {
+      return await Promise.race([pending, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error('REQUEST_TIMEOUT'), { code: 'REQUEST_TIMEOUT' })), timeoutMs);
+      })]);
+    } finally { clearTimeout(timer); }
+  }
+
   async function waitForAuthState(targetAuth, assign, onSubscribe) {
     if (typeof targetAuth?.authStateReady === 'function') {
-      await targetAuth.authStateReady();
+      await bounded(targetAuth.authStateReady());
       assign(targetAuth.currentUser || null);
     } else {
       await new Promise((resolve) => {
@@ -101,7 +110,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     const headers = new Headers({ Accept: 'application/json' });
     if (appCheck && appCheckSdk) {
       try {
-        const verified = await appCheckSdk.getToken(appCheck, false);
+        const verified = await bounded(appCheckSdk.getToken(appCheck, false), 4500);
         if (verified?.token) headers.set('X-Firebase-AppCheck', verified.token);
       } catch (_) {}
     }
@@ -109,7 +118,8 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       method: 'GET',
       headers,
       credentials: 'include',
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4500)
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok || payload?.authenticated !== true || !payload?.user?.uid || !payload?.user?.email) {
@@ -126,11 +136,11 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     const pending = (async () => {
       const resolvedRuntime = await loadRuntime();
       if (!resolvedRuntime.firebaseReady) throw new Error('FIREBASE_CONFIGURATION_MISSING');
-      const modules = await Promise.all([
+      const modules = await bounded(Promise.all([
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`)
-      ]);
+      ]));
       [appSdk, sdk, appCheckSdk] = modules;
 
       const storefrontApp = resolveApp(resolvedRuntime.firebase, STOREFRONT_APP_NAME);
@@ -169,6 +179,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     try {
       return await pending;
     } catch (error) {
+      window.ZENTRA_REPORT_ERROR?.(error, 'admin');
       if (initialization === pending) initialization = null;
       throw error;
     }

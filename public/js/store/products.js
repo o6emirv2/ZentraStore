@@ -1,13 +1,8 @@
-import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v2';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v3';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
-
-const CANONICAL_PRODUCT_NAMES = Object.freeze({
-  'contra-hax': 'CONTRAHAX',
-  'ios-dolphin': 'DelphinİOS'
-});
 
 export const CATALOG_FILTERS = Object.freeze({
   all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
@@ -108,10 +103,8 @@ function normalizePlan(source = {}) {
 function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   const badge = resolveBadge(source);
   const id = String(source.id || '').trim().slice(0, 80);
-  const name = CANONICAL_PRODUCT_NAMES[id] || String(source.name || '').trim().slice(0, 80);
-  let description = String(source.description || '').trim().slice(0, 240);
-  if (id === 'contra-hax') description = description.replace(/CONTRA\s+HAX/giu, 'CONTRAHAX');
-  if (id === 'ios-dolphin') description = description.replace(/DOLPHIN/giu, 'DelphinİOS');
+  const name = String(source.name || '').trim().slice(0, 80);
+  const description = String(source.description || '').trim().slice(0, 240);
   return Object.freeze({
     id,
     platform: source.platform === 'ios' ? 'ios' : 'android',
@@ -181,6 +174,7 @@ function normalizeCatalog(source = {}) {
     currency: 'TRY',
     telegramUsername: String(value.telegramUsername || '').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
+    stale: value.stale === true || value.stockVerified === false,
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),
     avatars: Object.freeze((Array.isArray(value.avatars) ? value.avatars : []).map(normalizeAvatar).filter(Boolean).slice(0, 25)),
@@ -199,12 +193,15 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
         source = await apiRequest('/api/store/catalog?v=11', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
-        if (catalogCache) {
-          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true });
-          catalogCachedAt = 0;
-          return catalogCache;
-        }
-        throw error;
+        window.ZENTRA_REPORT_ERROR?.(error, 'catalog');
+        if (catalogCache) return Object.freeze({ ...catalogCache, stockVerified: false, stale: true, storefront: { ...catalogCache.storefront, services: { automaticDelivery: false, balancePayment: false, telegramSupport: false } } });
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), 2500);
+        try {
+          const response = await fetch('/public/data/store-products.json', { cache: 'no-cache', credentials: 'same-origin', signal: controller.signal });
+          if (!response.ok) throw error;
+          source = await response.json();
+        } finally { window.clearTimeout(timer); }
       }
     } else {
       const response = await fetch('/public/data/store-products.json', { cache: 'no-cache', credentials: 'same-origin' });
@@ -213,6 +210,12 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     }
     if (source?.catalog && typeof source.catalog === 'object') source.catalog.stockVerified = stockVerified;
     else if (source && typeof source === 'object') source.stockVerified = stockVerified;
+    if (!stockVerified) {
+      const value = source?.catalog || source;
+      value.stale = true;
+      value.storefront = { ...value.storefront, services: { automaticDelivery: false, balancePayment: false, telegramSupport: false } };
+      value.products = (value.products || []).map((product) => ({ ...product, stock: { available: 0, state: 'unverified' }, plans: (product.plans || []).map((plan) => ({ ...plan, stock: { available: 0, state: 'unverified' } })) }));
+    }
     const catalog = normalizeCatalog(source);
     if (!Array.isArray((source?.catalog || source)?.products)) throw new Error('STORE_CATALOG_INVALID');
     catalogCache = catalog;

@@ -89,6 +89,7 @@ const canonicalOrigin = normalizeOrigin(process.env.CANONICAL_ORIGIN || publicBa
 const publicApiBase = normalizeOrigin(process.env.PUBLIC_API_BASE || publicBaseUrl);
 const allowedOrigins = unique([
   serviceOrigin,
+  normalizeOrigin(process.env.RENDER_EXTERNAL_URL),
   publicBaseUrl,
   canonicalOrigin,
   publicApiBase,
@@ -127,7 +128,7 @@ const serviceAccount = value(
 
 const env = {
   nodeEnv: process.env.NODE_ENV || 'production',
-  logLevel: process.env.LOG_LEVEL || 'info',
+  logLevel: 'error',
   serviceOrigin,
   publicBaseUrl,
   canonicalOrigin,

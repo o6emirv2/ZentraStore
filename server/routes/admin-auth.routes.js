@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
-const express = require('express');
+const createAsyncRouter = require('../core/asyncRouter');
 const env = require('../config/env');
 const { requireAuth, requireAdmin, adminAuthLimiter, adminBootstrapLimiter } = require('../core/security');
 const { trustedOrigin, createUserSession } = require('../core/userSessionService');
@@ -32,7 +32,7 @@ const {
   verifyGateFactor
 } = require('../core/adminGateService');
 
-const router = express.Router();
+const router = createAsyncRouter();
 const STEP_TTL_MS = 7 * 60_000;
 
 router.use((_req, res, next) => {

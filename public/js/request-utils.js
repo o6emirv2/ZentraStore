@@ -4,7 +4,8 @@ export function waitForSignal(promise, signal) {
     const aborted = () => reject(new DOMException('Request aborted', 'AbortError'));
     if (signal.aborted) { pending.catch(() => {}); aborted(); return; }
     signal.addEventListener('abort', aborted, { once: true });
-    pending.then(resolve, reject).finally(() => signal.removeEventListener('abort', aborted));
+    const finish = (callback, value) => { signal.removeEventListener('abort', aborted); callback(value); };
+    pending.then((value) => finish(resolve, value), (error) => finish(reject, error));
   });
 }
 

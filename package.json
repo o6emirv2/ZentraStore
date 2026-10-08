@@ -1,6 +1,6 @@
 {
   "name": "zentra-store-production",
-  "version": "67.0.1",
+  "version": "67.0.2",
   "private": true,
   "type": "commonjs",
   "description": "ZENTRA STORE digital storefront with secure server-authorized payments and encrypted delivery",
@@ -16,10 +16,11 @@
     "check:browser": "node --input-type=module --check < script.js && node --input-type=module --check < public/js/ui/notification-center.js && node --input-type=module --check < public/js/store/api.js && node --input-type=module --check < public/js/store/auth.js && node --input-type=module --check < public/js/store/social-links.js && node --input-type=module --check < public/js/store/customer-app.js && node --input-type=module --check < public/js/store/customer-renderers.js && node --input-type=module --check < public/js/store/products.js && node --input-type=module --check < public/js/store/product-media.js && node --input-type=module --check < public/js/store/product-gallery.js && node --input-type=module --check < public/js/store/showcase-slider.js && node --input-type=module --check < public/js/store/storefront.js && node --input-type=module --check < admin/admin-auth.js && node --input-type=module --check < admin/admin-core.js && node --input-type=module --check < admin/admin-gate.js && node --input-type=module --check < admin/admin-dashboard.js",
     "check:catalog": "node -e \"const fs=require('fs'),c=require('./public/data/store-products.json'),i=require('./firestore.indexes.json');if(!Array.isArray(c.products)||!c.products.length||!Array.isArray(i.indexes))process.exit(1);const b=Array.isArray(c.badgeOptions)?c.badgeOptions:[];for(const f of ['key','label','icon']){const v=b.map(x=>String(x[f]||'').toLocaleUpperCase('tr-TR'));if(v.length!==new Set(v).size)process.exit(1)}const keys=new Set(b.map(x=>x.key));for(const x of c.products){if(!['android','ios'].includes(x.platform)||!keys.has(x.badgeKey)||!/^\\/public\\/assets\\/products\\/[A-Za-z0-9._-]+$/.test(x.image)||!fs.existsSync('.'+x.image))process.exit(1)}console.log('catalog products:',c.products.length,'badges:',b.length,'firestore indexes:',i.indexes.length)\"",
     "check:source": "node scripts/verify-source.cjs",
-    "test": "node --test scripts/verify-security.cjs",
+    "test": "node --test scripts/verify-security.cjs scripts/verify-availability.cjs",
     "start:local": "node --env-file=.env server.js"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^7.11.6",
     "compression": "^1.8.2",
     "cors": "^2.8.6",
     "express": "^4.22.3",

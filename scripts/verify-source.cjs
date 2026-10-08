@@ -104,6 +104,7 @@ for (const product of catalog.products) {
     planKeys.add(plan.key);
   }
 }
+if (typeof require('@google-cloud/firestore').Firestore !== 'function') failures.push('Firestore SDK kurulumu eksik');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json')));
 const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json')));
 if (pkg.name !== lock.name || pkg.name !== lock.packages[''].name || pkg.version !== lock.version || pkg.version !== lock.packages[''].version || JSON.stringify(pkg.dependencies) !== JSON.stringify(lock.packages[''].dependencies) || JSON.stringify(pkg.engines) !== JSON.stringify(lock.packages[''].engines)) failures.push('Paket ve kilit dosyası uyumsuz');

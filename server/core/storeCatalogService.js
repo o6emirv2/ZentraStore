@@ -7,11 +7,16 @@ const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog'
 const { normalizeBadgeKey, badgeKeyFromLegacyLabel, resolveBadge, badgeOptions } = require('./storeBadgeCatalog');
 const { CHANNEL_LINKS_REVISION, DEFAULT_QUICK_LINKS, channelLinksMigration, normalizeQuickLinks } = require('./storeLinks');
 
+const { withReadDeadline } = require('./deadline');
+const { logDependencyError } = require('./errorLogger');
+let readRetryAt = 0;
+
 const CACHE_TTL_MS = 60_000;
 const CATALOG_SCHEMA_VERSION = 1;
 const PRODUCT_TAGS = Object.freeze(['new', 'popular', 'discounted']);
 const ANNOUNCEMENT_TONES = Object.freeze(['info', 'success', 'warning']);
 let cache = null;
+let lastPublic = null;
 let catalogLoad = null;
 let cacheGeneration = 0;
 
@@ -256,13 +261,25 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
   if (!fresh && cache && now - cache.at < CACHE_TTL_MS) {
     return includeInactive ? cache.admin : cache.public;
   }
+  if (!catalogLoad && Date.now() < readRetryAt) throw serviceError('STORE_CATALOG_PERSISTENCE_UNAVAILABLE', 503);
   if (!catalogLoad) {
     const generation = cacheGeneration;
     const pending = (async () => {
-      const overrides = await readOverrides();
-      const custom = [...overrides.products.entries()]
-        .filter(([id, row]) => !findBaseProduct(id) && row.custom === true)
-        .map(([id]) => resolveBaseProduct(id, overrides.products));
+      const overrides = await withReadDeadline(readOverrides(), 2400, 'STORE_CATALOG_READ_TIMEOUT');
+      readRetryAt = 0;
+      const custom = [];
+      const invalidProductIds = [];
+      for (const [id, row] of overrides.products) {
+        if (findBaseProduct(id) || row?.custom !== true) continue;
+        try {
+          const product = resolveBaseProduct(id, overrides.products);
+          if (!product || product.id !== id) throw serviceError('STORE_PRODUCT_ID_INVALID');
+          custom.push(product);
+        } catch (error) {
+          invalidProductIds.push(id);
+          logDependencyError('STORE_CUSTOM_PRODUCT_INVALID', error);
+        }
+      }
       const products = [...STORE_CATALOG.products, ...custom]
         .map((product) => mergeProduct(product, overrides.products.get(product.id), true))
         .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, 'tr'));
@@ -283,18 +300,28 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
             .map((product) => ({ ...product, plans: product.plans.filter((plan) => plan.active !== false) }))
             .filter((product) => product.plans.length > 0)
         },
-        admin: { ...common, products, assetOptions: productAssetOptions() }
+        admin: { ...common, products, invalidProductIds, assetOptions: productAssetOptions() }
       };
+      lastPublic = cache.public;
     })();
-    catalogLoad = pending.finally(() => { catalogLoad = null; });
+    catalogLoad = pending.catch((error) => {
+      readRetryAt = Date.now() + 15_000;
+      logDependencyError('STORE_CATALOG_READ_FAILED', error);
+      throw error;
+    }).finally(() => { catalogLoad = null; });
   }
   await catalogLoad;
   if (!cache) return getEffectiveCatalog({ includeInactive, fresh: true });
   return includeInactive ? cache.admin : cache.public;
 }
 
+function displayFallbackCatalog() {
+  return lastPublic || { ...STORE_CATALOG, storefront: DEFAULT_STOREFRONT, badgeOptions: badgeOptions() };
+}
+
 function invalidateCatalogCache() {
   cacheGeneration += 1;
+  readRetryAt = 0;
   cache = null;
 }
 
@@ -521,6 +548,7 @@ async function updateStorefrontQuickLinks(input, actor = {}) {
 }
 
 module.exports = {
+  displayFallbackCatalog,
   PRODUCT_TAGS,
   createProduct,
   DEFAULT_STOREFRONT,
