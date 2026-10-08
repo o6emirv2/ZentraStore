@@ -211,9 +211,9 @@
 }
 @media(max-width:560px) {
   .notification-center {
-    top:auto;
+    top:max(10px,env(safe-area-inset-top,0px));
     right:max(9px,env(safe-area-inset-right,0px));
-    bottom:calc(84px + env(safe-area-inset-bottom,0px));
+    bottom:auto;
     left:max(9px,env(safe-area-inset-left,0px));
     width:auto
   }

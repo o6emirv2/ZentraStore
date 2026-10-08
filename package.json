@@ -1,6 +1,6 @@
 {
   "name": "zentra-store-production",
-  "version": "67.1.0",
+  "version": "67.2.0",
   "private": true,
   "type": "commonjs",
   "description": "ZENTRA STORE digital storefront with protected sessions, transaction-safe wallet and encrypted digital-delivery vault",
@@ -16,7 +16,7 @@
     "check:browser": "node --input-type=module --check < script.js && node --input-type=module --check < public/js/ui/interaction-guard.js && node --input-type=module --check < public/js/ui/interaction-guard-entry.js && node --input-type=module --check < public/js/ui/notification-center.js && node --input-type=module --check < public/js/store/api.js && node --input-type=module --check < public/js/store/auth.js && node --input-type=module --check < public/js/store/social-links.js && node --input-type=module --check < public/js/store/customer-app.js && node --input-type=module --check < public/js/store/customer-renderers.js && node --input-type=module --check < public/js/store/products.js && node --input-type=module --check < public/js/store/product-media.js && node --input-type=module --check < public/js/store/product-gallery.js && node --input-type=module --check < public/js/store/showcase-slider.js && node --input-type=module --check < public/js/store/storefront.js && node --input-type=module --check < admin/admin-auth.js && node --input-type=module --check < admin/admin-core.js && node --input-type=module --check < admin/admin-gate.js && node --input-type=module --check < admin/admin-dashboard.js",
     "check:catalog": "node -e \"const fs=require('fs'),c=require('./public/data/store-products.json'),i=require('./firestore.indexes.json');if(!Array.isArray(c.products)||!c.products.length||!Array.isArray(i.indexes))process.exit(1);const b=Array.isArray(c.badgeOptions)?c.badgeOptions:[];for(const f of ['key','label','icon']){const v=b.map(x=>String(x[f]||'').toLocaleUpperCase('tr-TR'));if(v.length!==new Set(v).size)process.exit(1)}const keys=new Set(b.map(x=>x.key));for(const x of c.products){if(!['android','ios'].includes(x.platform)||!keys.has(x.badgeKey)||!/^\\/public\\/assets\\/products\\/[A-Za-z0-9._-]+$/.test(x.image)||!fs.existsSync('.'+x.image))process.exit(1)}console.log('catalog products:',c.products.length,'badges:',b.length,'firestore indexes:',i.indexes.length)\"",
     "check:source": "node scripts/verify-source.cjs",
-    "check:security": "node --test scripts/security-regression.cjs scripts/product-creation-regression.cjs",
+    "check:security": "node --test scripts/security-regression.cjs scripts/product-creation-regression.cjs scripts/catalog-filter-regression.cjs",
     "security:generate": "node scripts/generate-render-secrets.cjs",
     "security:audit": "npm audit --omit=dev --audit-level=moderate"
   },

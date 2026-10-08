@@ -972,6 +972,27 @@ function markProductDirty(form) {
 }
 
 
+
+const PRODUCT_CATEGORY_PRESETS = Object.freeze({
+  'pubg-android': { category: 'PUBG Android', platform: 'android', game: 'pubg', inventoryType: 'license' },
+  'pubg-ios': { category: 'PUBG iOS', platform: 'ios', game: 'pubg', inventoryType: 'license' },
+  gbox: { category: 'GBox', platform: 'ios', game: 'other', inventoryType: 'license', fulfillmentMode: 'telegram_only' },
+  'random-account': { category: 'Random Hesap', platform: 'android', game: 'pubg', inventoryType: 'account' },
+  'oxide-android': { category: 'Oxide Android', platform: 'android', game: 'oxide', inventoryType: 'license' },
+  'oxide-ios': { category: 'Oxide iOS', platform: 'ios', game: 'oxide', inventoryType: 'license' }
+});
+
+function applyNewProductCategoryPreset() {
+  const form = $('#productCreateForm');
+  const preset = PRODUCT_CATEGORY_PRESETS[$('#newProductCategoryPreset')?.value];
+  if (!form || !preset) return;
+  for (const [field, value] of Object.entries(preset)) {
+    const control = form.elements.namedItem(field);
+    if (control) control.value = value;
+  }
+  if (!preset.fulfillmentMode) form.elements.namedItem('fulfillmentMode').value = 'automatic';
+}
+
 let productCreateBusy = false;
 let productCreatePreviousFocus = null;
 
@@ -1004,6 +1025,7 @@ function openProductCreate() {
   productCreatePreviousFocus = document.activeElement;
   const form = $('#productCreateForm');
   form.reset();
+  applyNewProductCategoryPreset();
   $('#newProductPlans').replaceChildren();
   const badgeSelect = $('#newProductBadge');
   badgeSelect.innerHTML = productBadgeOptions().map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`).join('');
@@ -1802,6 +1824,7 @@ function bind() {
   $('#inventoryRotateKeys').addEventListener('click', rotateInventoryKeys);
   $('#openProductCreate')?.addEventListener('click', openProductCreate);
   $('#productCreateForm')?.addEventListener('submit', submitNewProduct);
+  $('#newProductCategoryPreset')?.addEventListener('change', applyNewProductCategoryPreset);
   $('#addProductPlan')?.addEventListener('click', addProductPlanRow);
   $$('[data-product-create-close]').forEach((button) => button.addEventListener('click', closeProductCreate));
   $('#newProductPlans')?.addEventListener('click', (event) => {

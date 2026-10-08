@@ -179,7 +179,7 @@
         <label><span>Oyun</span><select name="game"><option value="other">Diğer</option><option value="pubg">PUBG Mobile</option><option value="oxide">Oxide</option></select></label>
         <label><span>Stok biçimi</span><select name="inventoryType"><option value="license">Lisans / kod</option><option value="account">Random hesap</option></select></label>
         <label><span>Teslimat yöntemi</span><select name="fulfillmentMode"><option value="automatic">Otomatik stok + Telegram</option><option value="telegram_only">Yalnızca Telegram (manuel)</option></select></label>
-        <label><span>Kategori</span><input name="category" maxlength="50" placeholder="Premium ürünler" /></label>
+        <label><span>Hazır kategori</span><select id="newProductCategoryPreset" name="categoryPreset"><option value="pubg-android">PUBG Android</option><option value="pubg-ios">PUBG iOS</option><option value="gbox">GBox</option><option value="random-account">Random Hesap</option><option value="oxide-android">Oxide Android</option><option value="oxide-ios">Oxide iOS</option><option value="custom">Özel kategori</option></select></label><label><span>Kategori adı</span><input name="category" maxlength="50" placeholder="PUBG Android" required /></label>
         <label><span>Satış etiketi</span><select name="badgeKey" id="newProductBadge"></select></label>
       </div>
       <label><span>Ürün açıklaması</span><textarea name="description" rows="3" required minlength="8" maxlength="240" placeholder="Ürün özelliklerini kısaca açıklayın."></textarea></label>

@@ -31,7 +31,10 @@ export function productMatchesCatalogFilter(product = {}, value = 'all', favorit
   const key = resolveCatalogFilter(value, visibility);
   const filter = CATALOG_FILTERS[key];
   if (key === 'favorites' && !favorites.has(String(product.id))) return false;
-  return (!filter.platform || product.platform === filter.platform) && (!filter.game || product.game === filter.game);
+  // GBox is an iOS companion product offered under both game collections.
+  const isGbox = product.platform === 'ios' && /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || ''));
+  return (!filter.platform || product.platform === filter.platform)
+    && (!filter.game || product.game === filter.game || (isGbox && (filter.game === 'pubg' || filter.game === 'oxide')));
 }
 
 const DEFAULT_BADGE_OPTIONS = normalizeBadgeOptions([
