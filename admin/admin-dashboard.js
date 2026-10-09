@@ -1,9 +1,10 @@
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-20261009-v4';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-20261008-v2';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261008-v2';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-20261009-v4';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v2';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-20261008-v2';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError } from '../public/js/ui/app-ui.js?v=zentra-app-v69';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-app-v69';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-app-v69';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-app-v69';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-app-v69';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-app-v69';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-app-v69';
 
 installInteractionGuard();
 
@@ -17,7 +18,7 @@ const state = {
   inventoryReadiness: null, inventoryImportAttempt: null, inventoryImportBusy: false, walletAdjustmentAttempt: null, secureActionReturnFocus: null,
   usersSummary: null, walletSummary: null, securityRuntime: null, adminPolicy: null, productDirty: new Set(), productBulkBusy: false,
   chromeFrame: 0, chromeObserver: null, promotions: [], quickLinks: [], quickLinksBusy: false, orderNextCursor: '', orderPageLoading: false,
-  panelLoads: new Map()
+  panelLoads: new Map(), panelLoadedAt: new Map(), panelScroll: new Map()
 };
 
 const STATUS = Object.freeze({
@@ -155,11 +156,12 @@ function toast(type, title, message, options = {}) {
     brand: 'ZENTRA STORE · YÖNETİM',
     soundUrl: '/public/assets/sounds/bildirim.wav'
   });
+  if (type === 'success') queueMicrotask(() => rememberForms(document.querySelector('.admin-panel.is-active')));
   return notificationCenter.notify(type, title, message, options);
 }
 
-function loadingMarkup(title = 'Veriler hazırlanıyor') {
-  return `<div class="admin-skeleton-group" aria-label="${escapeHtml(title)}"><span></span><span></span><span></span></div>`;
+function loadingMarkup(title = 'Veriler hazırlanıyor', variant = 'rows') {
+  return skeletonMarkup({ count: 3, label: title, variant });
 }
 
 function emptyMarkup(title, message, icon = 'fa-box-open') {
@@ -454,7 +456,7 @@ function overviewBarChart(rows = [], { currency = false, title = '' } = {}) {
 }
 
 async function loadOverview() {
-  $('#overviewMetrics').innerHTML = loadingMarkup('Yönetim özeti hazırlanıyor');
+  $('#overviewMetrics').innerHTML = loadingMarkup('Yönetim özeti hazırlanıyor', 'summary');
   const sections = [
     ['#overviewFinanceChart', 'store.wallet.read'],
     ['#overviewOperationsChart', 'store.orders.read'],
@@ -1050,8 +1052,9 @@ function addProductPlanRow() {
   row.querySelector('input')?.focus();
 }
 
-function closeProductCreate() {
+function closeProductCreate(force = false) {
   if (productCreateBusy) return;
+  if (force !== true && !confirmDiscard($('#productCreateLayer'), () => closeProductCreate(true))) return;
   const layer = $('#productCreateLayer');
   layer.hidden = true;
   document.body.classList.remove('has-admin-modal');
@@ -1073,6 +1076,31 @@ function openProductCreate() {
   $('#productCreateStatus').textContent = 'Otomatik satış ürünü stok eklenene kadar stok dışı gösterilir.';
   $('#productCreateLayer').hidden = false;
   form.elements.namedItem('id')?.focus();
+  rememberForms(form);
+  animateView($('#productCreateLayer .reauth-card'));
+}
+
+function markProductFormError(form, error) {
+  const selectors = {
+    STORE_PRODUCT_IMAGE_INVALID: '[name="image"],[data-product-image]',
+    STORE_PRODUCT_FEATURES_INVALID: '[name="features"],[data-product-features]',
+    STORE_PRODUCT_FEATURES_LIMIT: '[name="features"],[data-product-features]',
+    STORE_PRODUCT_CATEGORY_INVALID: '[name="categoryPreset"],[data-product-category-key]',
+    STORE_PRODUCT_CATEGORY_PLATFORM_CONFLICT: '[name="categoryPreset"],[data-product-category-key]',
+    STORE_PRODUCT_ID_INVALID: '[name="id"]', STORE_PRODUCT_ID_EXISTS: '[name="id"]',
+    STORE_PRODUCT_PLATFORM_INVALID: '[name="platform"],[data-product-platform]',
+    STORE_PRODUCT_SORT_INVALID: '[data-product-sort]',
+    STORE_PRODUCT_PLAN_INVALID: '[name="key"]'
+  };
+  const selector = selectors[error?.code];
+  const field = error?.field || (selector ? form?.querySelector(selector) : null);
+  if (!field) return;
+  setFieldError(field, error.message);
+  window.requestAnimationFrame(() => {
+    if (!field.isConnected) return;
+    field.focus({ preventScroll: true });
+    field.scrollIntoView({ block: 'center', behavior: 'auto' });
+  });
 }
 
 function readNewProduct() {
@@ -1081,7 +1109,7 @@ function readNewProduct() {
   const plans = [...$('#newProductPlans').children].map((row) => {
     const value = (name) => String(row.querySelector(`[name="${name}"]`)?.value || '').trim();
     const rawPrice = parseMoneyInput(value('price'));
-    if (!Number.isFinite(rawPrice) || rawPrice <= 0 || rawPrice > 1_000_000) throw new Error('Paket fiyatı 0 ile 1.000.000 ₺ arasında olmalıdır.');
+    if (!Number.isFinite(rawPrice) || rawPrice <= 0 || rawPrice > 1_000_000) throw Object.assign(new Error('Paket fiyatı 0 ile 1.000.000 ₺ arasında olmalıdır.'), { field: row.querySelector('[name="price"]') });
     return { key: value('key').toLowerCase(), label: value('label'), duration: value('duration'), priceKurus: Math.round(rawPrice * 100) };
   });
   if (!plans.length) throw new Error('En az bir paket tanımlamalısınız.');
@@ -1099,7 +1127,7 @@ async function submitNewProduct(event) {
   event.preventDefault();
   if (productCreateBusy || !requirePermission('store.catalog.write', 'Yeni ürün oluşturma')) return;
   let product;
-  try { product = readNewProduct(); } catch (error) { return toast('error', 'Ürün doğrulanamadı', error.message); }
+  try { product = readNewProduct(); } catch (error) { markProductFormError($('#productCreateForm'), error); return toast('error', 'Ürün doğrulanamadı', error.message); }
   if (!(await requestAdminReauth())) return;
   const button = $('#productCreateSubmit');
   const status = $('#productCreateStatus');
@@ -1114,9 +1142,10 @@ async function submitNewProduct(event) {
     state.loaded.delete('inventory');
     toast('success', 'Yeni ürün eklendi', `${response.product?.name || product.name} kataloğa kaydedildi. Ürün stokunu Stok Kasası bölümünden ekleyebilirsiniz.`);
     productCreateBusy = false;
-    closeProductCreate();
+    closeProductCreate(true);
     await loadProducts();
   } catch (error) {
+    markProductFormError($('#productCreateForm'), error);
     status.textContent = isUncertainMutationError(error)
       ? 'İşlemin sonucu belirsiz. Kataloğu yenileyip ürünün oluşup oluşmadığını kontrol edin; tekrar göndermeyin.'
       : 'Ürün oluşturma işlemi tamamlanamadı: ' + error.message;
@@ -1171,6 +1200,7 @@ async function saveAllProducts() {
   try {
     payload = await adminFetch('/api/admin/store/products/bulk', { method: 'POST', timeoutMs: 60_000, body: { updates } });
   } catch (error) {
+    if (updates.length === 1) markProductFormError($$('[data-product-form]').find((form) => form.dataset.productForm === updates[0].productId), error);
     toast('error', 'Ürün değişikliklerini kaydedemedik', `${error.message} ${isUncertainMutationError(error) ? 'Yanıt alınamadığı için kayıt sonucunu doğrulayamıyoruz; tekrar kaydetmeden önce güncel kataloğu kontrol edin.' : 'Toplu değişiklikler tek işlem olarak kaydedilir.'}`);
     state.productBulkBusy = false;
     if (icon) icon.className = originalClass || 'fa-solid fa-floppy-disk';
@@ -1748,8 +1778,14 @@ function renderPanelFailure(name, error) {
 }
 
 async function loadPanel(name, force = false) {
-  if (!force && state.loaded.has(name)) return;
+  const panel = $(`[data-admin-panel="${name}"]`);
+  if (hasUnsavedForms(panel) || (name === 'products' && state.productDirty.size)) {
+    if (force) toast('warning', 'Kaydedilmemiş değişiklikler var', 'Yenilemeden önce değişikliklerinizi kaydedin.');
+    return;
+  }
+  if (!force && state.loaded.has(name) && Date.now() - (state.panelLoadedAt.get(name) || 0) < 60_000) return;
   if (state.panelLoads.has(name)) return state.panelLoads.get(name);
+  const finishLoading = beginRegion(panel, 'Bölüm bilgileri yükleniyor…');
   let operation;
   operation = (async () => {
     try {
@@ -1765,11 +1801,14 @@ async function loadPanel(name, force = false) {
       else if (name === 'staff') await loadStaff();
       else if (name === 'audit') await loadAudit();
       else if (name === 'security') await loadSecurity();
+      state.panelLoadedAt.set(name, Date.now());
+      rememberForms(panel);
     } catch (error) {
       renderPanelFailure(name, error);
       toast('error', 'Bu bölümün bilgilerini yükleyemedik', error.message);
       if (['ADMIN_GATE_REQUIRED', 'ADMIN_GATE_ACCESS_INVALID', 'AUTH_REQUIRED'].includes(String(error.code))) setTimeout(() => location.replace('/admin/index.html'), 600);
     } finally {
+      finishLoading();
       if (state.panelLoads.get(name) === operation) state.panelLoads.delete(name);
     }
   })();
@@ -1777,23 +1816,38 @@ async function loadPanel(name, force = false) {
   return operation;
 }
 
-function switchPanel(name = 'overview') {
+function switchPanel(name = 'overview', { record = true } = {}) {
+  state.panelScroll.set(state.activePanel, window.scrollY);
   const requested = PANELS.includes(name) ? name : 'overview';
   const safe = panelAllowed(requested) ? requested : PANELS.find((panel) => panelAllowed(panel)) || 'overview';
   state.activePanel = safe;
-  $$('[data-panel]').forEach((button) => button.classList.toggle('is-active', button.dataset.panel === safe));
+  $$('[data-panel]').forEach((button) => { const selected = button.dataset.panel === safe; button.classList.toggle('is-active', selected); if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
   $$('[data-admin-panel]').forEach((panel) => { const active = panel.dataset.adminPanel === safe && panelAllowed(safe); panel.classList.toggle('is-active', active); panel.hidden = !active; panel.inert = !active; });
   const activeNavButton = document.querySelector(`.admin-sidebar [data-panel="${safe}"]`);
   if (activeNavButton && matchMedia('(max-width: 899px)').matches) {
     requestAnimationFrame(() => activeNavButton.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }));
   }
-  scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  scrollTo({ top: state.panelScroll.get(safe) || 0, behavior: 'auto' });
+  const panel = $(`[data-admin-panel="${safe}"]`);
+  animateView(panel);
+  const heading = panel?.querySelector('h1');
+  if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
+  document.title = `${heading?.textContent || 'Yönetim Merkezi'} | ZENTRA STORE`;
+  if (record && location.hash !== `#panel/${safe}`) history.pushState({ zentraAdminPanel: safe }, '', `#panel/${safe}`);
   return loadPanel(safe).catch(() => null);
 }
 
 async function logout() {
   await adminFetch('/api/auth/admin/gate/logout', { method: 'POST', body: {} }).catch(() => null);
   location.replace('/admin/index.html');
+}
+
+function bindAction(element, type, handler, label = 'İşlem yapılıyor…') {
+  element?.addEventListener(type, (event) => {
+    const button = type === 'submit' ? element.querySelector('button[type="submit"]') : element;
+    if (type === 'submit') event.preventDefault();
+    void runAction(button, () => handler(event), label).catch((error) => toast('error', 'İşlem tamamlanamadı', error?.message || 'Bağlantınızı kontrol edip yeniden deneyin.'));
+  });
 }
 
 function bind() {
@@ -1828,6 +1882,7 @@ function bind() {
   $$('[data-secure-action-cancel]').forEach((button) => button.addEventListener('click', () => closeSecureAction(null)));
   $('#secureActionForm').addEventListener('submit', (event) => { event.preventDefault(); const result = secureActionResult(); if (result) closeSecureAction(result); });
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('#reauthLayer').hidden) { event.preventDefault(); closeReauth(''); return; }
     if (event.key === 'Escape' && !$('#productCreateLayer').hidden) { event.preventDefault(); closeProductCreate(); return; }
     if (event.key === 'Escape' && !$('#secureActionLayer').hidden && state.secureActionResolve) {
       event.preventDefault();
@@ -1842,12 +1897,12 @@ function bind() {
   $('#inventoryProduct').addEventListener('change', () => { populateInventoryPlans(); renderInventoryMode(); });
   $('#inventoryPlan').addEventListener('change', () => renderInventoryMode());
   $('#inventoryKeys').addEventListener('input', () => { state.inventoryImportAttempt = null; renderInventoryParsePreview(); });
-  $('#inventoryImportForm').addEventListener('submit', importInventory);
+  bindAction($('#inventoryImportForm'), 'submit', importInventory, 'Stoklar kaydediliyor…');
   $('#inventoryInspect').addEventListener('click', inspectInventory);
   $('#inventoryMigrateShared').addEventListener('click', migrateSharedInventory);
   $('#inventoryRotateKeys').addEventListener('click', rotateInventoryKeys);
   $('#openProductCreate')?.addEventListener('click', openProductCreate);
-  $('#productCreateForm')?.addEventListener('submit', submitNewProduct);
+  bindAction($('#productCreateForm'), 'submit', submitNewProduct, 'Ürün kaydediliyor…');
   $('#newProductCategoryPreset')?.addEventListener('change', applyNewProductCategoryPreset);
   $('#addProductPlan')?.addEventListener('click', addProductPlanRow);
   $$('[data-product-create-close]').forEach((button) => button.addEventListener('click', closeProductCreate));
@@ -1859,13 +1914,13 @@ function bind() {
   $('#adminProductGrid').addEventListener('submit', (event) => event.preventDefault());
   $('#adminProductGrid').addEventListener('input', (event) => { const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });
   $('#adminProductGrid').addEventListener('change', (event) => { if (event.target.matches?.('[data-product-badge-key]')) syncProductBadgePreview(event.target); const form = event.target.closest('[data-product-form]'); if (form) markProductDirty(form); });
-  $('#productBulkSave')?.addEventListener('click', saveAllProducts);
-  $('#userSearchForm').addEventListener('submit', searchUser);
-  $('#walletResolveForm').addEventListener('submit', resolveWalletUser);
-  $('#walletForm').addEventListener('submit', adjustWallet);
+  bindAction($('#productBulkSave'), 'click', saveAllProducts, 'Ürünler kaydediliyor…');
+  bindAction($('#userSearchForm'), 'submit', searchUser, 'Kullanıcı aranıyor…');
+  bindAction($('#walletResolveForm'), 'submit', resolveWalletUser, 'Kullanıcı doğrulanıyor…');
+  bindAction($('#walletForm'), 'submit', adjustWallet, 'Bakiye işlemi doğrulanıyor…');
   $('#walletAmount').addEventListener('input', walletPreview); $('#walletType').addEventListener('change', walletPreview);
-  $('#contentForm').addEventListener('submit', saveContent);
-  $('#quickLinksForm')?.addEventListener('submit', saveQuickLinks);
+  bindAction($('#contentForm'), 'submit', saveContent, 'Kaydediliyor…');
+  bindAction($('#quickLinksForm'), 'submit', saveQuickLinks, 'Bağlantılar kaydediliyor…');
   $('#addQuickLink')?.addEventListener('click', addQuickLink);
   $('#adminQuickLinks')?.addEventListener('input', (event) => {
     if (event.target.matches('[data-link-field]')) state.quickLinks = readQuickLinkDrafts();
@@ -1875,11 +1930,11 @@ function bind() {
     state.quickLinks = readQuickLinkDrafts();
     if (event.target.dataset.linkField === 'platform' || event.target.dataset.linkField === 'enabled') renderQuickLinkEditor();
   });
-  $('#promotionForm')?.addEventListener('submit', savePromotion);
+  bindAction($('#promotionForm'), 'submit', savePromotion, 'Kupon kaydediliyor…');
   $('#generateCouponCode')?.addEventListener('click', generateCouponCode);
   $('#resetCouponForm')?.addEventListener('click', resetCouponForm);
   $('#refreshPromotions')?.addEventListener('click', () => loadPromotions().catch((error) => toast('error', 'Kuponlar yenilenemedi', error.message)));
-  $('#staffForm').addEventListener('submit', saveStaff);
+  bindAction($('#staffForm'), 'submit', saveStaff, 'Yetki kaydediliyor…');
 }
 
 async function confirmedAdminStatus() {
@@ -1928,7 +1983,7 @@ function renderAdminEntryFailure(error) {
 }
 
 async function boot() {
-  lockAdminInteractions(); startAmbientCanvas($('#ambientCanvas')); installAdminChromeStability();
+  installAppUI(); lockAdminInteractions(); startAmbientCanvas($('#ambientCanvas')); installAdminChromeStability();
   try {
     await window.ZENTRA_ADMIN_AUTH.init();
     const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
@@ -1942,10 +1997,13 @@ async function boot() {
     state.adminPolicy = status.admin;
     applyAdminPermissions();
     securityView(status.security || status.admin?.security || {}); $('#adminIdentity').textContent = status.user?.email || 'Yetkili yönetici';
-    const initialPanel = panelAllowed('overview') ? 'overview' : PANELS.find((panel) => panelAllowed(panel));
+    const requestedPanel = location.hash.match(/^#panel\/([a-z]+)$/)?.[1];
+    const initialPanel = requestedPanel && PANELS.includes(requestedPanel) && panelAllowed(requestedPanel) ? requestedPanel : panelAllowed('overview') ? 'overview' : PANELS.find((panel) => panelAllowed(panel));
     if (!initialPanel) throw new Error('Bu yönetici hesabına atanmış aktif panel izni bulunmuyor.');
     state.activePanel = initialPanel;
-    await switchPanel(initialPanel);
+    await switchPanel(initialPanel, { record: false });
+    history.replaceState({ zentraAdminPanel: initialPanel }, '', `#panel/${initialPanel}`);
+    window.addEventListener('popstate', () => { const panel = location.hash.match(/^#panel\/([a-z]+)$/)?.[1]; if (panel) void switchPanel(panel, { record: false }); });
     $('#adminLoader').classList.add('is-hidden');
   } catch (error) {
     renderAdminEntryFailure(error);

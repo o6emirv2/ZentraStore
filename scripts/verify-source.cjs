@@ -31,7 +31,7 @@ function cssStructureValid(source) {
   }
   return !quote && !comment && stack.length === 0;
 }
-const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />';
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />';
 for (const filename of files) {
   if (!/\.(?:js|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
@@ -91,6 +91,8 @@ let literalDomReferences = 0;
 for (const [htmlName, scriptNames] of domGroups) {
   const htmlSource = fs.readFileSync(path.join(root, htmlName), 'utf8');
   const elementIds = new Set([...htmlSource.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+  const sharedUI = fs.readFileSync(path.join(root, 'public/js/ui/app-ui.js'), 'utf8');
+  for (const match of sharedUI.matchAll(/\.id\s*=\s*['"]([A-Za-z][\w:-]*)['"]|\bid="([^"]+)"/g)) elementIds.add(match[1] || match[2]);
   const referencedIds = new Set();
   for (const scriptName of scriptNames) {
     const scriptSource = fs.readFileSync(path.join(root, scriptName), 'utf8');
@@ -140,4 +142,4 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.85 initial-scale; pinch zoom enabled', result: 'PASS' }));
+console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '1 initial-scale; pinch zoom enabled', result: 'PASS' }));

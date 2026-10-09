@@ -553,7 +553,7 @@ body[data-authenticated="true"] [data-guest-only] {
   width:51px;
   display:grid;
   place-items:center;
-  color:#aab2c0;
+  color:#B7C1D8;
   font-size:1.2rem
 }
 .searchbar input {
@@ -1588,7 +1588,7 @@ body[data-authenticated="true"] [data-guest-only] {
   gap:6px;
   border:0;
   background:transparent;
-  color:#8b94a3;
+  color:#B7C1D8;
   font-size:1.04rem
 }
 .mobile-nav button span {
@@ -2710,7 +2710,7 @@ body[data-authenticated="true"] [data-guest-only] {
   border-color:var(--line);
   background:#151b25;
   box-shadow:none;
-  color:#8b95a5;
+  color:#B7C1D8;
   opacity:1;
 }
 .plan-option small {
@@ -2914,7 +2914,7 @@ body[data-authenticated="true"] [data-guest-only] {
   background:linear-gradient(145deg,#342515,#141b27);
 }
 .game-category__icon--gbox {
-  color:#7fdaff;
+  color:#B7C1D8;
   background:linear-gradient(145deg,#122f43,#11182c);
 }
 .game-category__count {

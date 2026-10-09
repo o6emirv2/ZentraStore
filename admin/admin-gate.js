@@ -1,8 +1,10 @@
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-20261009-v4';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261009-v4';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261009-v4';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-app-v69';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-app-v69';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-app-v69';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-app-v69';
 
 installInteractionGuard();
+installAppUI();
 
 const state = { step: 1, ticket: '', busy: false, automaticRunning: false };
 const ADMIN_BLOCK_KEY = 'zentra_admin_entry_block_until_v47';
@@ -103,17 +105,7 @@ function setStatus(selector, message = '', type = '') {
 
 function setBusy(form, busy, label = 'Doğrulanıyor…') {
   state.busy = busy;
-  const button = form?.querySelector('.primary-btn');
-  if (!button) return;
-  if (busy) {
-    button.dataset.label = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>${label}</span>`;
-  } else {
-    button.disabled = false;
-    if (button.dataset.label) button.innerHTML = button.dataset.label;
-    delete button.dataset.label;
-  }
+  setActionBusy(form?.querySelector('.primary-btn'), busy, label);
 }
 
 function securityView(security = {}) {
@@ -134,6 +126,7 @@ function activateStep(step) {
     section.classList.toggle('is-active', active);
     section.hidden = !active;
     section.inert = !active;
+    if (active) animateView(section);
   });
   const focusTargets = { 3: '#firebasePassword', 4: '#fourthFactor', 5: '#fifthFactor' };
   const focus = $(focusTargets[step]);
@@ -179,7 +172,6 @@ async function runAutomaticVerification() {
     verificationView(1, true, `Eşleşti: ${verifiedEmail}`);
     setStatus('#emailStatus', 'Aktif ZENTRA STORE e-postası yönetici rol politikasıyla eşleşti.', 'success');
 
-    await pause(360);
     activateStep(2);
     verificationView(2, false, `Aktif UID okunuyor: ${maskUid(active.uid)}`);
     const uidResult = await adminFetch('/api/auth/admin/gate/step-uid', { method: 'POST', body: { ticket: state.ticket } });
@@ -190,7 +182,6 @@ async function runAutomaticVerification() {
     verificationView(2, true, `Doğrulandı: ${maskUid(verifiedUid)}`);
     setStatus('#uidStatus', 'Aktif ZENTRA STORE UID değeri yönetici rol politikasıyla eşleşti.', 'success');
 
-    await pause(420);
     activateStep(3);
     setStatus('#firebaseStatus', 'Otomatik kimlik kontrolleri tamamlandı.', 'success');
   } catch (error) {

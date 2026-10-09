@@ -93,3 +93,40 @@ test('public catalog serializes saved features and category membership without l
   assert.deepEqual(result.products[0].features, ['ESP', 'Aimbot']);
   assert.equal(result.products[0].categoryKey, 'pubg-android');
 });
+
+test('lost order response can be recovered without another write, even after catalog changes', async () => {
+  reset();
+  const created = await service.createOrder(order);
+  const before = writes.length;
+  catalog.products[0].archived = true;
+  const recovered = await service.readOrderAttempt({ uid: order.uid, idempotencyKey: order.idempotencyKey });
+  assert.equal(recovered.found, true);
+  assert.equal(recovered.order.id, created.order.id);
+  assert.equal(recovered.balanceKurus, 10000);
+  assert.equal(writes.length, before);
+  const otherUser = await service.readOrderAttempt({ uid: 'another-user', idempotencyKey: order.idempotencyKey });
+  assert.deepEqual(otherUser, { found: false });
+});
+
+test('cancelling an uncommitted attempt blocks late purchases and leaves funds untouched', async () => {
+  reset();
+  const cancelled = await service.cancelOrderAttempt({ uid: order.uid, idempotencyKey: order.idempotencyKey });
+  assert.equal(cancelled.cancelled, true);
+  assert.equal(docs.get('users/user-1').storeBalanceKurus, 20000);
+  await assert.rejects(service.createOrder(order), (error) => error.code === 'STORE_ORDER_ATTEMPT_CANCELLED');
+  const status = await service.readOrderAttempt({ uid: order.uid, idempotencyKey: order.idempotencyKey });
+  assert.deepEqual(status, { found: false, cancelled: true });
+  assert.equal([...docs.keys()].filter((key) => key.startsWith('storeWalletLedger/')).length, 0);
+  assert.equal([...docs.keys()].filter((key) => key.startsWith('storeOrders/')).length, 0);
+});
+
+test('attempt cancellation returns an already committed order rather than cancelling or charging it again', async () => {
+  reset();
+  const created = await service.createOrder(order);
+  const before = writes.length;
+  const result = await service.cancelOrderAttempt({ uid: order.uid, idempotencyKey: order.idempotencyKey });
+  assert.equal(result.cancelled, false);
+  assert.equal(result.order.id, created.order.id);
+  assert.equal(writes.length, before);
+  assert.equal(docs.get('users/user-1').storeBalanceKurus, 10000);
+});

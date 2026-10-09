@@ -1,3 +1,4 @@
+import { rememberForms, confirmDiscard, animateView } from '../ui/app-ui.js?v=zentra-app-v69';
 const CUSTOMER_VIEWS = Object.freeze(['cart', 'orders', 'deliveries', 'coupons', 'profile']);
 const ORDER_FILTERS = Object.freeze(['all', 'pending', 'approved', 'delivered']);
 const COUPON_FILTERS = Object.freeze(['available', 'used', 'expired']);
@@ -242,6 +243,7 @@ function createCustomerAppController({
 
   function closeAction({ restoreFocus = true, force = false } = {}) {
     if (!actionDialog || !action || (!force && busy())) return false;
+    if (!force && !confirmDiscard(actionDialog, () => closeAction({ restoreFocus, force: true }))) return false;
     const completed = action;
     const target = actionFocus;
     action = '';
@@ -291,6 +293,8 @@ function createCustomerAppController({
     actionDialog.setAttribute('aria-hidden', 'false');
     actionDialog.classList.add('is-open');
     onActionOpen(requested);
+    rememberForms(actionDialog);
+    animateView(actionDialog);
     const sequence = ++focusSequence;
     const focusTarget = () => {
       if (sequence !== focusSequence || actionDialog.hidden || action !== requested) return;
