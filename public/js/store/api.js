@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-app-v69';
+import { readApiJson, waitForSignal } from '../request-utils.js?v=zentra-20261009-v4';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -63,7 +63,6 @@ const USER_MESSAGES = Object.freeze({
   STORE_ACCOUNT_NOT_FOUND: 'Hesap bilgilerinizi doğrulayamadık. Lütfen yeniden giriş yapın.',
   STORE_INSUFFICIENT_BALANCE: 'ZENTRA STORE bakiyeniz bu sipariş için yeterli değil.',
   STORE_ORDER_CONFLICT: 'Bu sipariş isteği daha önce farklı bilgilerle kullanılmış. Lütfen sepetinizi yenileyip yeniden deneyin.',
-  STORE_ORDER_ATTEMPT_CANCELLED: 'Bu satın alma isteği güvenle iptal edilmiş. Yeni sipariş için sepetinizi yeniden kontrol edin.',
   STORE_ORDER_NOT_FOUND: 'Sipariş bulunamadı veya artık erişilebilir değil.',
   STORE_ORDER_ID_REQUIRED: 'Sipariş bilgisi eksik. Lütfen sipariş listenizi yenileyin.',
   STORE_ORDER_CREATE_FAILED: 'Sipariş oluşturulamadı. Bakiyeniz ve stok bilgileriniz güvenle korundu.',
@@ -209,10 +208,9 @@ export function friendlyStoreError(value, fallback = 'İşlem şu anda tamamlana
 }
 
 export async function storeApi(path, options = {}) {
-  const requestTokenProvider = tokenProvider;
+  const controller = new AbortController();
   const timeoutMs = Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS));
-  const request = requestController(timeoutMs, options.signal);
-  const { controller } = request;
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   const headers = new Headers(options.headers || {});
   headers.set('Accept', 'application/json');
   headers.set('X-Request-Id', headers.get('X-Request-Id') || createRequestId());
@@ -221,10 +219,11 @@ export async function storeApi(path, options = {}) {
 
   const rawPath = String(path || '');
   const url = /^https?:\/\//i.test(rawPath) ? rawPath : `${getStoreApiBase()}${rawPath.startsWith('/') ? rawPath : `/${rawPath}`}`;
-  const protectedStore = options.auth !== false && new URL(url, window.location.href).pathname.startsWith('/api/store/') && !/^\/api\/store\/catalog(?:[/?]|$)/.test(rawPath);
+  let sameOrigin = false;
+  try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin; } catch (_) {}
   try {
-    if (options.auth !== false && requestTokenProvider) {
-      const token = await waitForSignal(Promise.resolve().then(() => requestTokenProvider()).catch(() => ''), controller.signal);
+    if (options.auth !== false && tokenProvider && (!sameOrigin || options.auth === 'bearer')) {
+      const token = await waitForSignal(Promise.resolve().then(() => tokenProvider()).catch(() => ''), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
     if (appCheckTokenProvider) {
@@ -232,12 +231,7 @@ export async function storeApi(path, options = {}) {
       if (appCheckToken) headers.set('X-Firebase-AppCheck', appCheckToken);
     }
   
-    if (options.auth !== false && tokenProvider !== requestTokenProvider) {
-      const error = new Error(USER_MESSAGES.AUTH_SESSION_CHANGED);
-      error.code = 'AUTH_SESSION_CHANGED';
-      throw error;
-    }
-    if ((protectedStore || options.auth === 'bearer') && !headers.has('Authorization')) {
+    if (options.auth === 'bearer' && !headers.has('Authorization')) {
       const error = new Error(USER_MESSAGES.AUTH_FRESH_TOKEN_REQUIRED);
       error.code = 'AUTH_FRESH_TOKEN_REQUIRED';
       throw error;
@@ -264,7 +258,6 @@ export async function storeApi(path, options = {}) {
     return payload;
   } catch (error) {
     if (controller.signal.aborted || error?.name === 'AbortError') {
-      if (!request.timedOut) throw new DOMException('Request cancelled', 'AbortError');
       const timeoutError = new Error(USER_MESSAGES.REQUEST_TIMEOUT);
       timeoutError.code = 'REQUEST_TIMEOUT';
       throw timeoutError;
@@ -276,6 +269,6 @@ export async function storeApi(path, options = {}) {
     }
     throw error;
   } finally {
-    request.cleanup();
+    window.clearTimeout(timer);
   }
 }

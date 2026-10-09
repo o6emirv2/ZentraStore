@@ -305,7 +305,6 @@ async function readIdempotentOrder({ db, uid, idempotencyRef, requestHash }) {
   const snapshot = await idempotencyRef.get();
   if (!snapshot.exists) return null;
   const data = snapshot.data() || {};
-  if (data.status === 'cancelled') throw serviceError('STORE_ORDER_ATTEMPT_CANCELLED', 409);
   if (data.requestHash && data.requestHash !== requestHash) throw serviceError('STORE_ORDER_CONFLICT', 409);
   const orderId = safeText(data.orderId, 160);
   if (!orderId) throw serviceError('STORE_ORDER_CONFLICT', 409);
@@ -324,54 +323,6 @@ async function orderResponse({ uid, authUser, order, catalog, fulfillmentOutcome
     telegramUrl: message ? telegramUrl(message, catalog.telegramUsername) : '',
     ...(fulfillmentOutcome ? { fulfillmentOutcome } : {})
   };
-}
-
-async function readOrderAttempt({ uid = '', authUser = {}, idempotencyKey = '' } = {}) {
-  const safeUid = safeText(uid, 160);
-  if (!safeUid) throw serviceError('AUTH_REQUIRED', 401);
-  const key = requireIdempotencyKey(idempotencyKey);
-  const { db } = firebaseStore();
-  const ref = db.collection('storeOrderIdempotency').doc(hashIdempotency('store-order', safeUid, key));
-  const snapshot = await ref.get();
-  if (!snapshot.exists) return { found: false };
-  const data = snapshot.data() || {};
-  if (safeText(data.uid, 160) === safeUid && data.status === 'cancelled') return { found: false, cancelled: true };
-  if (safeText(data.uid, 160) !== safeUid || !safeText(data.orderId, 160)) throw serviceError('STORE_ORDER_CONFLICT', 409);
-  const orderSnapshot = await db.collection('storeOrders').doc(data.orderId).get();
-  if (!orderSnapshot.exists || safeText(orderSnapshot.data()?.uid, 160) !== safeUid) throw serviceError('STORE_ORDER_CONFLICT', 409);
-  const order = publicOrder(orderSnapshot.data(), orderSnapshot.id);
-  // Recovery never creates a new order or depends on the product still being on sale.
-  return { found: true, ...await orderResponse({ uid: safeUid, authUser, order, catalog: STORE_CATALOG }) };
-}
-
-async function cancelOrderAttempt({ uid = '', authUser = {}, idempotencyKey = '' } = {}) {
-  const safeUid = safeText(uid, 160);
-  if (!safeUid) throw serviceError('AUTH_REQUIRED', 401);
-  const key = requireIdempotencyKey(idempotencyKey);
-  const { db } = firebaseStore();
-  const ref = db.collection('storeOrderIdempotency').doc(hashIdempotency('store-order', safeUid, key));
-  const auditRef = db.collection('storeAudit').doc();
-  const result = await db.runTransaction(async (tx) => {
-    const snapshot = await tx.get(ref);
-    if (snapshot.exists) {
-      const data = snapshot.data() || {};
-      if (safeText(data.uid, 160) !== safeUid) throw serviceError('STORE_ORDER_CONFLICT', 409);
-      if (data.status === 'cancelled') return { cancelled: true };
-      const orderId = safeText(data.orderId, 160);
-      if (!orderId) throw serviceError('STORE_ORDER_CONFLICT', 409);
-      const order = await tx.get(db.collection('storeOrders').doc(orderId));
-      if (!order.exists || safeText(order.data()?.uid, 160) !== safeUid) throw serviceError('STORE_ORDER_CONFLICT', 409);
-      return { order: publicOrder(order.data(), order.id) };
-    }
-    const now = Date.now();
-    // The tombstone competes with the original purchase in the SAME transaction key.
-    // A late purchase retries, sees this marker and cannot debit funds.
-    tx.create(ref, { uid: safeUid, status: 'cancelled', keyHash: ref.id, orderId: '', createdAt: now });
-    tx.create(auditRef, { uid: safeUid, type: 'store-order-attempt-cancel', action: 'store.order-attempt.cancel', createdAt: now });
-    return { cancelled: true };
-  });
-  if (result.order) return { found: true, cancelled: false, ...await orderResponse({ uid: safeUid, authUser, order: result.order, catalog: STORE_CATALOG }) };
-  return { found: false, cancelled: true };
 }
 
 async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 'telegram', idempotencyKey = '', promotionCode = '' }) {
@@ -413,7 +364,6 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
     const existing = await tx.get(idempotencyRef);
     if (existing.exists) {
       const existingData = existing.data() || {};
-      if (existingData.status === 'cancelled') throw serviceError('STORE_ORDER_ATTEMPT_CANCELLED', 409);
       if (existingData.requestHash && existingData.requestHash !== requestHash) throw serviceError('STORE_ORDER_CONFLICT', 409);
       const existingOrderId = safeText(existingData.orderId, 160);
       if (!existingOrderId) throw serviceError('STORE_ORDER_CONFLICT', 409);
@@ -1031,8 +981,6 @@ module.exports = {
   readAccount,
   updateProfileAvatar,
   createOrder,
-  readOrderAttempt,
-  cancelOrderAttempt,
   previewStorePromotion,
   listOrders,
   listOrdersForAdmin,

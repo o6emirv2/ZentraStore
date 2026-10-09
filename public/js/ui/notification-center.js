@@ -83,19 +83,18 @@ export function createNotificationCenter({
   host,
   brand = 'ZENTRA STORE',
   soundUrl = '/public/assets/sounds/bildirim.wav',
-  maxVisible = 3
+  maxVisible = 2
 } = {}) {
   if (!host) return { notify: () => null, clear: () => {}, destroy: () => {} };
 
   const timers = new Map();
   let audio = null;
   let audioReady = false;
-  const pending = [];
-  const fingerprints = new Map();
-  let destroyed = false;
+  let lastFingerprint = '';
+  let lastShownAt = 0;
 
   host.classList.add('notification-center');
-  host.removeAttribute('aria-live');
+  host.setAttribute('aria-live', 'polite');
   host.setAttribute('aria-relevant', 'additions');
   host.setAttribute('aria-atomic', 'false');
 
@@ -142,19 +141,15 @@ export function createNotificationCenter({
   };
 
   const dismiss = (notice, immediate = false) => {
-    if (!notice) return;
-    const queued = pending.findIndex((entry) => entry.notice === notice);
-    if (queued >= 0) pending.splice(queued, 1);
-    if (!notice.isConnected) return;
+    if (!notice?.isConnected) return;
     removeTimer(notice);
     if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       notice.remove();
-      drain();
       return;
     }
     notice.classList.remove('is-visible');
     notice.classList.add('is-leaving');
-    window.setTimeout(() => { notice.remove(); drain(); }, 180);
+    window.setTimeout(() => notice.remove(), 220);
   };
 
   const startTimer = (notice, duration) => {
@@ -180,30 +175,13 @@ export function createNotificationCenter({
     startTimer(notice, duration);
   };
 
-  const visibleLimit = () => document.documentElement.classList.contains('app-dialog-open') ? 1 : Math.max(1, Math.min(3, Number(maxVisible) || 3));
-  const reconcileCapacity = () => {
+  const keepStackCompact = () => {
     const notices = [...host.querySelectorAll('.zentra-notice')];
-    for (const notice of notices.slice(visibleLimit()).reverse()) {
-      if (notice.classList.contains('is-leaving')) continue;
-      const timer = timers.get(notice);
-      const duration = notice.classList.contains('is-persistent') ? 0 : timer?.remaining || Number.parseFloat(notice.style.getPropertyValue('--notice-duration')) || 5800;
-      removeTimer(notice);
-      notice.remove();
-      pending.unshift({ notice, duration, sound: false });
-    }
-    drain();
+    const limit = window.matchMedia?.('(max-width: 560px)').matches
+      ? 1
+      : Math.max(1, Math.min(3, Number(maxVisible) || 2));
+    while (notices.length >= limit) dismiss(notices.shift(), true);
   };
-  document.addEventListener('zentra:dialog-change', reconcileCapacity);
-  function drain() {
-    if (destroyed) return;
-    while (pending.length && host.querySelectorAll('.zentra-notice').length < visibleLimit()) {
-      const { notice, duration, sound } = pending.shift();
-      host.append(notice);
-      window.requestAnimationFrame(() => { if (notice.isConnected) notice.classList.add('is-visible'); });
-      if (duration) startTimer(notice, duration);
-      if (sound) playSound();
-    }
-  }
 
   function notify(type, title, message, options = {}) {
     const safeType = NOTICE_TYPES.has(type) ? type : 'info';
@@ -211,21 +189,20 @@ export function createNotificationCenter({
     const safeTitle = safeText(title, fallback.title, 86);
     const safeMessage = noticeBody(safeType, message, fallback.message);
     const fingerprint = `${safeType}:${safeTitle}:${safeMessage}`;
-    if (destroyed) return null;
     const now = Date.now();
-    for (const [key, entry] of fingerprints) if (now - entry.at > 60_000 && !entry.notice.isConnected && !pending.some((item) => item.notice === entry.notice)) fingerprints.delete(key);
-    const previous = fingerprints.get(fingerprint);
-    if (previous && (previous.notice.isConnected || pending.some((entry) => entry.notice === previous.notice) || now - previous.at < 1500)) return previous.notice;
+    if (fingerprint === lastFingerprint && now - lastShownAt < 1_500) return null;
+    lastFingerprint = fingerprint;
+    lastShownAt = now;
+    keepStackCompact();
 
     const actionLabel = safeText(options.actionLabel, '', 56);
-    const persistent = options.persistent === true || safeType === 'error' || Boolean(actionLabel && ['warning', 'info'].includes(safeType));
-    const duration = persistent ? 0 : Math.max(3_800, Math.min(12_000, Number(options.duration) || (actionLabel ? 8_000 : 5_800)));
+    const duration = Math.max(3_800, Math.min(12_000, Number(options.duration) || (actionLabel ? 8_000 : 5_800)));
     const view = presentation(safeType, safeTitle, safeMessage, options);
 
     const notice = document.createElement('article');
-    notice.className = `zentra-notice zentra-notice--${safeType}${persistent ? ' is-persistent' : ''}`;
+    notice.className = `zentra-notice zentra-notice--${safeType}`;
     notice.style.setProperty('--notice-duration', `${duration}ms`);
-    notice.setAttribute('role', options.critical === true ? 'alert' : 'status');
+    notice.setAttribute('role', safeType === 'error' ? 'alert' : 'status');
     notice.setAttribute('aria-label', `${safeTitle}. ${safeMessage}`);
 
     const symbol = document.createElement('span');
@@ -270,7 +247,7 @@ export function createNotificationCenter({
       action.append(iconNode(safeIcon(options.actionIcon) || 'fa-arrow-right'), label);
       action.addEventListener('click', async () => {
         dismiss(notice);
-        try { await options.onAction(); } catch (_) { notify('error', 'İşlem tamamlanamadı', 'Bağlantınızı kontrol ederek yeniden deneyin.'); }
+        try { await options.onAction(); } catch (_) {}
       }, { once: true });
       notice.append(action);
     }
@@ -281,41 +258,28 @@ export function createNotificationCenter({
     notice.append(progress);
 
     notice.addEventListener('pointerenter', () => pauseTimer(notice));
-    notice.addEventListener('pointerleave', () => { if (duration) resumeTimer(notice, duration); });
+    notice.addEventListener('pointerleave', () => resumeTimer(notice, duration));
     notice.addEventListener('focusin', () => pauseTimer(notice));
     notice.addEventListener('focusout', (event) => {
-      if (duration && !notice.contains(event.relatedTarget)) resumeTimer(notice, duration);
+      if (!notice.contains(event.relatedTarget)) resumeTimer(notice, duration);
     });
 
-    fingerprints.set(fingerprint, { notice, at: now });
-    pending.push({ notice, duration, sound: options.sound === true });
-    drain();
+    host.prepend(notice);
+    window.requestAnimationFrame(() => notice.classList.add('is-visible'));
+    startTimer(notice, duration);
+    if (options.sound !== false) playSound();
     return notice;
   }
 
-  const visibility = () => {
-    for (const notice of host.querySelectorAll('.zentra-notice:not(.is-persistent)')) {
-      if (document.hidden) pauseTimer(notice);
-      else resumeTimer(notice, 5800);
-    }
-  };
-  document.addEventListener('visibilitychange', visibility);
-
   function clear() {
-    pending.splice(0);
-    fingerprints.clear();
     [...host.querySelectorAll('.zentra-notice')].forEach((notice) => dismiss(notice, true));
   }
 
   function destroy() {
-    destroyed = true;
     clear();
     window.removeEventListener('pointerdown', unlockSound, unlockOptions);
     window.removeEventListener('touchstart', unlockSound, unlockOptions);
     window.removeEventListener('keydown', unlockSound, { capture: true });
-    document.removeEventListener('visibilitychange', visibility);
-    document.removeEventListener('zentra:dialog-change', reconcileCapacity);
-    audio?.pause();
     audio = null;
     audioReady = false;
   }

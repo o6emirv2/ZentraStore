@@ -37,7 +37,7 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
   normalizeProtectedMedia(documentRoot);
 
   listen(documentRoot, 'contextmenu', preventContextMenu, { capture: true });
-  listen(documentRoot, 'dragstart', (event) => { if (!isEditableTarget(event.target)) prevent(event); }, { capture: true });
+  listen(documentRoot, 'dragstart', prevent, { capture: true });
   listen(documentRoot, 'selectstart', preventSelection, { capture: true, passive: false });
 
   const observer = typeof MutationObserver === 'function'

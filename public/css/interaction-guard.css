@@ -9,7 +9,7 @@ body {
   max-width: 100%;
   overflow-x: hidden;
   overscroll-behavior-x: none;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 @supports (overflow: clip) {
@@ -30,7 +30,6 @@ input,
 textarea,
 select,
 [contenteditable="true"] {
-  -webkit-touch-callout: default;
   -webkit-user-select: text;
   user-select: text;
 }
@@ -52,7 +51,7 @@ select,
 .side-sheet__body,
 .admin-content,
 .gate-stage {
-  touch-action: manipulation;
+  touch-action: pan-y pinch-zoom;
 }
 
 img,
@@ -96,8 +95,7 @@ fieldset,
   @media (max-width: 899px) {
     input,
     textarea,
-    select,
-    [contenteditable="true"] {
+    select {
       font-size: 16px !important;
     }
   }

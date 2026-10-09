@@ -9,7 +9,7 @@ export function productImagePath(value = '') {
   return '';
 }
 
-export function versionedProductImage(value, version = 'storefront-v69') {
+export function versionedProductImage(value, version = 'storefront-v68') {
   const source = productImagePath(value);
   if (!source || source.startsWith('https:')) return source;
   return `${source.split('?')[0]}?v=${version}`;

@@ -12,8 +12,6 @@ const {
   readAccount,
   updateProfileAvatar,
   createOrder,
-  readOrderAttempt,
-  cancelOrderAttempt,
   previewStorePromotion,
   listOrders,
   listOrdersForAdmin,
@@ -169,18 +167,6 @@ router.post('/store/orders', requireAuth, strictLimiter, asyncRoute(async (req, 
   });
   noStore(res);
   res.status(201).json({ ok: true, ...result });
-}));
-
-router.get('/store/order-attempt', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
-  const result = await readOrderAttempt({ uid: req.user.uid, authUser: req.user, idempotencyKey: req.query.key });
-  noStore(res);
-  res.json({ ok: true, ...result });
-}));
-
-router.post('/store/order-attempt/cancel', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
-  const result = await cancelOrderAttempt({ uid: req.user.uid, authUser: req.user, idempotencyKey: req.body?.idempotencyKey });
-  noStore(res);
-  res.json({ ok: true, ...result });
 }));
 
 router.post('/store/orders/:orderId/cancel', requireAuth, strictLimiter, asyncRoute(async (req, res) => {

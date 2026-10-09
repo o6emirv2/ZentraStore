@@ -1758,7 +1758,7 @@ img {
 .product-create-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .product-create-card label{min-width:0;display:grid;gap:7px;font-size:13px;color:#dce7fb}
 .product-create-card label>span{font-weight:700}
-.product-create-card label>small{font-size:11px;color:#B7C1D8}
+.product-create-card label>small{font-size:11px;color:#93a4bc}
 .product-create-card input,.product-create-card select,.product-create-card textarea{width:100%;min-width:0;border:1px solid rgba(130,166,209,.26);border-radius:11px;background:#101a2a;color:#fff;padding:12px 13px;outline:0}
 .product-create-card input:focus-visible,.product-create-card select:focus-visible,.product-create-card textarea:focus-visible{border-color:#30c5ff;box-shadow:0 0 0 3px rgba(48,197,255,.16)}
 .product-create-card input[type="checkbox"]{width:18px;height:18px}

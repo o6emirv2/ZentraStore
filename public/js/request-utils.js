@@ -8,20 +8,6 @@ export function waitForSignal(promise, signal) {
   });
 }
 
-export function requestController(timeoutMs, externalSignal) {
-  const controller = new AbortController();
-  let timedOut = false;
-  const abort = () => controller.abort();
-  if (externalSignal?.aborted) abort();
-  else externalSignal?.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
-  return {
-    controller,
-    get timedOut() { return timedOut; },
-    cleanup() { clearTimeout(timer); externalSignal?.removeEventListener('abort', abort); }
-  };
-}
-
 // A missing/unusable response does not prove that a write was rolled back.
 // Keep the SAME idempotency key when retrying an uncertain financial mutation.
 export function isUncertainMutationError(error) {

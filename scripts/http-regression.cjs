@@ -27,19 +27,13 @@ test('public liveness responds while readiness refuses missing private configura
 });
 
 test('protected wallet and catalog mutations cannot be submitted anonymously', async () => {
-  for (const path of ['/api/admin/store/wallet/adjust', '/api/admin/store/products', '/api/store/orders', '/api/store/order-attempt/cancel']) {
+  for (const path of ['/api/admin/store/wallet/adjust', '/api/admin/store/products', '/api/store/orders']) {
     const response = await request(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, body: JSON.stringify({ balanceKurus: 999999, features: ['forged'] }) });
     assert.equal(response.status, 401, path);
     const payload = await response.json();
     assert.equal(payload.error, 'AUTH_REQUIRED');
     assert.ok(payload.requestId);
   }
-});
-
-test('order attempt lookup requires authentication and does not expose account data', async () => {
-  const response = await request('/api/store/order-attempt?key=financial-request-123');
-  assert.equal(response.status, 401);
-  assert.equal((await response.json()).error, 'AUTH_REQUIRED');
 });
 
 test('malformed JSON, prototype keys and untrusted origins produce specific failures', async () => {
