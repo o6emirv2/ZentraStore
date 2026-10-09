@@ -125,3 +125,86 @@ test('server normalizes all six category visibility flags with backwards-compati
   assert.equal(changed.categoryVisibility['pubg-ios'], true);
   assert.equal(changed.categoryVisibility.ios, true);
 });
+
+test('features survive create, bulk save and public serialization, and can be cleared', async () => {
+  const product = await service.createProduct({ ...valid, id: 'features-product',
+    categoryKey: 'pubg-android', image: 'public/assets/products/h-kernel.PNG',
+    features: '🏆ÖZELLİKLER🏆\n✅ -Özelleştirilebilir ESP\n✅ -Aimbot\n✅ -Aimbot' }, actor);
+  assert.deepEqual(product.features, ['Özelleştirilebilir ESP', 'Aimbot']);
+  assert.equal(product.platform, 'android');
+  assert.equal(product.game, 'pubg');
+  assert.equal(product.image, '/public/assets/products/h-kernel.PNG');
+  assert.deepEqual(stored.catalog.products[product.id].features, product.features);
+  await service.updateProductsBulk([{ productId: product.id, settings: { features: ['Skin Hack', 'İpad Modu'], categoryKey: 'oxide-ios' } }], actor);
+  let catalog = await service.getEffectiveCatalog({ fresh: true });
+  const edited = catalog.products.find((row) => row.id === product.id);
+  assert.equal(edited.game, 'oxide');
+  assert.equal(edited.platform, 'ios');
+  assert.deepEqual(edited.features, ['Skin Hack', 'İpad Modu']);
+  await service.updateProductSettings(product.id, { features: [] }, actor);
+  catalog = await service.getEffectiveCatalog({ fresh: true });
+  assert.deepEqual(catalog.products.find((row) => row.id === product.id).features, []);
+});
+
+test('all six category presets persist their membership and defaults', async () => {
+  const { CATEGORY_PRESETS } = require('../server/core/storeProductSchema');
+  for (const [key, preset] of Object.entries(CATEGORY_PRESETS)) {
+    const created = await service.createProduct({ ...valid, id: `category-${key}`, categoryKey: key }, actor);
+    assert.equal(created.categoryKey, key);
+    assert.equal(created.category, preset.category);
+    if (preset.platform) assert.equal(created.platform, preset.platform);
+    if (preset.game) assert.equal(created.game, preset.game);
+    if (key === 'gbox') {
+      assert.equal(created.fulfillmentMode, 'telegram_only');
+      assert.equal(created.image, '/public/assets/products/gbox.jpeg');
+      assert.equal(created.automaticEnabled, false);
+    }
+    if (key === 'random-account') {
+      assert.equal(created.inventoryType, 'account');
+      assert.equal(created.image, '/public/assets/products/random.jpeg');
+    }
+  }
+});
+
+test('feature limits reject malformed input before any catalog mutation', async () => {
+  const before = structuredClone(stored.catalog);
+  for (const features of [[{ text: 'invalid' }], Array.from({ length: 41 }, (_, i) => `Feature ${i}`), ['a'.repeat(161)], 123]) {
+    await assert.rejects(service.updateProductSettings(valid.id, { features }, actor), (error) => /^STORE_PRODUCT_FEATURES_/.test(error.code));
+    assert.deepEqual(stored.catalog, before);
+  }
+});
+
+test('image paths support Linux case, nested galleries, SVG and PNG and reject traversal or escaped symlinks', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
+  assert.equal(images.isValidProductImage('public/assets/products/h-kernel.PNG'), true);
+  assert.equal(images.isValidProductImage('/public/assets/products/CRY4ME.JPG'), true);
+  assert.equal(images.isValidProductImage('/public/assets/products/gallery/kingmod/game-01.jpeg'), true);
+  assert.equal(images.isValidProductImage('/public/assets/products/H-KERNEL.png'), false);
+  for (const value of ['/public/assets/products/../products/gbox.jpeg', '/public/assets/products/gbox.jpeg?x=1', '/public/assets/products/a.js', '/etc/passwd', 'data:image/svg+xml,evil']) {
+    assert.equal(images.isValidProductImage(value), false, value);
+  }
+  const svg = path.join(__dirname, '../public/assets/products/qa-image.svg');
+  const link = path.join(__dirname, '../public/assets/products/qa-link.svg');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zentra-image-'));
+  try {
+    fs.writeFileSync(svg, '<svg xmlns="http://www.w3.org/2000/svg"></svg>');
+    assert.equal(images.isValidProductImage('public/assets/products/qa-image.svg'), true);
+    fs.writeFileSync(path.join(dir, 'outside.svg'), '<svg/>');
+    fs.symlinkSync(path.join(dir, 'outside.svg'), link);
+    assert.equal(images.isValidProductImage('/public/assets/products/qa-link.svg'), false);
+  } finally {
+    fs.rmSync(svg, { force: true }); fs.rmSync(link, { force: true }); fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('catalog document capacity is checked before a Firestore write', async () => {
+  const previous = structuredClone(stored);
+  try {
+    stored.padding = 'x'.repeat(850000);
+    const before = structuredClone(stored);
+    await assert.rejects(service.updateProductSettings(valid.id, { features: ['Yeni özellik'] }, actor), (error) => error.code === 'STORE_CATALOG_SIZE_LIMIT');
+    assert.deepEqual(stored, before);
+  } finally { stored = previous; service.invalidateCatalogCache(); }
+});

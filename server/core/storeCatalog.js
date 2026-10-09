@@ -1,10 +1,11 @@
 'use strict';
 
 const rawCatalog = require('../../public/data/store-products.json');
+const { normalizeFeatures } = require('./storeProductSchema');
 const { resolveBadge } = require('./storeBadgeCatalog');
 
 const SAFE_ID = /^[a-z0-9][a-z0-9-]{1,79}$/;
-const SAFE_PLAN_KEY = /^[a-z0-9][a-z0-9-]{1,39}$/;
+const SAFE_PLAN_KEY = /^[a-z0-9][a-z0-9-]{0,39}$/;
 
 function sanitizeCatalog() {
   const products = Array.isArray(rawCatalog.products) ? rawCatalog.products : [];
@@ -60,8 +61,9 @@ function sanitizeCatalog() {
       image: String(source?.image || '').trim().slice(0, 300),
       accent: String(source?.accent || '255,72,160').replace(/[^0-9,]/g, '').slice(0, 20),
       description: String(source?.description || '').trim().slice(0, 240),
+      features: Object.freeze(normalizeFeatures(source?.features || [])),
       featured: source?.featured === true,
-      sortOrder: Math.max(0, Math.min(10_000, Math.trunc(Number(source?.sortOrder) || 500))),
+      sortOrder: Math.max(0, Math.min(10_000, Math.trunc(Number(source?.sortOrder ?? 500)))),
       tags: Object.freeze([...new Set((Array.isArray(source?.tags) ? source.tags : []).map((tag) => String(tag || '').trim().toLowerCase()).filter((tag) => ['new', 'popular', 'discounted'].includes(tag)))]),
       plans: Object.freeze(plans)
     });

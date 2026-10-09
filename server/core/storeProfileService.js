@@ -5,7 +5,7 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAccount } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
-const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'zentra', 'ZENTRA_STORE', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
+const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'zentra', 'zentra_store', 'zentrastore', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
 
 function profileError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
@@ -37,7 +37,7 @@ function validateUsername(value = '') {
 
 function validatePersonName(value = '', label = 'İsim') {
   const name = safeProfileText(value, 50).replace(/\s+/g, ' ');
-  if (name.length < 2 || !/^[\p{L}]+(?:[ .'’\-][\p{L}]+)*$/u.test(name)) {
+  if (name.length < 2 || !/^[\p{L}]+(?:[ .'’-][\p{L}]+)*$/u.test(name)) {
     throw profileError('INVALID_PERSON_NAME', 400, `${label} en az 2 karakter olmalı; harf, boşluk, kesme işareti ve tire kullanılabilir.`);
   }
   return name;
@@ -98,6 +98,8 @@ async function updateProfileUsername(uid = '', authUser = {}, input = {}) {
         throw profileError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       }
     }
+    const legacy = await transaction.get(db.collection('users').where('usernameLower', newKeys.length === 1 ? '==' : 'in', newKeys.length === 1 ? newKeys[0] : newKeys).limit(4));
+    if (legacy.docs.some((doc) => doc.id !== safeUid)) throw profileError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
     const now = Date.now();
     for (const entry of registryEntries) {
       if (newKeys.includes(entry.key)) {
@@ -188,7 +190,7 @@ async function updateProfileEmail(uid = '', authUser = {}, input = {}) {
     }
   }
   try {
-    await auth.updateUser(safeUid, { email });
+    await auth.updateUser(safeUid, { email, emailVerified: false });
   } catch (error) {
     if (String(error?.code || '') === 'auth/email-already-exists') throw profileError('EMAIL_ALREADY_IN_USE', 409);
     throw profileError('EMAIL_UPDATE_UNAVAILABLE', 503);
@@ -197,7 +199,7 @@ async function updateProfileEmail(uid = '', authUser = {}, input = {}) {
     const now = Date.now();
     await userRef.set({ email, storeUpdatedAt: now, updatedAt: now }, { merge: true });
   } catch (_) {
-    await auth.updateUser(safeUid, { email: previousEmail }).catch(() => null);
+    await auth.updateUser(safeUid, { email: previousEmail, emailVerified: account.emailVerified === true }).catch(() => null);
     throw profileError('EMAIL_UPDATE_UNAVAILABLE', 503);
   }
   return readAccount(safeUid, { ...authUser, email });

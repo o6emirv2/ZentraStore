@@ -1,5 +1,6 @@
 'use strict';
 
+const { logError } = require('../core/errorLogger');
 const admin = require('firebase-admin');
 const env = require('./env');
 
@@ -34,7 +35,7 @@ function initFirebaseAdmin() {
   const serviceAccount = parseServiceAccount(env.firebase.serviceAccount);
   if (!serviceAccount) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    console.error('[zentra-store:configuration] Firebase Admin yapılandırması bulunamadı.');
+    logError(null, { code: 'FIREBASE_CONFIGURATION_MISSING', event: 'configuration' });
     return initialized;
   }
   try {
@@ -51,9 +52,9 @@ function initFirebaseAdmin() {
       appCheck: admin.appCheck(app),
       enabled: true
     };
-  } catch (_) {
+  } catch (error) {
     initialized = { admin, app: null, db: null, auth: null, appCheck: null, enabled: false };
-    console.error('[zentra-store] Güvenli veri hizmeti başlatılamadı. Yapılandırmayı kontrol edin.');
+    logError(error, { code: 'FIREBASE_INITIALIZATION_FAILED', event: 'configuration' });
   }
   return initialized;
 }

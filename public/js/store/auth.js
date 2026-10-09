@@ -1,4 +1,4 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261008-v1';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261009-v4';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
@@ -207,7 +207,7 @@ export async function initStoreAuth() {
 
 function personNameValid(value = '') {
   const raw = String(value || '').trim().replace(/\s+/g, ' ');
-  return raw.length >= 2 && raw.length <= 50 && /^[\p{L}]+(?:[ .'’\-][\p{L}]+)*$/u.test(raw);
+  return raw.length >= 2 && raw.length <= 50 && /^[\p{L}]+(?:[ .'’-][\p{L}]+)*$/u.test(raw);
 }
 
 function usernameValid(value = '') {
@@ -315,7 +315,7 @@ export async function signInStore({ identifier = '', password = '', remember = f
     setBusy(false);
     return snapshot();
   } catch (error) {
-    const friendly = new Error(friendlyStoreError(error));
+    const friendly = new Error(friendlyStoreError(error), { cause: error });
     friendly.code = error?.code || 'AUTH_FAILED';
     throw friendly;
   } finally {
@@ -380,7 +380,7 @@ export async function registerStore(input = {}) {
       await state.sdk.deleteUser(credential.user).catch(() => null);
       pendingRegistration = null;
     }
-    const friendly = new Error(friendlyStoreError(error));
+    const friendly = new Error(friendlyStoreError(error), { cause: error });
     friendly.code = error?.code || 'REGISTER_FAILED';
     throw friendly;
   } finally {
@@ -396,7 +396,7 @@ export async function resetStorePassword(identifier = '') {
     await storeApi('/api/auth/password-reset', { auth: false, body: { identifier: value } });
     return true;
   } catch (error) {
-    throw new Error(friendlyStoreError(error, 'Şifre sıfırlama bağlantısı gönderilemedi. Lütfen yeniden deneyin.'));
+    throw new Error(friendlyStoreError(error, 'Şifre sıfırlama bağlantısı gönderilemedi. Lütfen yeniden deneyin.'), { cause: error });
   } finally {
     setBusy(false);
   }
@@ -420,7 +420,7 @@ export async function refreshStoreIdentity() {
     emit();
     return snapshot();
   } catch (error) {
-    const friendly = new Error(friendlyStoreError(error));
+    const friendly = new Error(friendlyStoreError(error), { cause: error });
     friendly.code = error?.code || 'AUTH_REFRESH_FAILED';
     throw friendly;
   } finally {

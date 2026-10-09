@@ -1,5 +1,6 @@
 'use strict';
 
+const { normalizeFeatures } = require('./storeProductSchema');
 const crypto = require('crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -136,19 +137,20 @@ async function readAccount(uid, authUser = {}) {
     || !profile.storeProfile
     || profile.storeBalanceKurus === undefined
     || (!!authEmail && authEmail !== profileEmail);
-  if (profileNeedsSync) {
-    await ref.set({
-      email: account.email,
-      username: account.username,
-      usernameLower: account.username.toLocaleLowerCase('tr-TR'),
-      storeAccountStatus: account.accountStatus,
-      storeBalanceKurus: account.balanceKurus,
-      storeProfile: { avatarId: account.avatarId },
-      storeCreatedAt: profile.storeCreatedAt || Date.now(),
-      storeUpdatedAt: Date.now()
-    }, { merge: true });
-  }
-  return account;
+  if (!profileNeedsSync) return account;
+  return db.runTransaction(async (transaction) => {
+    const current = await transaction.get(ref);
+    const latest = current.exists ? current.data() || {} : {};
+    const normalized = normalizeStoreProfile(latest, authUser);
+    const patch = { storeUpdatedAt: Date.now() };
+    if (authEmail && authEmail !== safeText(latest.email, 160).toLowerCase()) patch.email = authEmail;
+    if (latest.storeBalanceKurus === undefined) patch.storeBalanceKurus = normalized.balanceKurus;
+    if (!latest.storeProfile) patch.storeProfile = { avatarId: normalized.avatarId };
+    if (!latest.storeAccountStatus) patch.storeAccountStatus = normalized.accountStatus;
+    if (!latest.storeCreatedAt) patch.storeCreatedAt = Date.now();
+    transaction.set(ref, patch, { merge: true });
+    return normalized;
+  });
 }
 
 
@@ -180,7 +182,7 @@ function normalizeCart(rawItems = [], catalog = null) {
     const planKey = safeText(raw?.planKey, 40).toLowerCase();
     const quantity = raw.quantity === undefined ? 1 : Number(raw.quantity);
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_LINE_QUANTITY) throw serviceError('STORE_CART_INVALID', 400);
-    const product = catalog?.products?.find((item) => item.id === productId && item.active !== false);
+    const product = catalog?.products?.find((item) => item.id === productId && item.active !== false && item.archived !== true);
     const plan = product?.plans?.find((item) => item.key === planKey && item.active !== false);
     if (!product || !plan) throw serviceError('STORE_ITEM_UNAVAILABLE', 409);
     const key = `${product.id}:${plan.key}`;
@@ -194,6 +196,7 @@ function normalizeCart(rawItems = [], catalog = null) {
       inventoryPoolId: String(product.inventoryPoolId || '').trim().toLowerCase(),
       fulfillmentMode: product.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
       telegramEnabled: product.telegramEnabled !== false,
+      automaticEnabled: product.automaticEnabled !== false,
       planKey: plan.key,
       planLabel: plan.label,
       inventoryType: product.inventoryType === 'account' ? 'account' : 'license',
@@ -337,6 +340,7 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
   const hasTelegramOnlyProduct = cart.items.some((item) => item.fulfillmentMode === 'telegram_only');
   if (method === 'telegram' && cart.items.some((item) => item.telegramEnabled === false) ) throw serviceError('STORE_TELEGRAM_PRODUCT_DISABLED', 409);
   if (method !== 'telegram' && hasTelegramOnlyProduct) throw serviceError('STORE_TELEGRAM_ONLY_PRODUCT', 409);
+  if (method === 'wallet' && cart.items.some((item) => item.automaticEnabled === false)) throw serviceError('STORE_AUTOMATIC_PRODUCT_DISABLED', 409);
   const account = await readAccount(safeUid, authUser);
   if (account.accountStatus !== 'active') throw serviceError('STORE_PURCHASE_BLOCKED', 403);
   const { db, admin } = firebaseStore();
@@ -934,6 +938,8 @@ async function publicCatalog() {
     telegramEnabled: product.telegramEnabled !== false,
     name: safeText(product.name, 80),
     category: safeText(product.category, 50),
+    categoryKey: safeText(product.categoryKey, 40),
+    features: normalizeFeatures(product.features || []),
     badgeKey: safeText(product.badgeKey, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''),
     badge: safeText(product.badge, 40),
     badgeIcon: safeText(product.badgeIcon, 50).replace(/[^a-z0-9-]/gi, ''),

@@ -196,7 +196,7 @@ async function listStoreUsers({ query = '', limit = 50, pageToken = '' } = {}) {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(Number(limit) || 50)));
   const result = await auth.listUsers(safeLimit, safeText(pageToken, 1024) || undefined);
   const [profiles, commerce] = await Promise.all([
-    Promise.all(result.users.map((user) => profileForUid(db, user.uid))),
+    result.users.length ? db.getAll(...result.users.map((user) => db.collection('users').doc(user.uid))).then((docs) => docs.map((doc) => doc.exists ? doc.data() || {} : {})) : [],
     commerceStatsForUids(db, result.users.map((user) => user.uid))
   ]);
   return {
@@ -303,8 +303,9 @@ async function getProfileSummarySnapshot(db, { fresh = false } = {}) {
     return profileSummaryCache.snapshot;
   }
   if (!profileSummaryLoad) {
+    const generation = adminCacheGeneration;
     const pending = db.collection('users').get().then((snapshot) => {
-      profileSummaryCache = { at: Date.now(), snapshot };
+      if (generation === adminCacheGeneration) profileSummaryCache = { at: Date.now(), snapshot };
       return snapshot;
     });
     profileSummaryLoad = pending.finally(() => { profileSummaryLoad = null; });
@@ -312,9 +313,10 @@ async function getProfileSummarySnapshot(db, { fresh = false } = {}) {
   return profileSummaryLoad;
 }
 
-async function getUserDirectorySummary({ fresh = false } = {}) {
+async function computeUserDirectorySummary({ fresh = false } = {}) {
   const now = Date.now();
   if (!fresh && userSummaryCache && now - userSummaryCache.at < USER_SUMMARY_TTL_MS) return userSummaryCache.value;
+  const generation = adminCacheGeneration;
   const { db, auth } = firebaseStore();
   const [{ users, complete }, profilesSnapshot] = await Promise.all([
     collectFirebaseUsers(auth),
@@ -336,15 +338,14 @@ async function getUserDirectorySummary({ fresh = false } = {}) {
   for (const user of users) {
     const profile = profiles.get(user.uid) || {};
     const status = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
-    if (user.disabled === true) {
-    } else if (status === 'active') summary.active += 1;
-    else if (status === 'purchase_blocked') summary.purchaseBlocked += 1;
-    else if (status === 'suspended') summary.suspended += 1;
+    if (user.disabled !== true && status === 'active') summary.active += 1;
+    else if (user.disabled !== true && status === 'purchase_blocked') summary.purchaseBlocked += 1;
+    else if (user.disabled !== true && status === 'suspended') summary.suspended += 1;
     const amount = balance(profile);
     summary.walletLiabilityKurus += amount;
     if (amount > 0) summary.fundedAccounts += 1;
   }
-  userSummaryCache = { at: now, value: summary };
+  if (generation === adminCacheGeneration) userSummaryCache = { at: now, value: summary };
   return summary;
 }
 
@@ -365,7 +366,8 @@ async function collectLedgerRows(db, maxPages = 1) {
   return { rows, complete: false };
 }
 
-async function getWalletSummary({ fresh = false } = {}) {
+async function computeWalletSummary({ fresh = false } = {}) {
+  const generation = adminCacheGeneration;
   const now = Date.now();
   if (!fresh && walletSummaryCache && now - walletSummaryCache.at < WALLET_SUMMARY_TTL_MS) return walletSummaryCache.value;
   const { db } = firebaseStore();
@@ -440,7 +442,7 @@ async function getWalletSummary({ fresh = false } = {}) {
     recent: normalized.slice(0, 50),
     generatedAt: now
   };
-  walletSummaryCache = { at: now, value };
+  if (generation === adminCacheGeneration) walletSummaryCache = { at: now, value };
   return value;
 }
 
@@ -653,7 +655,28 @@ function walletLedgerId(scope = 'wallet') {
   return `${scope}_${Date.now()}_${crypto.randomBytes(7).toString('hex')}`;
 }
 
+let userSummaryLoad = null;
+let walletSummaryLoad = null;
+let adminCacheGeneration = 0;
+
+async function getUserDirectorySummary(options = {}) {
+  if (!userSummaryLoad) {
+    const pending = computeUserDirectorySummary(options);
+    userSummaryLoad = pending.finally(() => { userSummaryLoad = null; });
+  }
+  return userSummaryLoad;
+}
+
+async function getWalletSummary(options = {}) {
+  if (!walletSummaryLoad) {
+    const pending = computeWalletSummary(options);
+    walletSummaryLoad = pending.finally(() => { walletSummaryLoad = null; });
+  }
+  return walletSummaryLoad;
+}
+
 function invalidateAdminStoreCaches() {
+  adminCacheGeneration += 1;
   userSummaryCache = null;
   walletSummaryCache = null;
   profileSummaryCache = null;

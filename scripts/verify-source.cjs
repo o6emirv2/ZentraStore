@@ -38,6 +38,13 @@ for (const filename of files) {
   const name = relative(filename);
   if (name.endsWith('.css')) {
     cssCount++;
+    for (const match of source.matchAll(/url\(\s*['"]?([^)'"\s]+)['"]?\s*\)/g)) {
+      const ref = match[1].split(/[?#]/)[0];
+      if (/^(?:https?:|data:|\/\/|#)/.test(ref)) continue;
+      const target = ref.startsWith('/') ? path.join(root, ref) : path.resolve(path.dirname(filename), ref);
+      referenceCount++;
+      if (!fs.existsSync(target)) failures.push(name + ': eksik CSS dosyası ' + ref);
+    }
     if (!cssStructureValid(source)) failures.push(name + ': CSS blok, parantez veya metin yapısı bozuk');
   }
   if (/\.(?:js|cjs)$/.test(name)) {
@@ -67,7 +74,7 @@ for (const filename of files) {
   if (name.endsWith('.json')) {
     try { JSON.parse(source); } catch (_) { failures.push(name + ': geçersiz JSON'); }
   }
-  if (name !== 'scripts/verify-source.cjs' && !name.endsWith('package-lock.json')) {
+  if (!name.startsWith('scripts/') && !name.endsWith('package-lock.json')) {
     for (const match of source.matchAll(/["'](\/public\/assets\/[A-Za-z0-9_./-]+\.(?:png|svg|jpg|jpeg|webp|ico|wav))["']/g)) {
       referenceCount++;
       if (!fs.existsSync(path.join(root, match[1]))) failures.push(name + ': eksik asset ' + match[1]);

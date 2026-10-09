@@ -26,21 +26,11 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
   };
   const prevent = (event) => event.preventDefault();
 
-  const preventMultiTouch = (event) => {
-    if (event.touches?.length > 1) event.preventDefault();
-  };
   const preventSelection = (event) => {
     if (!isEditableTarget(event.target)) event.preventDefault();
   };
   const preventContextMenu = (event) => {
     if (!isEditableTarget(event.target)) event.preventDefault();
-  };
-  const preventKeyboardZoom = (event) => {
-    if (!(event.ctrlKey || event.metaKey)) return;
-    if (['+', '=', '-', '0'].includes(event.key)) event.preventDefault();
-  };
-  const preventWheelZoom = (event) => {
-    if (event.ctrlKey) event.preventDefault();
   };
 
   documentRoot.documentElement.classList.add('zentra-interaction-locked');
@@ -48,14 +38,7 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
 
   listen(documentRoot, 'contextmenu', preventContextMenu, { capture: true });
   listen(documentRoot, 'dragstart', prevent, { capture: true });
-  listen(documentRoot, 'dblclick', prevent, { capture: true, passive: false });
   listen(documentRoot, 'selectstart', preventSelection, { capture: true, passive: false });
-  listen(documentRoot, 'touchmove', preventMultiTouch, { capture: true, passive: false });
-  listen(documentRoot, 'gesturestart', prevent, { capture: true, passive: false });
-  listen(documentRoot, 'gesturechange', prevent, { capture: true, passive: false });
-  listen(documentRoot, 'gestureend', prevent, { capture: true, passive: false });
-  listen(documentRoot, 'keydown', preventKeyboardZoom, { capture: true });
-  listen(windowRoot, 'wheel', preventWheelZoom, { capture: true, passive: false });
 
   const observer = typeof MutationObserver === 'function'
     ? new MutationObserver((mutations) => {

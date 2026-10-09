@@ -1,6 +1,8 @@
 'use strict';
 
-const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { logError } = require('../core/errorLogger');
+const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { requireAuth, strictLimiter } = require('../core/security');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -13,12 +15,28 @@ const {
   verifyUserSession
 } = require('../core/userSessionService');
 
-const router = express.Router();
+const router = createRouter();
 
 router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   next();
+});
+
+const clientErrorLimiter = rateLimit({ windowMs: 5 * 60_000, max: 20, standardHeaders: true, legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_REQUESTS' }) });
+router.post('/client-errors', clientErrorLimiter, (req, res) => {
+  const input = req.body || {};
+  const code = String(input.code || '');
+  if (!['BROWSER_RUNTIME_ERROR', 'BROWSER_PROMISE_REJECTION', 'BROWSER_ASSET_FAILED'].includes(code)
+    || Object.keys(input).some((key) => !['code', 'source', 'line', 'column'].includes(key))
+    || typeof input.source !== 'string' || input.source.length > 160
+    || (input.source && !/^\/(?:public\/|admin\/|script\.js|style\.css)[A-Za-z0-9_./-]*$/.test(input.source))
+    || [input.line, input.column].some((value) => !Number.isSafeInteger(value) || value < 0 || value > 10_000_000)) {
+    return res.status(400).json({ ok: false, error: 'CLIENT_ERROR_REPORT_INVALID' });
+  }
+  logError(null, { event: 'browser.error', code, source: input.source, line: input.line, column: input.column, requestId: req.requestId });
+  return res.status(202).json({ ok: true });
 });
 
 router.get('/public/runtime-config', (_req, res) => {

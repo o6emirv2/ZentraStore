@@ -33,7 +33,7 @@ const RAW_AVATARS = Object.freeze([
 function validateAvatarUrl(value = '') {
   const raw = String(value || '').trim();
   let parsed;
-  try { parsed = new URL(raw); } catch (_) { throw new Error('STORE_AVATAR_URL_INVALID'); }
+  try { parsed = new URL(raw); } catch (error) { throw new Error('STORE_AVATAR_URL_INVALID', { cause: error }); }
   if (parsed.protocol !== 'https:' || parsed.hostname !== AVATAR_HOST || parsed.pathname !== '/images') {
     throw new Error('STORE_AVATAR_URL_INVALID');
   }

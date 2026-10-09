@@ -14,7 +14,7 @@ const OPERATION_META = Object.freeze([
   { pattern: /kupon|kampanya|promosyon|indirim/i, scope: 'KUPON', icons: ['fa-ticket', 'fa-ticket-simple', 'fa-tag', 'fa-ticket'] },
   { pattern: /sepet/i, scope: 'SEPET', icons: ['fa-cart-plus', 'fa-cart-shopping', 'fa-cart-shopping', 'fa-bag-shopping'] },
   { pattern: /e-?posta|mail/i, scope: 'E-POSTA', icons: ['fa-envelope-circle-check', 'fa-envelope-open-text', 'fa-envelope', 'fa-envelope'] },
-  { pattern: /şifre|parola|güvenlik|oturum|doğrula/i, scope: 'GÜVENLİK', icons: ['fa-shield-circle-check', 'fa-user-lock', 'fa-shield-halved', 'fa-fingerprint'] },
+  { pattern: /şifre|parola|güvenlik|oturum|doğrula/i, scope: 'GÜVENLİK', icons: ['fa-shield-halved', 'fa-user-lock', 'fa-shield-halved', 'fa-fingerprint'] },
   { pattern: /giriş|hoş geld|hesabınız.*hazır/i, scope: 'HESAP', icons: ['fa-user-check', 'fa-user-xmark', 'fa-user-clock', 'fa-user-shield'] },
   { pattern: /çıkış/i, scope: 'OTURUM', icons: ['fa-arrow-right-from-bracket', 'fa-user-lock', 'fa-clock', 'fa-arrow-right-from-bracket'] },
   { pattern: /profil|avatar|kullanıcı adı|ad ve soyad|doğum/i, scope: 'PROFİL', icons: ['fa-user-pen', 'fa-user-xmark', 'fa-user-clock', 'fa-user-gear'] },

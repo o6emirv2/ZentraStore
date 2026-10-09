@@ -1,5 +1,6 @@
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261008-v1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261008-v1';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-20261009-v4';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-20261009-v4';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-20261009-v4';
 
 installInteractionGuard();
 
@@ -369,3 +370,5 @@ async function boot() {
 }
 
 boot();
+
+installErrorReporter();

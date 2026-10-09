@@ -1,5 +1,6 @@
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261008-v1';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261008-v1';
+import { versionedProductImage } from './product-fields.js?v=zentra-20261009-v4';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-20261009-v4';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-20261009-v4';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -13,12 +14,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-20261008-v1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261008-v3';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261008-v3';
-import { installProductGallery } from './product-gallery.js?v=zentra-20261008-v1';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261008-v1';
-import { renderQuickLinks } from './social-links.js?v=zentra-20261008-v1';
+} from './auth.js?v=zentra-20261009-v4';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-20261009-v4';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-20261009-v4';
+import { installProductGallery } from './product-gallery.js?v=zentra-20261009-v4';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-20261009-v4';
+import { renderQuickLinks } from './social-links.js?v=zentra-20261009-v4';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -31,8 +32,8 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-20261008-v1';
-import { createCustomerAppController } from './customer-app.js?v=zentra-20261008-v1';
+} from './customer-app.js?v=zentra-20261009-v4';
+import { createCustomerAppController } from './customer-app.js?v=zentra-20261009-v4';
 import {
   renderAvatarPickerView,
   renderCartItemView,
@@ -40,9 +41,9 @@ import {
   renderCustomerEmpty,
   renderDeliveryCardView,
   renderOrderCardView
-} from './customer-renderers.js?v=zentra-20261008-v1';
+} from './customer-renderers.js?v=zentra-20261009-v4';
 
-const STORE_VERSION = 'storefront-v67';
+const STORE_VERSION = 'storefront-v68';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
 // Read historical keys once so existing customers keep their favorites during brand migration.
 const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
@@ -245,7 +246,7 @@ function productPlaceholder(product, compact = false) {
 
 function productImage(product, { eager = false, compact = false } = {}) {
   if (!product?.image) return productPlaceholder(product, compact);
-  return `<img class="product-card__image" src="${escapeHtml(product.image)}?v=${STORE_VERSION}" alt="${escapeHtml(product.name)} ürün görseli" loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''} decoding="async" draggable="false" data-product-image="${escapeHtml(product.id)}">`;
+  return `<img class="product-card__image" src="${escapeHtml(versionedProductImage(product.image, STORE_VERSION))}" alt="${escapeHtml(product.name)} ürün görseli" loading="${eager ? 'eager' : 'lazy'}" ${eager ? 'fetchpriority="high"' : ''} decoding="async" draggable="false" data-product-image="${escapeHtml(product.id)}">`;
 }
 
 function isTelegramOnly(product = {}) {
@@ -507,8 +508,10 @@ function renderCategoryNavigation() {
     const key = control.dataset.filter;
     const platform = CATALOG_FILTERS[key]?.platform;
     control.hidden = visibility[key] === false || (platform && visibility[platform] === false);
+    const matches = products.filter((product) => productMatchesCatalogFilter(product, key, state.favorites, visibility)).length;
+    control.hidden = control.hidden || matches === 0;
     const count = control.querySelector('[data-category-count]');
-    if (count) count.textContent = String(products.filter((product) => productMatchesCatalogFilter(product, key, state.favorites, visibility)).length);
+    if (count) count.textContent = String(matches);
   });
 }
 
@@ -699,6 +702,9 @@ function openPurchase(productId, planKey = '', trigger = null) {
   if ($('#purchaseBadges')) $('#purchaseBadges').innerHTML = `<span>${iconMarkup(product.platform === 'ios' ? 'fa-apple' : 'fa-android', 'fa-brands')} ${escapeHtml(platformName(product.platform))}</span><span>${iconMarkup(product.badgeIcon)} ${escapeHtml(product.badge)}</span><span class="is-stock-${productStock.state}">${iconMarkup(productStock.icon)} ${escapeHtml(productStock.label)}</span>${productTagMarkup(product)}`;
   if ($('#purchaseTitle')) $('#purchaseTitle').textContent = product.name;
   if ($('#purchaseDescription')) $('#purchaseDescription').textContent = product.description;
+  const features = product.features || [];
+  $('#purchaseFeatures').hidden = features.length === 0;
+  $('#purchaseFeatureList').innerHTML = features.map((feature) => `<li><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>${escapeHtml(feature)}</span></li>`).join('');
   if ($('#purchaseDeliveryAssurance')) $('#purchaseDeliveryAssurance').innerHTML = `${iconMarkup(productChannel.assuranceIcon)} ${escapeHtml(productChannel.assuranceLabel)}`;
   if ($('#purchasePlans')) {
     $('#purchasePlans').innerHTML = product.plans.map((plan) => {
@@ -1737,7 +1743,7 @@ function registerFormValid() {
   clearAuthValidation($('#registerForm'));
   const validPersonName = (value) => {
     const normalized = String(value || '').trim().replace(/\s+/g, ' ');
-    return normalized.length >= 2 && normalized.length <= 50 && /^[\p{L}]+(?:[ .'’\-][\p{L}]+)*$/u.test(normalized);
+    return normalized.length >= 2 && normalized.length <= 50 && /^[\p{L}]+(?:[ .'’-][\p{L}]+)*$/u.test(normalized);
   };
   if (!validPersonName(firstName?.value)) return formIssue(firstName, 'Adınızı kontrol edin', 'Lütfen en az 2 karakter kullanın. Harf, boşluk, kesme işareti ve tire kullanabilirsiniz.');
   if (!validPersonName(lastName?.value)) return formIssue(lastName, 'Soyadınızı kontrol edin', 'Lütfen en az 2 karakter kullanın. Harf, boşluk, kesme işareti ve tire kullanabilirsiniz.');
@@ -1975,7 +1981,7 @@ async function handleAccountIdentityChange(event, field = '') {
     const last = $('#accountNewLastName');
     const firstName = String(first?.value || '').trim();
     const lastName = String(last?.value || '').trim();
-    const valid = (value) => /^[\p{L}]+(?:[ .'’\-][\p{L}]+)*$/u.test(value) && value.length >= 2;
+    const valid = (value) => /^[\p{L}]+(?:[ .'’-][\p{L}]+)*$/u.test(value) && value.length >= 2;
     if (!valid(firstName)) return formIssue(first, 'İsmini kontrol et', 'Lütfen en az 2 karakterden oluşan geçerli bir isim yaz.');
     if (!valid(lastName)) return formIssue(last, 'Soyismini kontrol et', 'Lütfen en az 2 karakterden oluşan geçerli bir soyisim yaz.');
     values = { firstName, lastName };
@@ -2344,8 +2350,6 @@ function installInteractions() {
     const line = state.cart.get(quantity.dataset.cartKey);
     if (!line) return;
     if (quantity.dataset.cartQuantity === 'increase') {
-      const product = getStoreProduct(state.catalog, line.productId);
-      const plan = getStorePlan(product, line.planKey);
       line.quantity = Math.max(1, Math.min(5, Number(line.quantity || 1) + 1));
     }
     else line.quantity = Math.max(1, Number(line.quantity || 1) - 1);

@@ -1,8 +1,9 @@
+import { PRODUCT_IMAGE_PATTERN, productImagePath, versionedProductImage } from './product-fields.js?v=zentra-20261009-v4';
 const PRODUCT_ASSET_ROOT = '/public/assets/products';
-const MEDIA_VERSION = 'storefront-v67';
+const MEDIA_VERSION = 'storefront-v68';
 const EMPTY_MEDIA = Object.freeze([]);
 
-export const PRODUCT_MEDIA_SOURCE_PATTERN = /^\/public\/assets\/products\/(?:[a-z0-9-]+\.jpeg|gallery\/[a-z0-9-]+\/game-\d{2}\.jpeg)(?:\?v=storefront-v67)?$/;
+export const PRODUCT_MEDIA_SOURCE_PATTERN = { test: (value) => PRODUCT_IMAGE_PATTERN.test(value) || Boolean(productImagePath(value)) };
 
 function versionedMediaPath(path) {
   return `${path}?v=${MEDIA_VERSION}`;
@@ -31,12 +32,12 @@ function mediaGroup({ key, label, productIds, gameCount }) {
 }
 
 export const PRODUCT_MEDIA_GROUPS = Object.freeze([
-  mediaGroup({ key: 'kingmod', label: 'KİNGMOD', productIds: ['android-kingmod', 'ios-kingmod'], gameCount: 9 }),
+  mediaGroup({ key: 'kingmod', label: 'KİNGMOD', productIds: ['kingmod', 'android-kingmod', 'ios-kingmod'], gameCount: 9 }),
   mediaGroup({ key: 'star', label: 'STAR', productIds: ['ios-star'], gameCount: 9 }),
   mediaGroup({ key: 'oasis', label: 'OASİS', productIds: ['ios-oasis'], gameCount: 4 }),
-  mediaGroup({ key: 'contra-hax', label: 'CONTRAHAX', productIds: ['android-contra-hax'], gameCount: 7 }),
-  mediaGroup({ key: 'zolo', label: 'ZOLO', productIds: ['android-zolo'], gameCount: 5 }),
-  mediaGroup({ key: 'moon', label: 'MOON', productIds: ['android-moon'], gameCount: 6 }),
+  mediaGroup({ key: 'contra-hax', label: 'CONTRAHAX', productIds: ['contra-hax', 'android-contra-hax', 'contra-hax-ios'], gameCount: 7 }),
+  mediaGroup({ key: 'zolo', label: 'ZOLO', productIds: ['zolo', 'android-zolo'], gameCount: 5 }),
+  mediaGroup({ key: 'moon', label: 'MOON', productIds: ['moon', 'android-moon'], gameCount: 6 }),
   mediaGroup({ key: 'dolphin', label: 'DelphinİOS', productIds: ['ios-dolphin'], gameCount: 5 })
 ]);
 
@@ -55,13 +56,9 @@ export const SHOWCASE_MEDIA = Object.freeze(PRODUCT_MEDIA_GROUPS.flatMap((group)
 )));
 
 export function getProductMedia(product = {}) {
-  const configured = PRODUCT_MEDIA_BY_ID.get(String(product?.id || '').trim());
-  if (configured) return configured;
-  const fallback = String(product?.image || '').trim();
-  if (!PRODUCT_MEDIA_SOURCE_PATTERN.test(fallback)) return EMPTY_MEDIA;
-  return Object.freeze([Object.freeze({
-    src: fallback,
-    alt: `${String(product?.name || 'Ürün').trim() || 'Ürün'} yazılı ürün görseli`,
-    kind: 'logo'
-  })]);
+  const configured = PRODUCT_MEDIA_BY_ID.get(String(product.id || '').trim()) || EMPTY_MEDIA;
+  const source = versionedProductImage(product.image);
+  if (!source) return configured;
+  const primary = Object.freeze({ src: source, alt: `${String(product.name || 'Ürün')} ürün görseli`, kind: 'logo' });
+  return Object.freeze([primary, ...configured.filter((item) => item.kind !== 'logo')]);
 }

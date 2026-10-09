@@ -8,12 +8,10 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-20261009-v4" />
+  <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
   <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-20261008-v2" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261008-v3" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-20261009-v4" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v2" />
   <script src="./admin-auth.js?v=zentra-20261008-v2"></script>
 </head>
@@ -22,7 +20,7 @@
   <div class="admin-loader" id="adminLoader"><div><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><strong>Yönetim merkezi doğrulanıyor</strong><small>Güvenli oturum ve mağaza modülleri hazırlanıyor</small></span><i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i></div></div>
 
   <header class="admin-topbar">
-      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ · V66</small></span></button>
+      <button class="admin-brand" type="button" data-panel="overview" aria-label="Yönetim özetine git"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><strong>ZENTRA STORE</strong><small>OPERASYON MERKEZİ</small></span></button>
     <div class="admin-topbar__actions">
       <span class="security-chip" id="securityChip"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span><small>GÜVENLİK</small><strong id="securityChipScore">--/100</strong></span></span>
       <button class="icon-action" id="refreshAll" type="button" aria-label="Aktif paneli yenile"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button>
@@ -80,7 +78,7 @@
 
       <section class="admin-panel" data-admin-panel="users" hidden inert>
         <header class="panel-title"><div><span>KULLANICI MERKEZİ</span><h1>Hesap yönetimi</h1><p>E-posta, hesap UID’si veya kullanıcı adıyla tam eşleşen hesabı inceleyin.</p></div></header>
-        <div class="panel-live-status" id="userMetrics" aria-live="polite"></div><form class="lookup-bar" id="userSearchForm"><label class="admin-search"><i class="fa-solid fa-user-magnifying-glass"></i><input id="userSearch" type="search" placeholder="E-posta, UID veya kullanıcı adı" autocomplete="off" required /></label><button class="primary-action" type="submit">Hesabı Bul</button></form>
+        <div class="panel-live-status" id="userMetrics" aria-live="polite"></div><form class="lookup-bar" id="userSearchForm"><label class="admin-search"><i class="fa-solid fa-user-check"></i><input id="userSearch" type="search" placeholder="E-posta, UID veya kullanıcı adı" autocomplete="off" required /></label><button class="primary-action" type="submit">Hesabı Bul</button></form>
         <article class="admin-card user-directory-card"><header><div><small>KULLANICI DİZİNİ</small><h2>Mağaza hesapları · 50 kayıt</h2></div><button class="secondary-action" type="button" data-refresh="users">Listeyi Yenile</button></header><div id="userDirectory" class="compact-list"></div></article>
         <div id="userResult" class="user-result"></div>
       </section>
@@ -189,7 +187,8 @@
         <label><span>Satış etiketi</span><select name="badgeKey" id="newProductBadge"></select></label>
       </div>
       <label><span>Ürün açıklaması</span><textarea name="description" rows="3" required minlength="8" maxlength="240" placeholder="Ürün özelliklerini kısaca açıklayın."></textarea></label>
-      <label><span>Ürün görseli (JPG, PNG veya WebP; en fazla 750 KB)</span><input name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" /><small>Görsel Firebase Storage'a yüklenir. Seçilmezse ZENTRA STORE görseli kullanılır.</small></label>
+      <label><span>Ürün görsel dosya yolu</span><input name="image" maxlength="300" spellcheck="false" placeholder="public/assets/products/urun.jpeg" /><small>Dosyayı projeye ekleyin ve yolunu yazın. JPEG, JPG, PNG, SVG, WebP, GIF, AVIF, BMP ve ICO desteklenir.</small></label>
+      <label><span>Ürün özellikleri</span><textarea name="features" rows="6" maxlength="6500" placeholder="Özelleştirilebilir ESP&#10;Aimbot&#10;Bullet Track"></textarea><small>Her satıra bir özellik yazın. En fazla 40 satır, satır başına 160 karakter. İşaretler detay ekranında eklenir.</small></label>
       <div class="product-create-plan-header"><strong>Ürün paketleri</strong><button type="button" class="secondary-action" id="addProductPlan"><i class="fa-solid fa-plus"></i> Paket Ekle</button></div>
       <div id="newProductPlans" class="product-create-plans"></div>
       <label class="toggle-row"><input name="featured" type="checkbox" /><span><strong>Öne çıkan ürün</strong><small>Anasayfada öne çıkar.</small></span></label>
@@ -198,6 +197,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-20261008-v3"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-20261009-v4"></script>
 </body>
 </html>

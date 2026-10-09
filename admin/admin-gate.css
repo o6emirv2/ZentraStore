@@ -5,8 +5,8 @@
   --panel-2:#111722;
   --line:#252d3b;
   --line-soft:rgba(255,255,255,.075);
-  --red:#f21d41;
-  --red-bright:#ff3658;
+  --red:#478aff;
+  --red-bright:#87b3ff;
   --cyan:#35d4f4;
   --green:#4dde9d;
   --gold:#ffc94d;
@@ -34,7 +34,7 @@ body {
   min-height:100vh;
   color:var(--text);
   font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
-  background:radial-gradient(circle at 4% 0,rgba(242,29,65,.18),transparent 27rem),radial-gradient(circle at 100% 72%,rgba(53,212,244,.065),transparent 30rem),linear-gradient(160deg,#080b12 0,#03050a 48%,#05070c 100%);
+  background:radial-gradient(circle at 4% 0,rgba(71,138,255,.18),transparent 27rem),radial-gradient(circle at 100% 72%,rgba(53,212,244,.065),transparent 30rem),linear-gradient(160deg,#080b12 0,#03050a 48%,#05070c 100%);
   -webkit-font-smoothing:antialiased
 }
 body,* {
@@ -86,7 +86,7 @@ button {
   inset:0 auto auto 0;
   width:58%;
   height:2px;
-  background:linear-gradient(90deg,var(--red),rgba(242,29,65,0))
+  background:linear-gradient(90deg,var(--red),rgba(71,138,255,0))
 }
 .gate-shell::after {
   content:"";
@@ -97,7 +97,7 @@ button {
   width:330px;
   height:330px;
   border-radius:50%;
-  background:radial-gradient(circle,rgba(242,29,65,.105),transparent 68%);
+  background:radial-gradient(circle,rgba(71,138,255,.105),transparent 68%);
   pointer-events:none
 }
 .gate-shell>* {
@@ -124,7 +124,7 @@ button {
   height:46px;
   flex:0 0 46px;
   object-fit:contain;
-  filter:drop-shadow(0 0 13px rgba(242,29,65,.3))
+  filter:drop-shadow(0 0 13px rgba(71,138,255,.3))
 }
 .gate-brand div {
   min-width:0;
@@ -259,13 +259,13 @@ button {
   display:none
 }
 .step-track[data-step="1"] span:nth-child(1),.step-track[data-step="2"] span:nth-child(-n+2),.step-track[data-step="3"] span:nth-child(-n+3),.step-track[data-step="4"] span:nth-child(-n+4),.step-track[data-step="5"] span:nth-child(-n+5),.step-track[data-step="6"] span {
-  border-color:rgba(242,29,65,.46);
-  background:rgba(242,29,65,.13);
+  border-color:rgba(71,138,255,.46);
+  background:rgba(71,138,255,.13);
   color:#fff
 }
 .step-track[data-step="1"] span:nth-child(1),.step-track[data-step="2"] span:nth-child(2),.step-track[data-step="3"] span:nth-child(3),.step-track[data-step="4"] span:nth-child(4),.step-track[data-step="5"] span:nth-child(5) {
   transform:translateY(-2px);
-  box-shadow:0 6px 18px rgba(242,29,65,.18)
+  box-shadow:0 6px 18px rgba(71,138,255,.18)
 }
 .gate-viewport {
   min-height:430px;
@@ -296,9 +296,9 @@ button {
   height:66px;
   display:grid;
   place-items:center;
-  border:1px solid rgba(242,29,65,.32);
+  border:1px solid rgba(71,138,255,.32);
   border-radius:20px;
-  background:linear-gradient(145deg,rgba(242,29,65,.17),rgba(242,29,65,.035));
+  background:linear-gradient(145deg,rgba(71,138,255,.17),rgba(71,138,255,.035));
   color:var(--red-bright);
   font-size:1.55rem;
   box-shadow:0 16px 40px rgba(0,0,0,.3)
@@ -307,7 +307,7 @@ button {
   content:"";
   position:absolute;
   inset:-7px;
-  border:1px solid rgba(242,29,65,.1);
+  border:1px solid rgba(71,138,255,.1);
   border-radius:25px
 }
 .gate-step h1,.gate-step h2 {
@@ -402,9 +402,9 @@ button {
   color:#5f6877
 }
 .field-shell input:focus {
-  border-color:rgba(242,29,65,.62);
+  border-color:rgba(71,138,255,.62);
   background:#090e17;
-  box-shadow:0 0 0 4px rgba(242,29,65,.08)
+  box-shadow:0 0 0 4px rgba(71,138,255,.08)
 }
 .field-toggle {
   position:absolute;
@@ -456,7 +456,7 @@ button {
   border:1px solid rgba(255,255,255,.08);
   background:linear-gradient(135deg,var(--red-bright),#c91031);
   color:#fff;
-  box-shadow:0 13px 30px rgba(242,29,65,.22)
+  box-shadow:0 13px 30px rgba(71,138,255,.22)
 }
 .ghost-btn {
   border:1px solid var(--line);

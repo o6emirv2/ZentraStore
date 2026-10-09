@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { logError } = require('./errorLogger');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { getEffectiveCatalog } = require('./storeCatalogService');
@@ -16,8 +17,9 @@ const RESTOCK_SUBSCRIPTION_TTL_MS = 30 * 86_400_000;
 const RESTOCK_NOTIFICATION_TTL_MS = 7 * 86_400_000;
 const INVENTORY_IMPORT_RECEIPT_TTL_MS = 30 * 86_400_000;
 const STORE_CATALOG_PRODUCTS = STORE_CATALOG.products || [];
-const INVENTORY_PATH_PATTERN = /^storeInventory\/([a-z0-9][a-z0-9-]{1,79}__[a-z0-9][a-z0-9-]{1,39})\/items\/([A-Za-z0-9_-]{8,160})$/;
+const INVENTORY_PATH_PATTERN = /^storeInventory\/([a-z0-9][a-z0-9-]{1,79}__[a-z0-9][a-z0-9-]{0,39})\/items\/([A-Za-z0-9_-]{8,160})$/;
 let stockCache = null;
+let stockGeneration = 0;
 const stockLoads = new Map();
 
 function serviceError(code, statusCode = 400, details = {}) {
@@ -37,7 +39,7 @@ function firebaseStore() {
 function skuKey(productId = '', planKey = '') {
   const product = safeText(productId, 80).toLowerCase();
   const plan = safeText(planKey, 40).toLowerCase();
-  if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(product) || !/^[a-z0-9][a-z0-9-]{1,39}$/.test(plan)) {
+  if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(product) || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(plan)) {
     throw serviceError('STORE_SKU_INVALID', 400);
   }
   return `${product}__${plan}`;
@@ -86,6 +88,7 @@ function allocationSourceSkus(item = {}) {
 }
 
 function invalidateStockCache() {
+  stockGeneration += 1;
   stockCache = null;
 }
 
@@ -242,7 +245,9 @@ async function summaryMapForCatalog(catalog, { fresh = false } = {}) {
   const sourceSkus = [...new Set([...targets.values()].flatMap((target) => target.sourceSkus))].sort();
   const signature = sourceSkus.join('|');
   if (!fresh && stockCache && stockCache.signature === signature && now - stockCache.at < STOCK_CACHE_TTL_MS) return stockCache.map;
-  if (stockLoads.has(signature)) return stockLoads.get(signature);
+  const existing = stockLoads.get(signature);
+  if (existing?.generation === stockGeneration) return existing.promise;
+  const generation = stockGeneration;
   const loading = (async () => {
     const { db, admin } = firebaseStore();
     const collection = db.collection('storeInventorySummary');
@@ -287,14 +292,15 @@ async function summaryMapForCatalog(catalog, { fresh = false } = {}) {
         state: stockState(aggregate.available)
       });
     }
-    stockCache = { at: Date.now(), signature, map };
+    if (generation === stockGeneration) stockCache = { at: Date.now(), signature, map };
     return map;
   })();
-  stockLoads.set(signature, loading);
+  const entry = { generation, promise: loading };
+  stockLoads.set(signature, entry);
   try {
     return await loading;
   } finally {
-    if (stockLoads.get(signature) === loading) stockLoads.delete(signature);
+    if (stockLoads.get(signature) === entry) stockLoads.delete(signature);
   }
 }
 
@@ -588,7 +594,10 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
   const unifiedAvailable = Math.max(0, Number(unifiedSummary.get(sku)?.available || availableAfter) || 0);
   let notificationsQueued = 0;
   if (!idempotentReplay && duplicateReentries === 0 && unifiedAvailable > 0 && previousAvailable === 0) {
-    notificationsQueued = await queueRestockNotifications({ sourceSkus, product, plan }).catch(() => 0);
+    notificationsQueued = await queueRestockNotifications({ sourceSkus, product, plan }).catch((error) => {
+      logError(error, { code: 'RESTOCK_NOTIFICATION_FAILED', event: 'restock.notify' });
+      return 0;
+    });
   }
   return {
     sku, inventoryPoolId: poolId, sharedPool: shared,

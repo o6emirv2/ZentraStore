@@ -1,9 +1,11 @@
 'use strict';
 
+const { logError } = require('./errorLogger');
 const crypto = require('crypto');
 const env = require('../config/env');
 
 const API_BODY_LIMIT_BYTES = 256 * 1024;
+const CATALOG_BULK_BODY_LIMIT_BYTES = 1024 * 1024;
 const MAX_URI_LENGTH = 2048;
 const MAX_QUERY_KEYS = 80;
 const MAX_QUERY_VALUE_LENGTH = 4096;
@@ -45,7 +47,7 @@ function inspectQuery(query) {
   });
 }
 
-function inspectBody(body) {
+function inspectBody(body, { maxObjectKeys = MAX_OBJECT_KEYS } = {}) {
   let keys = 0;
   function inspect(value, depth = 0) {
     if (depth > MAX_BODY_DEPTH) return false;
@@ -58,7 +60,7 @@ function inspectBody(body) {
     }
     for (const [key, child] of Object.entries(value)) {
       keys += 1;
-      if (keys > MAX_OBJECT_KEYS || FORBIDDEN_KEYS.has(key) || key.length > 160 || !inspect(child, depth + 1)) return false;
+      if (keys > maxObjectKeys || FORBIDDEN_KEYS.has(key) || key.length > 160 || !inspect(child, depth + 1)) return false;
     }
     return true;
   }
@@ -92,7 +94,8 @@ function requestEnvelopeGuard(req, res, next) {
 
   const contentLength = parseContentLength(req.headers['content-length']);
   if (contentLength < 0) return response(res, 400, 'CONTENT_LENGTH_INVALID', req);
-  if (contentLength > API_BODY_LIMIT_BYTES && String(req.path || '').startsWith('/api')) {
+  const bodyLimit = req.path === '/api/admin/store/products/bulk' ? CATALOG_BULK_BODY_LIMIT_BYTES : API_BODY_LIMIT_BYTES;
+  if (contentLength > bodyLimit && String(req.path || '').startsWith('/api')) {
     return response(res, 413, 'REQUEST_BODY_TOO_LARGE', req);
   }
 
@@ -137,7 +140,8 @@ function apiRequestGuard(req, res, next) {
 }
 
 function bodySafetyGuard(req, res, next) {
-  if (!inspectBody(req.body)) return response(res, 400, 'REQUEST_BODY_UNSAFE', req);
+  const maxObjectKeys = req.originalUrl?.split('?')[0] === '/api/admin/store/products/bulk' ? 10_000 : MAX_OBJECT_KEYS;
+  if (!inspectBody(req.body, { maxObjectKeys })) return response(res, 400, 'REQUEST_BODY_UNSAFE', req);
   return next();
 }
 
@@ -148,7 +152,8 @@ function configureHttpServer(server) {
   server.maxHeadersCount = 80;
   server.maxRequestsPerSocket = 100;
   server.setTimeout(45_000);
-  server.on('clientError', (_error, socket) => {
+  server.on('clientError', (error, socket) => {
+    logError(error, { event: 'http.clientError', code: error.code || 'HTTP_PARSE_ERROR' });
     if (!socket || !socket.writable) return;
     socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
   });

@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261008-v1';
+import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261009-v4';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -41,9 +41,9 @@ export function startAmbientCanvas(canvas) {
       if (point.y < -10) { point.y = height + 10; point.x = Math.random() * width; }
       context.beginPath();
       context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
-      context.fillStyle = `rgba(255,55,72,${point.alpha})`;
+      context.fillStyle = `rgba(76,151,255,${point.alpha})`;
       context.shadowBlur = 6;
-      context.shadowColor = '#e51f32';
+      context.shadowColor = '#538cff';
       context.fill();
     });
     context.shadowBlur = 0;
@@ -186,7 +186,19 @@ function errorMessage(payload = {}, status = 0) {
     STORE_SKU_INVALID: 'Ürün veya paket kimliği geçersiz.',
     STORE_PRODUCT_SORT_INVALID: 'Ürün sıralaması 0-10000 arasında tam sayı olmalıdır.',
     STORE_PRODUCT_PLATFORM_INVALID: 'Ürün platformu yalnızca Android veya iOS olabilir.',
-    STORE_PRODUCT_IMAGE_INVALID: 'Ürün görseli yalnızca güvenli /public/assets/products/ yolundan seçilebilir.',
+    STORE_PRODUCT_IMAGE_INVALID: 'Görsel dosyası bulunamadı veya yolu geçersiz. public/assets/products/ altında mevcut bir JPEG, PNG, SVG, WebP, GIF, AVIF, BMP veya ICO dosyası yazın.',
+    STORE_PRODUCT_FEATURES_INVALID: 'Özellikleri metin olarak, her satıra bir özellik yazın.',
+    STORE_CATALOG_SIZE_LIMIT: 'Katalog kayıt kapasitesine ulaştı. Çok uzun özellik listelerini ve açıklamaları kısaltıp yeniden kaydedin.',
+    STORE_PRODUCT_FEATURES_LIMIT: 'En fazla 40 özellik ekleyebilirsiniz. Her satır 160 karakteri aşmamalıdır.',
+    STORE_PRODUCT_CATEGORY_INVALID: 'Geçerli bir hazır kategori veya Özel kategori seçin.',
+    STORE_PRODUCT_CATEGORY_PLATFORM_CONFLICT: 'Bu ürünün sabit iOS platformuyla uyumlu bir kategori seçin.',
+    STORE_PRODUCT_ID_EXISTS: 'Bu ürün kimliği zaten kullanılıyor. Benzersiz bir kimlik yazın.',
+    STORE_PRODUCT_ID_INVALID: 'Ürün kimliği küçük harfle başlamalı; 3-64 karakter, sayı ve kısa çizgi içermelidir.',
+    STORE_PRODUCT_DETAILS_REQUIRED: 'Ürün adı en az 3, açıklama en az 8 karakter olmalıdır.',
+    STORE_PRODUCT_PLAN_INVALID: 'Paket kodları benzersiz, fiyatlar geçerli ve sıfırdan büyük olmalıdır.',
+    STORE_PRODUCT_PLANS_INVALID: 'En az 1, en fazla 12 paket ekleyin.',
+    STORE_PRODUCT_PLAN_DETAILS_REQUIRED: 'Her paketin adını ve süresini doldurun.',
+    STORE_PRODUCT_LIMIT_REACHED: 'Yeni ürün sınırına ulaşıldı. Mevcut ürünleri düzenleyebilirsiniz.',
     STORE_PRODUCT_BULK_INVALID: 'Toplu kayıt listesi boş veya izin verilen ürün sınırını aşıyor.',
     STORE_PRODUCT_BULK_DUPLICATE: 'Aynı ürün toplu kayıt isteğinde birden fazla kez gönderilemez.',
     STORE_AUTOMATIC_INVENTORY_DISABLED: 'Bu ürün için otomatik stok kasası kapalıdır; teslimat yalnızca Telegram üzerinden yönetilir.',

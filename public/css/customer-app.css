@@ -3,8 +3,8 @@
   --customer-panel:#0b1019;
   --customer-panel-2:#111722;
   --customer-line:#252d3b;
-  --customer-red:#f21d41;
-  --customer-red-bright:#ff3658;
+  --customer-red:#478aff;
+  --customer-red-bright:#87b3ff;
   --customer-cyan:#35d4f4;
   --customer-green:#4dde9d;
   --customer-gold:#ffc94d;
@@ -34,8 +34,8 @@
   grid-template-rows:auto minmax(0,1fr) auto;
   grid-template-areas:"head" "main" "nav";
   overflow:hidden;
-  border:1px solid rgba(242,29,65,.35);
-  background:radial-gradient(circle at 8% 0,rgba(242,29,65,.12),transparent 23rem),linear-gradient(180deg,#0b1019,#050810);
+  border:1px solid rgba(71,138,255,.35);
+  background:radial-gradient(circle at 8% 0,rgba(71,138,255,.12),transparent 23rem),linear-gradient(180deg,#0b1019,#050810);
   box-shadow:var(--customer-shadow);
   transform:translateY(18px);
   transition:transform .25s cubic-bezier(.22,.61,.36,1)
@@ -74,7 +74,7 @@
   height:42px;
   flex:0 0 42px;
   object-fit:contain;
-  filter:drop-shadow(0 0 11px rgba(242,29,65,.25))
+  filter:drop-shadow(0 0 11px rgba(71,138,255,.25))
 }
 .customer-header__brand>span {
   min-width:0;
@@ -128,7 +128,7 @@
   overscroll-behavior:contain;
   scroll-padding-block:14px 30px;
   scrollbar-width:thin;
-  scrollbar-color:rgba(242,29,65,.38) rgba(255,255,255,.025);
+  scrollbar-color:rgba(71,138,255,.38) rgba(255,255,255,.025);
   -webkit-overflow-scrolling:touch
 }
 .customer-view {
@@ -218,7 +218,7 @@
   left:8px;
   height:3px;
   background:var(--customer-red);
-  box-shadow:0 5px 16px rgba(242,29,65,.4)
+  box-shadow:0 5px 16px rgba(71,138,255,.4)
 }
 .customer-nav button:disabled {
   opacity:.35
@@ -412,7 +412,7 @@
   display:grid;
   place-items:center;
   border-radius:10px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright)
 }
 .customer-promotion header>div {
@@ -447,9 +447,9 @@
 }
 .customer-promotion__controls button {
   padding:0 13px;
-  border:1px solid rgba(242,29,65,.4);
+  border:1px solid rgba(71,138,255,.4);
   border-radius:10px;
-  background:rgba(242,29,65,.14);
+  background:rgba(71,138,255,.14);
   color:var(--customer-red-bright);
   font-size:0.875rem;
   font-weight:800
@@ -470,7 +470,7 @@
   padding:12px;
   display:grid;
   gap:11px;
-  border:1px solid rgba(242,29,65,.26);
+  border:1px solid rgba(71,138,255,.26);
   border-radius:17px;
   background:linear-gradient(155deg,#111722,#070b12)
 }
@@ -574,11 +574,11 @@
   font-size:0.875rem
 }
 .customer-payment input:checked+span {
-  border-color:rgba(242,29,65,.55);
-  background:rgba(242,29,65,.075)
+  border-color:rgba(71,138,255,.55);
+  background:rgba(71,138,255,.075)
 }
 .customer-payment input:checked+span>i {
-  background:rgba(242,29,65,.13);
+  background:rgba(71,138,255,.13);
   color:var(--customer-red-bright)
 }
 .customer-summary {
@@ -663,7 +663,7 @@
   display:grid;
   place-items:center;
   border-radius:9px;
-  background:rgba(242,29,65,.09);
+  background:rgba(71,138,255,.09);
   color:var(--customer-red-bright)
 }
 .customer-metrics article>span {
@@ -743,8 +743,8 @@
   font-weight:800
 }
 .customer-filter button.is-active {
-  border-color:rgba(242,29,65,.5);
-  background:rgba(242,29,65,.12);
+  border-color:rgba(71,138,255,.5);
+  background:rgba(71,138,255,.12);
   color:var(--customer-red-bright)
 }
 .customer-order-list,.customer-delivery-list,.customer-coupon-list {
@@ -1130,9 +1130,9 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
-  border:1px solid rgba(242,29,65,.35);
+  border:1px solid rgba(71,138,255,.35);
   border-radius:10px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright);
   font-size:0.875rem;
   font-weight:800
@@ -1251,7 +1251,7 @@
   overflow:hidden;
   display:grid;
   grid-template-columns:82px minmax(0,1fr);
-  border:1px solid rgba(242,29,65,.25);
+  border:1px solid rgba(71,138,255,.25);
   border-radius:15px;
   background:linear-gradient(145deg,#15121a,#080d15)
 }
@@ -1270,7 +1270,7 @@
   place-items:center;
   align-content:center;
   gap:2px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright);
   text-align:center
 }
@@ -1312,9 +1312,9 @@
   display:flex;
   align-items:center;
   gap:5px;
-  border:1px solid rgba(242,29,65,.3);
+  border:1px solid rgba(71,138,255,.3);
   border-radius:8px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright);
   font-size:0.875rem;
   font-weight:800
@@ -1397,9 +1397,9 @@
   display:grid;
   justify-items:center;
   gap:9px;
-  border:1px solid rgba(242,29,65,.24);
+  border:1px solid rgba(71,138,255,.24);
   border-radius:17px;
-  background:radial-gradient(circle at 50% 0,rgba(242,29,65,.13),transparent 60%),#090e17;
+  background:radial-gradient(circle at 50% 0,rgba(71,138,255,.13),transparent 60%),#090e17;
   text-align:center
 }
 .customer-profile-avatar {
@@ -1510,9 +1510,9 @@
 .customer-wallet>button {
   min-height:35px;
   padding:0 10px;
-  border:1px solid rgba(242,29,65,.35);
+  border:1px solid rgba(71,138,255,.35);
   border-radius:9px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright);
   font-size:0.875rem;
   font-weight:800
@@ -1590,7 +1590,7 @@
   display:flex;
   align-items:center;
   border-radius:7px;
-  background:rgba(242,29,65,.09);
+  background:rgba(71,138,255,.09);
   color:var(--customer-red-bright);
   font-size:0.875rem
 }
@@ -1637,7 +1637,7 @@
   overflow:hidden;
   display:grid;
   grid-template-rows:auto minmax(0,1fr);
-  border:1px solid rgba(242,29,65,.35);
+  border:1px solid rgba(71,138,255,.35);
   border-radius:22px 22px 0 0;
   background:linear-gradient(180deg,#111722,#050810);
   box-shadow:0 -25px 70px rgba(0,0,0,.5);
@@ -1661,7 +1661,7 @@
   display:grid;
   place-items:center;
   border-radius:11px;
-  background:rgba(242,29,65,.1);
+  background:rgba(71,138,255,.1);
   color:var(--customer-red-bright)
 }
 .customer-action__header>div {
@@ -2007,7 +2007,7 @@
   display:flex;
   align-items:center;
   border-radius:7px;
-  background:rgba(242,29,65,.09);
+  background:rgba(71,138,255,.09);
   color:var(--customer-red-bright);
   font-size:0.875rem;
   font-weight:900
@@ -2160,8 +2160,8 @@
     font-size:0.75rem
   }
   .customer-nav button.is-active {
-    border-color:rgba(242,29,65,.25);
-    background:rgba(242,29,65,.09)
+    border-color:rgba(71,138,255,.25);
+    background:rgba(71,138,255,.09)
   }
   .customer-nav button.is-active::before {
     top:8px;
@@ -2452,7 +2452,7 @@
   .customer-shell {
     width:min(calc(100% - 36px),1180px);
     height:min(calc(100% - 36px),860px);
-    border:1px solid rgba(242,29,65,.25);
+    border:1px solid rgba(71,138,255,.25);
     border-radius:24px;
   }
   .customer-nav {

@@ -1,5 +1,6 @@
 'use strict';
 
+const { productCategory, normalizeFeatures } = require('./storeProductSchema');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -77,10 +78,9 @@ function mergeProduct(baseProduct = {}, override = {}, includeInactive = false) 
   const duplicateTag = badge.key === 'new' ? 'new' : badge.key === 'popular' ? 'popular' : badge.key === 'discounted' ? 'discounted' : '';
   return {
     ...baseProduct,
-    platform: immutableTelegramOnly ? baseProduct.platform : (source.platform === 'ios' ? 'ios' : source.platform === 'android' ? 'android' : baseProduct.platform),
+    ...productCategory(source, baseProduct),
     immutablePlatform: immutableTelegramOnly,
     name: safeText(source.name, 80) || baseProduct.name,
-    category: safeText(source.category, 50) || safeText(baseProduct.category, 50) || (baseProduct.platform === 'ios' ? 'iOS Premium' : 'Android Premium'),
     active: source.active !== false,
     archived: source.archived === true,
     automaticEnabled,
@@ -94,6 +94,7 @@ function mergeProduct(baseProduct = {}, override = {}, includeInactive = false) 
     badgeIcon: badge.icon,
     badgeTone: badge.tone,
     description: safeText(source.description, 240) || baseProduct.description,
+    features: normalizeFeatures(source.features === undefined ? baseProduct.features || [] : source.features),
     image: safeImage(source.image, baseProduct.image),
     tags: duplicateTag ? tags.filter((tag) => tag !== duplicateTag) : tags,
     plans
@@ -170,6 +171,12 @@ function initializeProductSettings(legacy = new Map(), now = Date.now()) {
     const prepared = productSettingsPatch(base.id, settings, existing.updatedBy || {}, savedAt);
     return [base.id, prepared.patch];
   }));
+}
+
+function assertCatalogCapacity(settings, catalog) {
+  const size = Buffer.byteLength(JSON.stringify({ ...settings, catalog }), 'utf8');
+  const previous = Buffer.byteLength(JSON.stringify(settings), 'utf8');
+  if (size > 850_000 && size >= previous) throw serviceError('STORE_CATALOG_SIZE_LIMIT', 409);
 }
 
 async function readOverrides() {
@@ -333,8 +340,8 @@ function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt 
     id,
     patch: {
       name: safeText(body.name, 80) || base.name,
-      platform: base.fulfillmentMode === 'telegram_only' ? base.platform : (body.platform === 'ios' ? 'ios' : body.platform === 'android' ? 'android' : base.platform),
-      category: safeText(body.category, 50) || base.category || (base.platform === 'ios' ? 'iOS Premium' : 'Android Premium'),
+      ...productCategory(body, base),
+      features: normalizeFeatures(body.features === undefined ? base.features || [] : body.features, { strict: true }),
       active: requestedActive,
       archived: requestedArchived,
       automaticEnabled: requestedAutomatic,
@@ -374,13 +381,9 @@ async function updateProductSettings(productId = '', input = {}, actor = {}) {
     const current = catalogState(snapshot.exists ? snapshot.data() : {});
     if (!current) throw serviceError('STORE_CATALOG_PERSISTENCE_UNAVAILABLE', 503);
     const prepared = productSettingsPatch(id, mergeProductInput(current.products[id], input), actor, Date.now(), current.customProducts);
-    transaction.set(reference, {
-      catalog: {
-        ...current,
-        updatedAt: prepared.patch.updatedAt,
-        products: { ...current.products, [prepared.id]: prepared.patch }
-      }
-    }, { merge: true });
+    const nextCatalog = { ...current, updatedAt: prepared.patch.updatedAt, products: { ...current.products, [prepared.id]: prepared.patch } };
+    assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+    transaction.set(reference, { catalog: nextCatalog }, { merge: true });
     recordMutationAudit(transaction, db, 'store.product.update', actor, { productId: id, before: current.products[id] || null, after: prepared.patch });
     const base = findBaseProduct(id) || readCustomProducts(current.customProducts).find((entry) => entry.id === id);
     return mergeProduct(base, prepared.patch, true);
@@ -428,9 +431,9 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
       const id = safeText(entry.productId, 80).toLowerCase();
       products[id] = productSettingsPatch(id, mergeProductInput(current.products[id], entry.settings), actor, now, current.customProducts).patch;
     });
-    transaction.set(settingsRef, {
-      catalog: { ...current, updatedAt: now, products }
-    }, { merge: true });
+    const nextCatalog = { ...current, updatedAt: now, products };
+    assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+    transaction.set(settingsRef, { catalog: nextCatalog }, { merge: true });
     transaction.create(auditRef, audit);
     return prepared.map(({ id }) => mergeProduct(findBaseProduct(id) || customProductMap.get(id), products[id], true));
   });
@@ -461,14 +464,9 @@ async function createProduct(input = {}, actor = {}) {
       automaticEnabled: product.fulfillmentMode !== 'telegram_only', telegramEnabled: true,
       plans: Object.fromEntries(product.plans.map((plan) => [plan.key, { ...plan, active: true }]))
     }, actor, updatedAt, { ...(current.customProducts || {}), [product.id]: product }).patch;
-    transaction.set(settingsRef, {
-      catalog: {
-        ...current,
-        updatedAt,
-        customProducts: { ...(current.customProducts || {}), [product.id]: product },
-        products: { ...current.products, [product.id]: patch }
-      }
-    }, { merge: true });
+    const nextCatalog = { ...current, updatedAt, customProducts: { ...(current.customProducts || {}), [product.id]: product }, products: { ...current.products, [product.id]: patch } };
+    assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+    transaction.set(settingsRef, { catalog: nextCatalog }, { merge: true });
     recordMutationAudit(transaction, db, 'store.product.create', actor, {
       productId: product.id, name: product.name, platform: product.platform,
       fulfillmentMode: product.fulfillmentMode, plans: product.plans.map((plan) => ({ key: plan.key, priceKurus: plan.priceKurus }))

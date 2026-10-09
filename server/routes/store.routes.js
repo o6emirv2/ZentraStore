@@ -1,6 +1,6 @@
 'use strict';
 
-const express = require('express');
+const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, deliveryLimiter, RATE_LIMIT_POLICY } = require('../core/security');
 const { adminAccessCookiePolicy } = require('../core/adminAccessService');
@@ -61,8 +61,7 @@ const {
   updateProfileUsername, updateProfileFullName,
   updateProfileBirthDate, updateProfileEmail
 } = require('../core/storeProfileService');
-const { uploadProductImage } = require('../core/storeProductCreation');
-const router = express.Router();
+const router = createRouter();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
 const sensitiveAdminChain = (permission) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth];
@@ -238,12 +237,6 @@ router.get('/admin/store/catalog', ...adminChain, requireStorePermission('store.
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
   res.json({ ok: true, catalog: req.query.stock === '0' ? catalog : await decorateCatalogWithStock(catalog, { fresh: true }) });
-}));
-
-router.post('/admin/store/products/image', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {
-  const url = await uploadProductImage(req.body?.imageData);
-  noStore(res);
-  res.status(201).json({ ok: true, url });
 }));
 
 router.post('/admin/store/products', ...sensitiveAdminChain('store.catalog.write'), asyncRoute(async (req, res) => {

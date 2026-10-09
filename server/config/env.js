@@ -5,6 +5,7 @@ const { version: packageVersion } = require('../../package.json');
 const DEFAULT_SERVICE_ORIGIN = 'https://emirhan-siye.onrender.com';
 
 function integer(value, fallback, min, max) {
+  if (value === undefined || value === null || String(value).trim() === '') return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.trunc(parsed)));

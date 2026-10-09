@@ -1,13 +1,9 @@
-import { normalizeQuickLinks } from './social-links.js?v=zentra-20261008-v1';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-20261009-v4';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-20261009-v4';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
-
-const CANONICAL_PRODUCT_NAMES = Object.freeze({
-  'android-contra-hax': 'CONTRAHAX',
-  'ios-dolphin': 'DelphinİOS'
-});
 
 export const CATALOG_FILTERS = Object.freeze({
   all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
@@ -36,8 +32,8 @@ export function productMatchesCatalogFilter(product = {}, value = 'all', favorit
   const category = String(product.category || '').trim().toLocaleLowerCase('tr-TR')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
   // Legacy GBox products have game=other; new GBox entries are identified by the admin category.
-  const isGbox = product.platform === 'ios' && (category === 'gbox' || /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || '')));
-  const isRandomAccount = product.inventoryType === 'account' || /^(?:random hesap(?:lar)?|random account)$/.test(category);
+  const isGbox = product.platform === 'ios' && (product.categoryKey === 'gbox' || category === 'gbox' || /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || '')));
+  const isRandomAccount = product.categoryKey === 'random-account' || product.inventoryType === 'account' || /^(?:random hesap(?:lar)?|random account)$/.test(category);
   if (key === 'gbox') return isGbox;
   if (key === 'random-account') return isRandomAccount;
   // A GBox listing participates in both iOS game collections, but not Android.
@@ -98,7 +94,7 @@ function badgeResolver(options = []) {
 
 function normalizeStock(source = {}) {
   const available = Math.max(0, Math.trunc(Number(source.available) || 0));
-  const state = ['in_stock', 'low_stock', 'out_of_stock', 'unverified'].includes(String(source.state || ''))
+  const state = ['in_stock', 'low_stock', 'out_of_stock', 'not_applicable', 'unverified'].includes(String(source.state || ''))
     ? String(source.state)
     : available < 1 ? 'out_of_stock' : available <= 3 ? 'low_stock' : 'in_stock';
   return Object.freeze({ available, state });
@@ -119,7 +115,7 @@ function normalizePlan(source = {}) {
 function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   const badge = resolveBadge(source);
   const id = String(source.id || '').trim().slice(0, 80);
-  const name = CANONICAL_PRODUCT_NAMES[id] || String(source.name || '').trim().slice(0, 80);
+  const name = String(source.name || '').trim().slice(0, 80);
   let description = String(source.description || '').trim().slice(0, 240);
   if (id === 'android-contra-hax') description = description.replace(/CONTRA\s+HAX/giu, 'CONTRAHAX');
   if (id === 'ios-dolphin') description = description.replace(/DOLPHIN/giu, 'DelphinİOS');
@@ -137,12 +133,14 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     immutablePlatform: source.immutablePlatform === true,
     name,
     category: String(source.category || '').trim().slice(0, 50),
+    categoryKey: String(source.categoryKey || '').trim().slice(0, 40),
+    features: Object.freeze(productFeatures(source.features)),
     badgeKey: badge.key,
     badge: badge.label,
     badgeIcon: badge.icon,
     badgeTone: badge.tone,
     icon: String(source.icon || 'fa-box').replace(/[^a-z0-9-]/gi, '').slice(0, 50),
-    image: String(source.image || '').trim().slice(0, 300),
+    image: productImagePath(source.image),
     accent: String(source.accent || '255,72,160').replace(/[^0-9,]/g, '').slice(0, 20),
     description,
     active: source.active !== false,
@@ -210,7 +208,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
   if (!force && catalogCache && Date.now() - catalogCachedAt < 60_000) return catalogCache;
   if (catalogLoad) return catalogLoad;
   const pending = (async () => {
-    let source = null;
+    let source;
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {

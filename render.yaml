@@ -16,10 +16,8 @@ services:
         value: https://www.zentrastore.com.tr
       - key: PUBLIC_FIREBASE_CONFIG
         sync: false
-      - key: PUBLIC_FIREBASE_APP_CHECK_SITE_KEY
-        sync: false
       - key: APP_CHECK_MODE
-        value: enforce
+        value: monitor
       - key: FIREBASE_KEY
         sync: false
       - key: ADMIN_EMAILS

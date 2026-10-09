@@ -22,23 +22,13 @@ const { isAdminSessionActive } = require('./server/core/adminSessionRegistry');
 const { consumeAdminHandoff } = require('./server/core/adminHandoffService');
 const { resolveStaffPolicy } = require('./server/core/adminStoreService');
 const { writeAdminAudit } = require('./server/core/adminReauthService');
-const { scheduleCatalogRetirementCleanup } = require('./server/core/storeCatalogCleanupService');
+const { logError, requestErrorObserver } = require('./server/core/errorLogger');
 const authRouter = require('./server/routes/auth.routes');
 const identityRouter = require('./server/routes/identity.routes');
 const adminAuthRouter = require('./server/routes/admin-auth.routes');
 const storeRouter = require('./server/routes/store.routes');
 
 const app = express();
-function safeExceptionInfo(error) {
-  const value = error && typeof error === 'object' ? error : {};
-  const name = String(value.name || 'Error').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
-  const code = String(value.code || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
-  // Stack frame locations aid diagnosis; intentionally omit untrusted messages and parameters.
-  const frames = String(value.stack || '').split('\n').slice(1, 5)
-    .map((line) => line.trim()).filter((line) => /^at [\w.$<> ]+ \([^\n]{1,200}\)$|^at \/[^\n]{1,200}$/.test(line))
-    .map((line) => line.replace(/[^A-Za-z0-9_\- ./():\[\]<>]/g, '').slice(0, 180));
-  return { name, ...(code ? { code } : {}), ...(frames.length ? { frames } : {}) };
-}
 const root = __dirname;
 const port = Math.max(1, Number(process.env.PORT || 10000) || 10000);
 const host = '0.0.0.0';
@@ -80,13 +70,13 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261008-v1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261008-v1" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-20261009-v4" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-20261009-v4" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-20261008-v1"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-20261009-v4"></script></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -157,10 +147,10 @@ function contentSecurityPolicy() {
       'form-action': ["'self'"],
       'script-src': ["'self'", 'https://www.gstatic.com', 'https://www.google.com', 'https://www.recaptcha.net'],
       'script-src-attr': ["'none'"],
-      'style-src': ["'self'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+      'style-src': ["'self'"],
       'style-src-attr': ["'unsafe-inline'"],
       'img-src': ["'self'", 'data:', 'blob:', 'https://encrypted-tbn0.gstatic.com', 'https://firebasestorage.googleapis.com'],
-      'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
+      'font-src': ["'self'"],
       'connect-src': [...new Set(connect)],
       'media-src': ["'self'"],
       'worker-src': ["'self'", 'blob:'],
@@ -185,22 +175,8 @@ app.use(compression({
     return compression.filter(req, res);
   }
 }));
+app.use(requestErrorObserver);
 app.use(requestEnvelopeGuard);
-// Render application logs contain failures only. Never log bodies, credentials, tokens or raw URLs.
-app.use((req, res, next) => {
-  res.once('finish', () => {
-    if (res.statusCode < 400) return;
-    const code = String(res.locals.errorCode || (res.statusCode >= 500 ? 'SERVER_ERROR' : 'HTTP_REJECTED'));
-    console.error('[zentra-store:error]', JSON.stringify({
-      status: res.statusCode,
-      method: req.method,
-      path: String(req.route?.path || req.path || '/').replace(/[\u0000-\u001F\u007F<>]/g, '').slice(0, 140),
-      code: code.replace(/[^A-Z0-9_:-]/gi, '').slice(0, 80),
-      requestId: req.requestId
-    }));
-  });
-  next();
-});
 
 app.use(publicLimiter);
 
@@ -262,6 +238,8 @@ app.post('/admin/session/handoff', adminAuthLimiter, express.urlencoded({
       ADMIN_AUDIT_FAILED: 'Zorunlu yönetici güvenlik kaydı oluşturulamadı.',
       ADMIN_AUDIT_UNAVAILABLE: 'Zorunlu yönetici güvenlik kaydı şu anda kullanılamıyor.'
     };
+    res.locals.errorCode = code;
+    res.locals.requestError = error;
     return res.status(status).type('html').send(adminHandoffPage({
       message: messages[code] || 'Güvenli yönetici geçişi doğrulanamadı. Lütfen yönetici girişinden yeniden deneyin.',
       code
@@ -274,7 +252,7 @@ app.options('/api/*', cors(corsOptions));
 app.use('/api', apiLimiter);
 app.use('/api', apiRequestGuard);
 app.use('/api', appCheckGuard);
-app.use('/api/admin/store/products/image', express.json({ limit: '1200kb', strict: true, inflate: false }));
+app.use('/api/admin/store/products/bulk', express.json({ limit: '1mb', strict: true, inflate: false }));
 app.use('/api', express.json({ limit: '256kb', strict: true, inflate: false }));
 app.use('/api', bodySafetyGuard);
 
@@ -366,7 +344,8 @@ app.use((error, req, res, _next) => {
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
   };
   res.locals.errorCode = code;
-  if (status >= 500) console.error('[zentra-store:exception]', JSON.stringify({ status, requestId: req.requestId, ...safeExceptionInfo(error) }));
+  res.locals.requestError = error;
+  if (res.headersSent) return _next(error);
   const message = publicMessages[code];
   return res.status(status).json({ ok: false, error: code, code, ...(message ? { message } : {}), requestId: req.requestId });
 });
@@ -377,7 +356,7 @@ function startServer() {
   if (server) return server;
   for (const eventName of ['uncaughtException', 'unhandledRejection']) {
     process.once(eventName, (cause) => {
-      console.error('[zentra-store:fatal]', JSON.stringify({ event: eventName, ...safeExceptionInfo(cause) }));
+      logError(cause, { event: eventName, code: 'PROCESS_FATAL' });
       process.exitCode = 1;
       if (server) shutdown(eventName);
       else process.exit(1);
@@ -385,16 +364,9 @@ function startServer() {
   }
   server = configureHttpServer(app.listen(port, host, () => {
     const report = env.configurationReport();
-    if (!report.ready) console.error('[zentra-store:configuration]', JSON.stringify({ code: 'CONFIGURATION_INCOMPLETE', missing: report.missing }));
+    if (!report.ready) logError(null, { event: 'configuration', code: 'CONFIGURATION_INCOMPLETE', missing: report.missing });
   }));
 
-  setImmediate(() => {
-    scheduleCatalogRetirementCleanup()
-      .then((report) => {
-        // Retired products are retained until an authorized catalog cleanup.
-      })
-      .catch(() => console.error('[zentra-store] Katalog bakım raporu okunamadı; otomatik silme yapılmadı.'));
-  });
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
   return server;

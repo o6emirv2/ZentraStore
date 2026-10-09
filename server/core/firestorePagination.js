@@ -83,10 +83,9 @@ async function createdAtPage({ db, collection = '', filters = [], limit = 30, cu
   query = query.orderBy('createdAt', 'desc');
 
   const safeCursor = String(cursor || '').trim();
-  let anchor = null;
   if (safeCursor) {
     if (!/^[A-Za-z0-9][A-Za-z0-9_-]{3,159}$/.test(safeCursor)) throw pageError();
-    anchor = await collectionRef.doc(safeCursor).get();
+    const anchor = await collectionRef.doc(safeCursor).get();
     const row = anchor.exists ? anchor.data() || {} : null;
     if (!row || !Number.isFinite(Number(row.createdAt))
       || safeFilters.some(([field, value]) => row[field] !== value)) throw pageError();

@@ -1,6 +1,6 @@
 'use strict';
 
-const express = require('express');
+const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { authLoginLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
@@ -10,7 +10,7 @@ const {
   validatePersonName, validateBirthDate
 } = require('../core/storeProfileService');
 
-const router = express.Router();
+const router = createRouter();
 
 function serviceError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
@@ -166,6 +166,8 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
         || (current.birthDate && current.birthDate !== birthDate)) {
         throw serviceError('PROFILE_INITIALIZATION_LOCKED', 409, 'Hesap bilgilerini yalnızca korumalı hesap ayarlarından değiştirebilirsin.');
       }
+      const legacy = await transaction.get(db.collection('users').where('usernameLower', keys.length === 1 ? '==' : 'in', keys.length === 1 ? keys[0] : keys).limit(4));
+      if (legacy.docs.some((doc) => doc.id !== uid)) throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       const now = Date.now();
       const patch = {
         email,

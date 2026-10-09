@@ -1,18 +1,17 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const env = require('../config/env');
-const { initFirebaseAdmin } = require('../config/firebaseAdmin');
+const { productCategory, normalizeFeatures } = require('./storeProductSchema');
 const { normalizeBadgeKey, resolveBadge } = require('./storeBadgeCatalog');
 
 const PRODUCT_ID = /^[a-z][a-z0-9-]{2,63}$/;
 const PLAN_ID = /^[a-z][a-z0-9-]{0,39}$/;
-const LOCAL_IMAGE = /^\/public\/assets\/products\/[A-Za-z0-9._-]{1,180}$/;
+const LOCAL_IMAGE = /^\/public\/assets\/(?:products|images)\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?:jpe?g|png|svg|webp|gif|avif|bmp|ico)$/i;
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DEFAULT_IMAGE = '/public/assets/images/zentra-mark.webp';
 const MAX_CUSTOM_PRODUCTS = 80;
-const MAX_IMAGE_BYTES = 750_000;
 
 function failure(code, statusCode = 400) {
   return Object.assign(new Error(code), { code, statusCode });
@@ -24,8 +23,13 @@ function safeText(value, max = 80) {
 
 function isValidProductImage(value) {
   if (typeof value !== 'string' || value.length > 500) return false;
-  if (value === DEFAULT_IMAGE) return true;
-  if (LOCAL_IMAGE.test(value)) return fs.existsSync(path.join(__dirname, '..', '..', value.slice(1)));
+  const local = normalizeImagePath(value);
+  if (LOCAL_IMAGE.test(local) && local.length <= 300) {
+    try {
+      const target = fs.realpathSync(path.join(PROJECT_ROOT, local.slice(1)));
+      return target.startsWith(`${PROJECT_ROOT}${path.sep}public${path.sep}assets${path.sep}`) && fs.statSync(target).isFile();
+    } catch (_) { return false; }
+  }
   let parsed;
   try { parsed = new URL(value); } catch (_) { return false; }
   const bucket = String(env.firebase.storageBucket || '').trim();
@@ -38,8 +42,13 @@ function isValidProductImage(value) {
   return true;
 }
 
-function productImage(value = '', fallback = DEFAULT_IMAGE) {
+function normalizeImagePath(value = '') {
   const image = String(value || '').trim();
+  return image.startsWith('public/') ? `/${image}` : image;
+}
+
+function productImage(value = '', fallback = DEFAULT_IMAGE) {
+  const image = normalizeImagePath(value);
   return isValidProductImage(image) ? image : fallback;
 }
 
@@ -72,22 +81,25 @@ function normalizeCreatedProduct(value) {
   const badgeKey = normalizeBadgeKey(value.badgeKey || 'premium');
   if (!badgeKey) throw failure('STORE_PRODUCT_BADGE_INVALID');
   const badge = resolveBadge({ badgeKey });
+  const category = productCategory(value, {}, { creating: true });
+  const categoryImage = category.categoryKey === 'gbox' ? '/public/assets/products/gbox.jpeg' : category.categoryKey === 'random-account' ? '/public/assets/products/random.jpeg' : '';
   return {
     id,
     name,
     description,
+    features: normalizeFeatures(value.features === undefined ? [] : value.features, { strict: true }),
     platform: value.platform,
     game: value.game,
     inventoryType: value.inventoryType,
     inventoryPoolId: '',
     fulfillmentMode: value.fulfillmentMode,
-    category: safeText(value.category, 50) || (value.platform === 'ios' ? 'iOS Premium' : 'Android Premium'),
+    ...category,
     badgeKey: badge.key,
     badge: badge.label,
     badgeIcon: badge.icon,
     badgeTone: badge.tone,
     icon: 'fa-box',
-    image: productImage(value.image),
+    image: productImage(value.image || categoryImage),
     accent: '55,165,255',
     featured: value.featured === true,
     sortOrder: 500,
@@ -101,39 +113,10 @@ function readCustomProducts(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
   return Object.entries(value).flatMap(([key, source]) => {
     try {
-      const product = normalizeCreatedProduct(source);
+      const product = normalizeCreatedProduct({ ...source, image: productImage(source?.image), features: normalizeFeatures(source?.features || []) });
       return product.id === key ? [product] : [];
     } catch (_) { return []; }
   });
 }
 
-function sniffImage(bytes) {
-  if (bytes.length >= 12 && bytes.subarray(0, 4).toString() === 'RIFF'
-    && bytes.subarray(8, 12).toString() === 'WEBP') return { ext: 'webp', mime: 'image/webp' };
-  if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) return { ext: 'png', mime: 'image/png' };
-  if (bytes.length >= 4 && bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex')) && bytes.subarray(-2).equals(Buffer.from('ffd9', 'hex'))) return { ext: 'jpg', mime: 'image/jpeg' };
-  return null;
-}
-
-async function uploadProductImage(dataUrl) {
-  if (typeof dataUrl !== 'string' || dataUrl.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 100) throw failure('STORE_PRODUCT_IMAGE_TOO_LARGE', 413);
-  const match = dataUrl.match(/^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
-  if (!match) throw failure('STORE_PRODUCT_IMAGE_INVALID');
-  const bytes = Buffer.from(match[1], 'base64');
-  const detected = sniffImage(bytes);
-  if (!detected || bytes.length < 32 || bytes.length > MAX_IMAGE_BYTES) throw failure('STORE_PRODUCT_IMAGE_INVALID');
-  const firebase = initFirebaseAdmin();
-  const bucketName = String(env.firebase.storageBucket || '').trim();
-  if (!firebase.enabled || !firebase.app || !bucketName) throw failure('STORE_PRODUCT_IMAGE_STORAGE_UNAVAILABLE', 503);
-  const name = `store-product-images/${crypto.randomUUID()}.${detected.ext}`;
-  const token = crypto.randomUUID();
-  const file = firebase.admin.storage(firebase.app).bucket(bucketName).file(name);
-  await file.save(bytes, {
-    resumable: false,
-    contentType: detected.mime,
-    metadata: { cacheControl: 'public, max-age=31536000, immutable', metadata: { firebaseStorageDownloadTokens: token } }
-  });
-  return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(name)}?alt=media&token=${token}`;
-}
-
-module.exports = { MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, isValidProductImage, productImage, uploadProductImage };
+module.exports = { MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, isValidProductImage, productImage };
