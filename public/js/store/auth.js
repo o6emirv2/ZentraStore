@@ -1,4 +1,4 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-20261009-v4';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v70';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
@@ -279,7 +279,7 @@ export async function reauthenticateStoreSession(currentPassword = '') {
   await user.getIdToken(true);
   requireUnchangedUser(user);
   state.user = requireUnchangedUser(user);
-  setStoreTokenProvider(() => state.user.getIdToken());
+  setStoreTokenProvider(() => user.getIdToken());
   emit();
   return snapshot();
 }

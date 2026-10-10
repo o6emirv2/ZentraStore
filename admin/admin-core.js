@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal } from '../public/js/request-utils.js?v=zentra-20261009-v4';
+import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v70';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -31,7 +31,7 @@ export function startAmbientCanvas(canvas) {
   };
   const draw = (time = 0) => {
     animation = 0;
-    if (stopped || document.hidden) return;
+    if (stopped || document.hidden || document.documentElement.classList.contains('app-dialog-open')) return;
     if (!reduced) animation = requestAnimationFrame(draw);
     if (time && time - previous < 40) return;
     previous = time;
@@ -57,12 +57,15 @@ export function startAmbientCanvas(canvas) {
       draw();
     }
   };
+  const modalObserver = new MutationObserver(visibility);
+  modalObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   resize();
   draw();
   addEventListener('resize', resize, { passive: true });
   document.addEventListener('visibilitychange', visibility);
   return () => {
     stopped = true;
+    modalObserver.disconnect();
     cancelAnimationFrame(animation);
     removeEventListener('resize', resize);
     document.removeEventListener('visibilitychange', visibility);
@@ -218,8 +221,8 @@ function errorMessage(payload = {}, status = 0) {
 }
 
 export async function adminFetch(path, options = {}) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || 20_000)));
+  const request = requestController(Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || 20_000)), options.signal);
+  const { controller } = request;
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
@@ -257,6 +260,7 @@ export async function adminFetch(path, options = {}) {
     return payload;
   } catch (error) {
     if (controller.signal.aborted || error?.name === 'AbortError') {
+      if (!request.timedOut) throw new DOMException('Request cancelled', 'AbortError');
       const timeout = new Error('Yanıt zamanında alınamadı. Tekrar işlem yapmadan önce güncel kaydı kontrol edin.');
       timeout.code = 'REQUEST_TIMEOUT';
       throw timeout;
@@ -268,6 +272,6 @@ export async function adminFetch(path, options = {}) {
     }
     throw error;
   } finally {
-    clearTimeout(timer);
+    request.cleanup();
   }
 }

@@ -1,9 +1,10 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-20261009-v4';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-20261009-v4';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v70';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v70';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
+let catalogReload = null;
 
 export const CATALOG_FILTERS = Object.freeze({
   all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
@@ -206,7 +207,14 @@ function normalizeCatalog(source = {}) {
 
 export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
   if (!force && catalogCache && Date.now() - catalogCachedAt < 60_000) return catalogCache;
-  if (catalogLoad) return catalogLoad;
+  if (catalogLoad) {
+    if (!force) return catalogLoad;
+    if (!catalogReload) {
+      const current = catalogLoad;
+      catalogReload = current.catch(() => null).then(() => loadStoreCatalog(apiRequest, { force: true })).finally(() => { catalogReload = null; });
+    }
+    return catalogReload;
+  }
   const pending = (async () => {
     let source;
     let stockVerified = false;

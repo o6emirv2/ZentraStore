@@ -1,4 +1,4 @@
-import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-20261009-v4';
+import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-ui-v70';
 
 const AUTOPLAY_DELAY_MS = 3000;
 const SWIPE_THRESHOLD_PX = 42;
@@ -140,8 +140,8 @@ export function installShowcaseSlider(root = document.querySelector('[data-showc
     if (groupLabel) groupLabel.textContent = item.groupLabel;
     if (groupPosition) {
       groupPosition.textContent = item.kind === 'logo'
-        ? 'MARKA LOGOSU · BAŞLANGIÇ'
-        : `OYUN ${item.groupIndex}/${Math.max(1, item.groupTotal - 1)}`;
+        ? 'KOLEKSİYON'
+        : `GÖRSEL ${item.groupIndex}/${Math.max(1, item.groupTotal - 1)}`;
     }
     groupButtons.forEach((button) => {
       const active = button.dataset.showcaseGroupKey === item.groupKey;

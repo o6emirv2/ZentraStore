@@ -1,4 +1,4 @@
-import { PRODUCT_IMAGE_PATTERN, productImagePath, versionedProductImage } from './product-fields.js?v=zentra-20261009-v4';
+import { PRODUCT_IMAGE_PATTERN, productImagePath, versionedProductImage } from './product-fields.js?v=zentra-ui-v70';
 const PRODUCT_ASSET_ROOT = '/public/assets/products';
 const MEDIA_VERSION = 'storefront-v68';
 const EMPTY_MEDIA = Object.freeze([]);

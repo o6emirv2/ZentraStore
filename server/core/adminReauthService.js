@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { purposeKey } = require('./adminAccessService');
+const { logError } = require('./errorLogger');
 
 const RECENT_AUTH_MAX_AGE_SECONDS = 180;
 const CLOCK_SKEW_SECONDS = 30;
@@ -115,10 +116,7 @@ async function writeSupplementalAdminAudit(req, action, details = {}) {
   try {
     return await writeAdminAudit(req, action, details);
   } catch (error) {
-    console.error('[zentra-store:audit]', JSON.stringify({
-      action, requestId: String(req?.requestId || '').slice(0, 120),
-      code: String(error?.code || 'ADMIN_AUDIT_FAILED').slice(0, 80), committed: true
-    }));
+    logError(error, { event: 'admin.supplemental-audit.failed', requestId: req?.requestId, code: error?.code || 'ADMIN_AUDIT_FAILED' });
     return { ok: false, primaryAuditRecorded: true };
   }
 }

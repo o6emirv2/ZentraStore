@@ -87,10 +87,10 @@ test('updated client bundles use fresh cache versions rather than stale immutabl
   const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
   const storefront = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
-  assert.match(index, /\/style\.css\?v=zentra-20261009-v4/);
-  assert.match(index, /\/script\.js\?v=zentra-20261009-v4/);
-  assert.match(script, /\/storefront\.js\?v=zentra-20261009-v4/);
-  assert.match(storefront, /products\.js\?v=zentra-20261009-v4/);
-  assert.match(storefront, /notification-center\.js\?v=zentra-20261009-v4/);
-  assert.match(admin, /admin-dashboard\.js\?v=zentra-20261009-v4/);
+  assert.match(index, /\/style\.css\?v=zentra-ui-v70/);
+  assert.match(index, /\/script\.js\?v=zentra-ui-v70/);
+  assert.match(script, /\/storefront\.js\?v=zentra-ui-v70/);
+  assert.match(storefront, /products\.js\?v=zentra-ui-v70/);
+  assert.match(storefront, /notification-center\.js\?v=zentra-ui-v70/);
+  assert.match(admin, /admin-dashboard\.js\?v=zentra-ui-v70/);
 });

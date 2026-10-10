@@ -1,3 +1,3 @@
-import { installInteractionGuard } from './interaction-guard.js?v=zentra-20261009-v4';
+import { installInteractionGuard } from './interaction-guard.js?v=zentra-ui-v70';
 
 installInteractionGuard();
