@@ -36,8 +36,8 @@ button,.button,.primary-action,.secondary-action,.primary-btn,.icon-action,.zent
 .product-card{background:var(--app-panel);box-shadow:0 6px 24px #0002}
 .product-card:hover{border-color:#6379C0;box-shadow:0 12px 28px #0003}
 .product-card__name,.product-card h3,.purchase-card h2,.panel-title h1{overflow-wrap:anywhere;letter-spacing:-.025em}
-.customer-shell,.reauth-card,.side-sheet,.purchase-card{background:var(--app-panel)}
-.customer-header,.customer-nav,.admin-topbar{background:#10182BF5}
+.reauth-card,.side-sheet,.purchase-card{background:var(--app-panel)}
+.admin-topbar{background:#10182BF5}
 .account-action-dialog,.reauth-layer{overscroll-behavior:contain}
 .reauth-card{max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
 .reauth-card h2{font-size:20px;line-height:1.3}
@@ -76,7 +76,7 @@ button,.button,.primary-action,.secondary-action,.primary-btn,.icon-action,.zent
 .catalog-loading>.activity-indicator{border:0!important;background:none!important;animation:none!important}
 .catalog-loading>.activity-indicator>span{animation:activity-fade 1s linear infinite;animation-delay:calc(var(--spoke)*-83.333ms)}
 .catalog-loading.is-initial-loading{display:grid;grid-template-columns:1fr;width:100%;padding:16px}.catalog-loading .app-skeleton-group{margin-top:12px}
-.notification-center{top:calc(var(--app-notice-offset,calc(76px + env(safe-area-inset-top,0px))) + 12px);width:min(calc(100vw - 24px),420px)}
+.notification-center{top:max(calc(var(--app-notice-offset,76px) + 12px),calc(env(safe-area-inset-top,0px) + 12px));width:min(calc(100vw - 24px),420px)}
 main.page-shell,main.admin-content{margin-top:var(--app-page-notice-space,0px)}
 .zentra-notice{padding-right:54px;background:#10182B;border-color:#405172;border-radius:18px;backdrop-filter:none;transform:translateY(-10px);transition:opacity 180ms,transform 180ms;box-shadow:0 10px 32px #0005}
 .zentra-notice.is-leaving{transform:translateY(-8px)}
@@ -105,9 +105,9 @@ main.page-shell,main.admin-content{margin-top:var(--app-page-notice-space,0px)}
 .showcase-social__icon{animation:none!important}
 .app-confirm-layer{z-index:11000}
 .reauth-layer[data-app-dialog-active]{z-index:9000}
-.side-sheet,.purchase-dialog,.customer-shell{transition:transform 180ms var(--app-ease)}
+.side-sheet{transition:transform 180ms var(--app-ease)}
 .modal-layer,.sheet-layer{transition:opacity 180ms var(--app-ease),visibility 180ms}
-@media(max-width:899px){.customer-layer>.sheet-layer__backdrop,.modal-layer__backdrop,.sheet-layer__backdrop{backdrop-filter:none}.customer-header,.customer-nav,.admin-topbar{backdrop-filter:none}}
+@media(max-width:899px){.customer-layer>.sheet-layer__backdrop,.modal-layer__backdrop,.sheet-layer__backdrop{backdrop-filter:none}.admin-topbar{backdrop-filter:none}}
 
 @media(max-width:899px){.reauth-card input,.reauth-card select,.reauth-card textarea{scroll-margin-top:24px;scroll-margin-bottom:110px}.reauth-actions{position:sticky;bottom:0;background:var(--app-panel);padding-top:12px}.app-skeleton-group{gap:12px}}
 
@@ -131,7 +131,6 @@ main.page-shell,main.admin-content{margin-top:var(--app-page-notice-space,0px)}
 .notification-center{max-height:min(30dvh,260px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 [data-app-notice-reserved] .reauth-layer[data-app-dialog-active]{padding-top:var(--app-notice-reserve);align-items:end}
 [data-app-notice-reserved] .reauth-layer[data-app-dialog-active]>.reauth-card{max-height:calc(100dvh - var(--app-notice-reserve) - 16px)}
-[data-app-notice-reserved] .purchase-dialog[data-app-dialog-active],[data-app-notice-reserved] .side-sheet[data-app-dialog-active]{align-self:end;max-height:calc(var(--visual-viewport-height,100dvh) - var(--app-notice-reserve) - 8px)}
-[data-app-notice-reserved] .customer-shell[data-app-dialog-active]{align-self:end;height:calc(var(--visual-viewport-height,100dvh) - var(--app-notice-reserve))}
+[data-app-notice-reserved] .side-sheet[data-app-dialog-active]{align-self:end;max-height:calc(var(--visual-viewport-height,100dvh) - var(--app-notice-reserve) - 8px)}
 [data-app-notice-reserved] .customer-action[data-app-dialog-active],[data-app-notice-reserved] .customer-delivery-access[data-app-dialog-active]{padding-top:var(--app-notice-reserve);align-items:end}
 [data-app-notice-reserved] .customer-action[data-app-dialog-active]>.customer-action__card,[data-app-notice-reserved] .customer-delivery-access[data-app-dialog-active]>.customer-delivery-access__card{max-height:calc(var(--visual-viewport-height,100dvh) - var(--app-notice-reserve) - 8px);overflow-y:auto}

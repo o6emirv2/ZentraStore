@@ -1,4 +1,4 @@
-import { getProductMedia, PRODUCT_MEDIA_SOURCE_PATTERN } from './product-media.js?v=zentra-ui-v70';
+import { getProductMedia, PRODUCT_MEDIA_SOURCE_PATTERN } from './product-media.js?v=zentra-ui-v71';
 
 const SWIPE_THRESHOLD_PX = 38;
 const instances = new WeakMap();
@@ -37,6 +37,7 @@ export function installProductGallery(root, product = {}) {
   }
 
   const listeners = [];
+  const galleryId = `gallery-${String(product.id || 'product').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   function listen(target, event, handler, options) {
     target?.addEventListener?.(event, handler, options);
     listeners.push(() => target?.removeEventListener?.(event, handler, options));
@@ -87,6 +88,11 @@ export function installProductGallery(root, product = {}) {
     const slide = document.createElement('figure');
     slide.className = `product-gallery__slide product-gallery__slide--${item.kind}${index === 0 ? ' is-active' : ''}`;
     slide.dataset.productGallerySlide = String(index);
+    slide.id = `${galleryId}-panel-${index}`;
+    if (media.length > 1) {
+      slide.setAttribute('role', 'tabpanel');
+      slide.setAttribute('aria-labelledby', `${galleryId}-tab-${index}`);
+    }
     slide.setAttribute('aria-label', `${index + 1} / ${media.length}`);
     slide.setAttribute('aria-hidden', String(index !== 0));
     slide.toggleAttribute('inert', index !== 0);
@@ -127,7 +133,10 @@ export function installProductGallery(root, product = {}) {
     button.className = `product-gallery__thumbnail product-gallery__thumbnail--${item.kind}${index === 0 ? ' is-active' : ''}`;
     button.type = 'button';
     button.dataset.productGalleryThumbnail = String(index);
+    button.id = `${galleryId}-tab-${index}`;
+    button.tabIndex = index === 0 ? 0 : -1;
     button.setAttribute('role', 'tab');
+    button.setAttribute('aria-controls', `${galleryId}-panel-${index}`);
     button.setAttribute('aria-selected', String(index === 0));
     button.setAttribute('aria-busy', 'true');
     button.setAttribute('aria-label', `${index + 1}. görseli göster: ${item.alt}`);
@@ -171,7 +180,8 @@ export function installProductGallery(root, product = {}) {
       const active = position === index;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-selected', String(active));
-      if (active && scrollThumbnail) button.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+      button.tabIndex = active ? 0 : -1;
+      if (active && scrollThumbnail) thumbnails.scrollTo({ left: Math.max(0, button.offsetLeft - thumbnails.offsetLeft - (thumbnails.clientWidth - button.clientWidth) / 2), behavior: reducedMotion ? 'auto' : 'smooth' });
     });
     if (current) current.textContent = String(index + 1).padStart(2, '0');
   }
@@ -218,6 +228,12 @@ export function installProductGallery(root, product = {}) {
   listen(thumbnails, 'click', (event) => {
     const button = event.target.closest?.('[data-product-gallery-thumbnail]');
     if (button) show(Number(button.dataset.productGalleryThumbnail));
+  });
+  listen(thumbnails, 'keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    show(event.key === 'Home' ? 0 : event.key === 'End' ? slides.length - 1 : index + (event.key === 'ArrowRight' ? 1 : -1));
+    thumbnailButtons[index]?.focus({ preventScroll: true });
   });
   listen(viewport, 'pointerdown', onPointerDown, { passive: true });
   listen(viewport, 'pointerup', onPointerUp, { passive: true });

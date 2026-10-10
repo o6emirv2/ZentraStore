@@ -201,7 +201,7 @@ export function installAppUI() {
     let chromeBottom = document.querySelector('.admin-topbar,.topbar')?.getBoundingClientRect().bottom || 76;
     const sidebar = document.querySelector('.admin-sidebar');
     if (sidebar && getComputedStyle(sidebar).position !== 'fixed') chromeBottom = Math.max(chromeBottom, sidebar.getBoundingClientRect().bottom);
-    document.documentElement.style.setProperty('--app-notice-offset', `${Math.max(76, Math.ceil(chromeBottom))}px`);
+    document.documentElement.style.setProperty('--app-notice-offset', `${activeDialog ? 0 : Math.max(76, Math.ceil(chromeBottom))}px`);
     let bottom = 0;
     let height = 0;
     document.querySelectorAll('.notification-center').forEach((host) => {

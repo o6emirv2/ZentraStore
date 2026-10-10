@@ -38,22 +38,24 @@
   <meta name="twitter:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
 
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v70" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v71" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v70" fetchpriority="high" />
-  <link rel="stylesheet" href="/style.css?v=zentra-ui-v70" />
-  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v70" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v70" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v70" />
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v70" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v70" />
+  <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v71" fetchpriority="high" />
+  <link rel="stylesheet" href="/style.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v71" />
+  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v71" />
 </head>
 <body data-zentra-page="store" data-authenticated="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
 
   <div class="page-effects" aria-hidden="true"><span class="page-glow page-glow--red"></span><span class="page-glow page-glow--blue"></span><span class="page-noise"></span></div>
 
-  <header class="topbar" id="topbar">
+  <header class="topbar store-header" id="topbar">
     <div class="topbar__inner">
       <button class="brand" id="brandStorefront" type="button" aria-label="ZENTRA STORE ana sayfasına dön">
         <img class="brand__mark" src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" width="50" height="50" />
@@ -67,10 +69,9 @@
       </nav>
       <div class="topbar__actions">
         <span class="topbar-status" aria-label="Mağaza durumu kontrol ediliyor" data-state="checking"><span class="live-dot" aria-hidden="true"></span><span><small>MAĞAZA</small><strong>KONTROL</strong></span></span>
-        <button class="balance-chip" id="topBalanceButton" type="button" data-store-open="account" aria-label="Bakiyeyi ve hesabı aç" data-auth-only hidden><i class="fa-solid fa-coins" aria-hidden="true"></i><strong id="topBalanceValue" aria-live="polite">—</strong><span aria-hidden="true">+</span></button>
-        <button class="icon-button notification-trigger" id="topNotificationButton" type="button" data-store-open="orders" aria-label="Bildirimleri ve siparişleri aç" data-auth-only hidden><i class="fa-regular fa-bell" aria-hidden="true"></i><span aria-hidden="true"></span></button>
+        <button class="header-wallet" id="topBalanceButton" type="button" data-store-open="account" aria-label="Bakiyeyi ve hesabı aç" data-auth-only hidden><span class="header-wallet__label"><i class="fa-solid fa-wallet" aria-hidden="true"></i><small>Kullanılabilir bakiye</small></span><strong id="topBalanceValue" aria-live="polite">—</strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
         <button class="icon-button cart-trigger" id="cartButton" type="button" data-store-open="cart" aria-label="Sepeti aç" data-auth-only hidden><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span class="count-badge" id="cartCount" hidden>0</span></button>
-        <button class="account-trigger" id="accountButton" type="button" data-store-open="account" aria-label="Hesabımı aç" hidden><span class="avatar-shell avatar-shell--small" id="topbarAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-crown" aria-hidden="true"></i></span></span><span class="account-trigger__copy"><small>HESABIM</small><strong id="topbarUsername">Üye</strong></span></button>
+        <button class="header-account" id="accountButton" type="button" data-store-open="account" aria-label="Hesabımı aç" hidden><span class="avatar-shell avatar-shell--small" id="topbarAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-crown" aria-hidden="true"></i></span></span><span class="account-trigger__copy"><small>HESABIM</small><strong id="topbarUsername">Üye</strong></span></button>
         <div class="auth-actions" id="guestActions" data-guest-only>
           <button class="button button--login button--compact" id="loginBtn" type="button" data-store-auth="login" aria-controls="authSheet" aria-haspopup="dialog">Giriş yap</button>
           <button class="button button--primary button--compact" id="registerBtn" type="button" data-store-auth="register" aria-controls="authSheet" aria-haspopup="dialog">Kayıt ol</button>
@@ -89,7 +90,7 @@
     <section class="showcase-slider" data-showcase-slider aria-label="ZENTRA STORE ürün ve oyun görselleri" aria-roledescription="carousel">
       <h1 class="showcase-slider__accessible-title">ZENTRA STORE premium oyun mağazası</h1>
       <div class="showcase-slider__viewport" data-showcase-viewport tabindex="0" aria-label="Görseller arasında sağa veya sola kaydır">
-        <div class="showcase-slider__track" data-showcase-track aria-live="off"><figure class="showcase-slide showcase-slide--logo is-active" data-showcase-slide data-showcase-group="kingmod" aria-label="1 / 52: KİNGMOD" aria-hidden="false"><img src="/public/assets/products/kingmod.jpeg?v=storefront-v70" loading="eager" fetchpriority="high" alt="KİNGMOD yazılı ürün görseli" width="640" height="640" decoding="async" draggable="false" /></figure></div>
+        <div class="showcase-slider__track" data-showcase-track aria-live="off"><figure class="showcase-slide showcase-slide--logo is-active" data-showcase-slide data-showcase-group="kingmod" aria-label="1 / 52: KİNGMOD" aria-hidden="false"><img src="/public/assets/products/kingmod.jpeg?v=storefront-v71" loading="eager" fetchpriority="high" alt="KİNGMOD yazılı ürün görseli" width="640" height="640" decoding="async" draggable="false" /></figure></div>
         <div class="showcase-slider__copy"><small data-showcase-group-position>Logo · 1/10</small><strong data-showcase-group-label>KİNGMOD</strong><span>Premium oyun deneyimini keşfet.</span><button type="button" data-store-scroll="catalog">Detayları Gör <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
         <button class="showcase-slider__arrow showcase-slider__arrow--previous" type="button" data-showcase-control data-showcase-previous aria-label="Önceki görseli göster"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><button class="showcase-slider__arrow showcase-slider__arrow--next" type="button" data-showcase-control data-showcase-next aria-label="Sonraki görseli göster"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
         <div class="showcase-slider__toolbar"><button class="showcase-slider__autoplay" type="button" data-showcase-control data-showcase-toggle aria-pressed="false" aria-label="Otomatik görsel geçişini durdur"><i class="fa-solid fa-pause showcase-slider__pause-icon" aria-hidden="true"></i><i class="fa-solid fa-play showcase-slider__play-icon" aria-hidden="true"></i></button><span class="showcase-slider__counter" aria-label="Toplam slayt sırası"><small>TOPLAM</small><strong data-showcase-current>01</strong><span>/</span><span data-showcase-total>52</span></span></div>
@@ -127,22 +128,22 @@
                   <small class="game-category__count" data-category-count="pubg-android" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="oxide-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v70" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v71" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
                   <small class="game-category__count" data-category-count="oxide-ios" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="oxide-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v70" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v71" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
                   <small class="game-category__count" data-category-count="oxide-android" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="random-account" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <img class="game-category__image" src="/public/assets/products/random.jpeg?v=storefront-v70" alt="" width="44" height="44" loading="lazy" decoding="async" />
+          <img class="game-category__image" src="/public/assets/products/random.jpeg?v=storefront-v71" alt="" width="44" height="44" loading="lazy" decoding="async" />
           <span class="game-category__copy"><strong>RANDOM</strong><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i> HESAPLAR</span></span>
           <small class="game-category__count" data-category-count="random-account" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="gbox" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <img class="game-category__image" src="/public/assets/products/gbox.jpeg?v=storefront-v70" alt="" width="44" height="44" loading="lazy" decoding="async" />
+          <img class="game-category__image" src="/public/assets/products/gbox.jpeg?v=storefront-v71" alt="" width="44" height="44" loading="lazy" decoding="async" />
           <span class="game-category__copy"><strong>GBOX</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS / IPAD</span></span>
           <small class="game-category__count" data-category-count="gbox" aria-label="Ürün sayısı"></small>
         </button>
@@ -164,26 +165,24 @@
 
   <div class="modal-layer" id="purchaseModal" aria-hidden="true" inert>
     <div class="modal-layer__backdrop" data-close-layer></div>
-    <section class="purchase-dialog" role="dialog" aria-modal="true" aria-labelledby="purchaseTitle" tabindex="-1">
-      <button class="dialog-close" type="button" data-close-layer aria-label="Satın alma detaylarını kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-      <div class="purchase-dialog__media" id="purchaseImage"></div>
-      <div class="purchase-dialog__content">
-        <div class="purchase-dialog__badges" id="purchaseBadges"></div>
-        <span class="section-kicker">SATIN ALMA DETAYLARI</span>
-        <h2 id="purchaseTitle">Ürün</h2>
-        <p id="purchaseDescription">Ürün bilgileri hazırlanıyor.</p>
-        <section class="product-features" id="purchaseFeatures" aria-labelledby="purchaseFeaturesTitle" hidden><h3 id="purchaseFeaturesTitle"><i class="fa-solid fa-trophy" aria-hidden="true"></i> ÖZELLİKLER <i class="fa-solid fa-trophy" aria-hidden="true"></i></h3><ul id="purchaseFeatureList"></ul></section>
-        <div class="purchase-assurances"><span><i class="fa-solid fa-check" aria-hidden="true"></i> Doğrulanmış fiyat</span><span id="purchaseDeliveryAssurance"><i class="fa-solid fa-box" aria-hidden="true"></i> Teslimat bilgisi</span><span><i class="fa-solid fa-headset" aria-hidden="true"></i> Sipariş desteği</span></div>
-        <h3 class="dialog-label"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Paket süresini seç</h3>
-        <div class="plan-selector" id="purchasePlans"></div>
-        <div class="purchase-summary" id="purchaseSummary" aria-live="polite"></div>
-        <div class="purchase-actions">
-          <button class="button button--primary button--large" id="addToCartButton" type="button"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span>Sepete Ekle</span></button>
-          <button class="button button--telegram button--large" id="buyTelegramButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile Al</span></button>
-          <button class="button button--glass button--large button--full" id="notifyStockButton" type="button" hidden><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Otomatik stok gelince bildir</span></button>
+    <section class="product-detail" role="dialog" aria-modal="true" aria-labelledby="purchaseTitle" tabindex="-1">
+      <header class="product-detail__header"><div><small>ZENTRA STORE · Ürün detayları</small><h2 id="purchaseTitle">Ürün</h2></div><button class="screen-icon-button" type="button" data-close-layer aria-label="Ürün detaylarını kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+      <div class="product-detail__body" data-product-detail-scroll>
+        <div class="product-detail__layout">
+          <div class="product-detail__media" id="purchaseImage"></div>
+          <div class="product-detail__information">
+            <div class="product-detail__badges" id="purchaseBadges"></div>
+            <p class="product-detail__description" id="purchaseDescription">Ürün bilgileri hazırlanıyor.</p>
+            <section class="detail-section" aria-labelledby="purchasePlansTitle"><header><h3 id="purchasePlansTitle">Paketinizi seçin</h3><span>Süre ve teslimat</span></header><div class="detail-plans" id="purchasePlans"></div></section>
+            <div class="detail-summary" id="purchaseSummary" aria-live="polite"></div>
+            <p class="detail-availability" id="purchaseDeliveryAssurance"></p>
+            <button class="screen-button detail-restock" id="notifyStockButton" type="button" hidden><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Stok geldiğinde bildir</span></button>
+            <section class="detail-section detail-features" id="purchaseFeatures" aria-labelledby="purchaseFeaturesTitle" hidden><header><h3 id="purchaseFeaturesTitle">Ürün özellikleri</h3><span id="purchaseFeatureCount"></span></header><ul id="purchaseFeatureList"></ul></section>
+            <p class="product-detail__help"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Telegram ile sipariş verdiğinizde ürününüz ve seçtiğiniz paket sipariş mesajına eklenir.</span></p>
+          </div>
         </div>
-        <small class="dialog-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Telegram seçildiğinde ürün, paket, fiyat ve sipariş numarası mesaja otomatik olarak eklenir.</small>
       </div>
+      <footer class="product-detail__footer"><div class="product-detail__price"><small id="purchaseFooterPlan">Seçilen paket</small><strong id="purchaseFooterPrice">—</strong></div><div class="product-detail__actions"><button class="screen-button screen-button--primary" id="addToCartButton" type="button"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span>Sepete ekle</span></button><button class="screen-button screen-button--telegram" id="buyTelegramButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile al</span></button></div></footer>
     </section>
   </div>
 
@@ -227,19 +226,13 @@
 
   <div class="sheet-layer customer-layer" id="customerApp" aria-hidden="true" inert>
     <div class="sheet-layer__backdrop" data-close-layer></div>
-    <section class="customer-shell" role="dialog" aria-modal="true" aria-labelledby="customerTitle" aria-describedby="customerDescription" data-customer-shell data-customer-active-view="profile" tabindex="-1">
-      <header class="customer-header" data-customer-main>
-        <button class="customer-header__brand" type="button" data-customer-home aria-label="Ana sayfaya dön">
-          <img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" width="48" height="48" />
-          <span><small>ZENTRA STORE</small><strong id="customerTitle">Hesabım</strong><em id="customerDescription">Profil, bakiye ve güvenlik merkezi</em></span>
-        </button>
-        <div class="customer-header__actions">
-          <button class="customer-icon-button" id="customerHeaderAction" type="button" data-customer-header-action="profile" aria-label="Profil bilgilerini düzenle"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>
-          <button class="customer-icon-button" type="button" data-close-layer aria-label="Müşteri merkezini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-        </div>
+    <section class="client-shell" role="dialog" aria-modal="true" aria-labelledby="customerTitle" aria-describedby="customerDescription" data-customer-shell data-customer-active-view="profile" tabindex="-1">
+      <header class="client-header" data-customer-main>
+        <button class="client-header__brand" type="button" data-customer-home aria-label="Mağazaya dön"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" width="44" height="44" /></button>
+        <div class="client-header__title"><small>ZENTRA STORE</small><h1 id="customerTitle">Hesabım</h1><p id="customerDescription">Hesap bilgileriniz ve alışverişleriniz</p></div>
+        <div class="client-header__actions"><button class="screen-icon-button" id="customerHeaderAction" type="button" data-customer-header-action="profile" aria-label="Hesap işlemleri"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button><button class="screen-icon-button" type="button" data-close-layer aria-label="Müşteri merkezini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
       </header>
-
-      <main class="customer-main" data-customer-main>
+      <main class="client-main" data-customer-main data-client-scroll>
         <section class="customer-view customer-view--cart" id="customerViewCart" data-customer-view="cart" aria-labelledby="customerTitle" hidden inert>
           <div class="customer-view__intro">
             <div><span class="customer-eyebrow"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> GÜVENLİ ALIŞVERİŞ</span><h2>Sepetini tamamla</h2><p id="cartSelectedSummary">Sepetindeki ürünleri güvenle incele.</p></div>
@@ -271,13 +264,15 @@
           </div>
         </section>
 
-        <section class="customer-view customer-view--orders" id="customerViewOrders" data-customer-view="orders" aria-labelledby="customerTitle" hidden inert>
-          <div class="customer-metrics" aria-label="Sipariş özeti"><article><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span><small>TOPLAM</small><strong id="orderMetricTotal">0</strong></span></article><article><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span><small>TESLİM EDİLDİ</small><strong id="orderMetricDelivered">0</strong></span></article><article><i class="fa-regular fa-hourglass-half" aria-hidden="true"></i><span><small>BEKLİYOR</small><strong id="orderMetricPending">0</strong></span></article></div>
-          <form class="customer-search" id="orderSearchForm" role="search" hidden inert><label for="orderSearchInput"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="orderSearchInput" type="search" autocomplete="off" maxlength="80" placeholder="Sipariş numarası veya ürün ara" /></label><button type="button" id="orderSearchClose" aria-label="Sipariş aramasını kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></form>
-          <div class="customer-filter" id="orderFilterBar" role="group" aria-label="Sipariş durumuna göre filtrele"><button class="is-active" type="button" data-order-filter="all" aria-pressed="true">Tümü</button><button type="button" data-order-filter="pending" aria-pressed="false">Bekliyor</button><button type="button" data-order-filter="approved" aria-pressed="false">Onaylandı</button><button type="button" data-order-filter="delivered" aria-pressed="false">Teslim edildi</button></div>
-          <div class="customer-order-list" id="ordersList" aria-live="polite"></div>
-          <button class="button button--glass button--full" id="loadMoreOrdersButton" type="button" hidden><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span>Önceki siparişleri yükle</span></button>
-          <a class="customer-support" data-telegram-support href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span><i class="fa-solid fa-headset" aria-hidden="true"></i></span><span><strong>Sipariş desteği</strong><small>Destek ekibimiz siparişin için yardımcı olsun.</small></span><b>Destek al <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></b></a>
+        <section class="orders-page" id="customerViewOrders" data-customer-view="orders" aria-labelledby="customerTitle" hidden inert>
+          <div class="orders-page__intro"><div><span class="screen-eyebrow">Alışveriş geçmişiniz</span><h2>Siparişlerinizi takip edin</h2><p>Ödeme ve teslimat durumlarını tek yerden görüntüleyin.</p></div><p class="orders-page__updated" id="ordersUpdatedLabel" role="status">Siparişler yükleniyor…</p></div>
+          <div class="orders-page__summary" aria-label="Görüntülenen siparişlerin özeti"><article><span>Görüntülenen</span><strong id="orderMetricTotal">—</strong></article><article><span>Teslim edildi</span><strong id="orderMetricDelivered">—</strong></article><article><span>Devam ediyor</span><strong id="orderMetricPending">—</strong></article></div>
+          <form class="orders-page__search" id="orderSearchForm" role="search"><label for="orderSearchInput">Siparişlerde ara</label><div><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="orderSearchInput" type="search" autocomplete="off" maxlength="80" placeholder="Sipariş numarası veya ürün adı" /><button class="screen-icon-button" type="button" id="orderSearchClose" aria-label="Sipariş aramasını temizle"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div></form>
+          <div class="orders-page__filters" id="orderFilterBar" role="group" aria-label="Sipariş durumuna göre filtrele"><button class="is-active" type="button" data-order-filter="all" aria-pressed="true">Tümü</button><button type="button" data-order-filter="pending" aria-pressed="false">Bekleyen</button><button type="button" data-order-filter="approved" aria-pressed="false">Hazırlanan</button><button type="button" data-order-filter="delivered" aria-pressed="false">Teslim edilen</button><button type="button" data-order-filter="closed" aria-pressed="false">Kapanan</button></div>
+          <div class="orders-page__results"><span id="ordersResultLabel" role="status"></span><button class="orders-page__reset" type="button" data-order-reset>Filtreleri temizle</button></div>
+          <div class="orders-page__list" id="ordersList"></div>
+          <button class="screen-button orders-page__more" id="loadMoreOrdersButton" type="button" hidden>Önceki siparişleri yükle</button>
+          <a class="screen-support" data-telegram-support href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="screen-support__icon"><i class="fa-solid fa-headset" aria-hidden="true"></i></span><span><strong>Siparişinizle ilgili yardım alın</strong><small>Telegram destek ekibine ulaşın</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
         </section>
 
         <section class="customer-view customer-view--deliveries" id="customerViewDeliveries" data-customer-view="deliveries" aria-labelledby="customerTitle" hidden inert>
@@ -294,27 +289,21 @@
           <details class="customer-terms"><summary><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Kupon kullanım koşulları</summary><p>Kuponlar ürün kapsamı, kullanım sınırı ve geçerlilik tarihine göre sunucuda doğrulanır. İndirim, sipariş oluşturulmadan önce yeniden hesaplanır.</p></details>
         </section>
 
-        <section class="customer-view customer-view--profile is-active" id="customerViewProfile" data-customer-view="profile" aria-labelledby="customerTitle">
-          <article class="customer-profile-hero">
-            <button class="customer-profile-avatar" type="button" data-account-action-open="avatar" aria-label="Profil avatarını değiştir"><span class="customer-avatar customer-avatar--hero avatar-shell" id="accountAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-crown" aria-hidden="true"></i></span></span><span class="customer-profile-avatar__edit" aria-hidden="true"><i class="fa-solid fa-pen"></i></span></button>
-            <div class="customer-profile-identity"><span class="customer-eyebrow"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> ZENTRA STORE ÜYESİ</span><h2 id="accountUsername">Üye</h2><p id="accountEmail">—</p><strong class="customer-profile-status" id="accountStatusLabel"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Hesabın güvende</strong></div>
-            <button class="customer-profile-logout" id="logoutButton" type="button" aria-label="Güvenli çıkış seçeneklerini aç"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Güvenli çıkış</span></button>
-          </article>
-          <article class="customer-wallet"><i class="fa-solid fa-wallet" aria-hidden="true"></i><div><small>MEVCUT BAKİYE</small><strong id="accountBalance">0,00 ₺</strong><p><i class="fa-solid fa-lock" aria-hidden="true"></i> Korumalı mağaza bakiyesi</p></div><span><i class="fa-solid fa-circle-check" aria-hidden="true"></i> GÜVENDE</span></article>
-          <div class="customer-section-heading"><div><small>PROFİL BİLGİLERİ</small><h3>Hesap ayrıntıların</h3><p>Bilgilerin taşmadan ve kesilmeden gösterilir.</p></div></div>
-          <div class="customer-settings">
-            <button class="customer-setting" id="accountUsernameActionButton" type="button" data-account-action-open="username"><span><i class="fa-solid fa-at" aria-hidden="true"></i></span><span><strong>Kullanıcı adı</strong><small id="accountUsernameDetail">Kullanıcı adın</small></span><b id="accountUsernameRemaining">3 HAK</b><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
-            <button class="customer-setting" id="accountNameActionButton" type="button" data-account-action-open="name"><span><i class="fa-regular fa-address-card" aria-hidden="true"></i></span><span><strong>Ad ve soyad</strong><small id="accountFullNameDetail">Hesap sahibinin adı</small></span><b id="accountNameRemaining">1 HAK</b><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
-            <button class="customer-setting" id="accountBirthDateActionButton" type="button" data-account-action-open="birthdate"><span><i class="fa-regular fa-calendar-days" aria-hidden="true"></i></span><span><strong>Doğum tarihi</strong><small id="accountBirthDateDetail">Kayıtlı doğum tarihin</small></span><b id="accountBirthDateRemaining">1 HAK</b><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
-            <article class="customer-setting-wrap" id="accountEmailSecurityCard"><button class="customer-setting" id="accountEmailActionButton" type="button"><span><i class="fa-regular fa-envelope" aria-hidden="true"></i></span><span><strong>E-posta</strong><small id="accountEmailSecurityDetail">E-posta adresini güncelle</small><em id="accountEmailSecurityStatus">E-posta adresin</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></article>
-            <button class="customer-setting" type="button" data-customer-nav-target="coupons"><span><i class="fa-solid fa-ticket" aria-hidden="true"></i></span><span><strong>Kuponlarım</strong><small>Fırsatlarını ve kullanım durumlarını görüntüle</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
-          </div>
-          <div class="customer-section-heading"><div><small>HESAP GÜVENLİĞİ</small><h3>Güvenlik işlemleri</h3><p>Hassas değişiklikler mevcut şifrenle korunur.</p></div><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> KORUMADA</span></div>
-          <div class="customer-security-actions"><button class="customer-setting" id="accountPasswordActionButton" type="button" data-account-action-open="password"><span><i class="fa-solid fa-key" aria-hidden="true"></i></span><span><strong>Şifreyi güncelle</strong><small>Yeni ve güçlü bir hesap şifresi belirle</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
+        <section class="account-page is-active" id="customerViewProfile" data-customer-view="profile" aria-labelledby="customerTitle">
+          <article class="account-page__identity"><button class="account-page__avatar" type="button" data-account-action-open="avatar" aria-label="Profil avatarını değiştir"><span class="avatar-shell" id="accountAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-user" aria-hidden="true"></i></span></span><span class="account-page__avatar-edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></span></button><div><span class="screen-eyebrow">Size özel alan</span><h2 id="accountUsername">—</h2><p id="accountEmail">—</p><span class="account-page__status" id="accountStatusLabel">Hesap yükleniyor…</span></div></article>
+          <article class="account-page__wallet"><div class="account-page__wallet-heading"><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Mağaza bakiyeniz</span><i class="fa-solid fa-lock" aria-hidden="true"></i></div><strong id="accountBalance">—</strong><p id="accountBalanceDescription">Bakiyeniz yükleniyor…</p><div class="account-page__shortcuts"><button type="button" data-customer-nav-target="orders"><i class="fa-solid fa-box" aria-hidden="true"></i>Siparişlerim</button><button type="button" data-customer-nav-target="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i>Kuponlarım</button><button type="button" data-customer-nav-target="cart"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>Sepetim</button></div></article>
+          <section class="account-page__section" aria-labelledby="accountDetailsHeading"><header><h3 id="accountDetailsHeading">Hesap bilgileri</h3><p>Bilgilerinizi görüntüleyin ve güncelleyin.</p></header><div class="account-page__rows">
+            <button class="account-row" id="accountUsernameActionButton" type="button" data-account-action-open="username"><i class="fa-solid fa-at" aria-hidden="true"></i><span><strong>Kullanıcı adı</strong><small id="accountUsernameDetail">—</small><em id="accountUsernameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <button class="account-row" id="accountNameActionButton" type="button" data-account-action-open="name"><i class="fa-regular fa-address-card" aria-hidden="true"></i><span><strong>Ad ve soyad</strong><small id="accountFullNameDetail">—</small><em id="accountNameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <button class="account-row" id="accountBirthDateActionButton" type="button" data-account-action-open="birthdate"><i class="fa-regular fa-calendar-days" aria-hidden="true"></i><span><strong>Doğum tarihi</strong><small id="accountBirthDateDetail">—</small><em id="accountBirthDateRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <div id="accountEmailSecurityCard"><button class="account-row" id="accountEmailActionButton" type="button"><i class="fa-regular fa-envelope" aria-hidden="true"></i><span><strong>E-posta adresi</strong><small id="accountEmailSecurityDetail">—</small><em id="accountEmailSecurityStatus">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
+          </div></section>
+          <section class="account-page__section" aria-labelledby="accountSecurityHeading"><header><h3 id="accountSecurityHeading">Güvenlik ve destek</h3><p>Hassas değişikliklerde mevcut şifreniz istenir.</p></header><div class="account-page__rows"><button class="account-row" id="accountPasswordActionButton" type="button" data-account-action-open="password"><i class="fa-solid fa-key" aria-hidden="true"></i><span><strong>Şifremi değiştir</strong><small>Hesap şifrenizi güncelleyin</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><a class="account-row" data-telegram-support href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-headset" aria-hidden="true"></i><span><strong>Destek alın</strong><small>Telegram üzerinden bize ulaşın</small></span><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div></section>
+          <button class="screen-button screen-button--danger account-page__logout" id="logoutButton" type="button"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>Oturumu kapat</button>
         </section>
       </main>
 
-      <nav class="customer-nav" id="customerNav" aria-label="Müşteri merkezi bölümleri" data-customer-main>
+      <nav class="client-nav" id="customerNav" aria-label="Müşteri merkezi bölümleri" data-customer-main>
         <button type="button" data-customer-home><span><i class="fa-solid fa-house" aria-hidden="true"></i></span><small>Ana Sayfa</small></button>
         <button type="button" data-customer-products><span><i class="fa-solid fa-border-all" aria-hidden="true"></i></span><small>Ürünler</small></button>
         <button type="button" data-customer-nav="orders"><span><i class="fa-solid fa-box" aria-hidden="true"></i></span><small>Siparişler</small></button>
@@ -354,6 +343,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-ui-v70"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v71"></script>
 </body>
 </html>

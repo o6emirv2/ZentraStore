@@ -1,6 +1,6 @@
-import { rememberForms, confirmDiscard, animateView } from '../ui/app-ui.js?v=zentra-ui-v70';
+import { rememberForms, confirmDiscard, animateView } from '../ui/app-ui.js?v=zentra-ui-v71';
 const CUSTOMER_VIEWS = Object.freeze(['cart', 'orders', 'deliveries', 'coupons', 'profile']);
-const ORDER_FILTERS = Object.freeze(['all', 'pending', 'approved', 'delivered']);
+const ORDER_FILTERS = Object.freeze(['all', 'pending', 'approved', 'delivered', 'closed']);
 const COUPON_FILTERS = Object.freeze(['available', 'used', 'expired']);
 
 const CUSTOMER_VIEW_META = Object.freeze({
@@ -12,9 +12,9 @@ const CUSTOMER_VIEW_META = Object.freeze({
   }),
   orders: Object.freeze({
     title: 'Siparişlerim',
-    description: 'Tüm sipariş hareketlerin ve canlı durumları',
-    icon: 'fa-magnifying-glass',
-    actionLabel: 'Siparişlerde ara'
+    description: 'Alışveriş geçmişiniz ve teslimatlarınız',
+    icon: 'fa-rotate',
+    actionLabel: 'Siparişleri yenile'
   }),
   deliveries: Object.freeze({
     title: 'Teslimatlarım',
@@ -30,7 +30,7 @@ const CUSTOMER_VIEW_META = Object.freeze({
   }),
   profile: Object.freeze({
     title: 'Hesabım',
-    description: 'Profil, bakiye ve güvenlik merkezi',
+    description: 'Hesap bilgileriniz ve alışverişleriniz',
     icon: 'fa-pen',
     actionLabel: 'Profil bilgilerini düzenle'
   })
@@ -39,7 +39,7 @@ const CUSTOMER_VIEW_META = Object.freeze({
 const ACCOUNT_ACTIONS = Object.freeze({
   avatar: Object.freeze({
     title: 'Profil avatarını seç',
-    description: 'Görselin kırpılmadan gösterilir ve hesabına güvenle kaydedilir.',
+    description: 'Mağazada görünmesini istediğiniz avatarı seçin.',
     icon: 'fa-user-astronaut',
     focus: '[data-avatar-choice][aria-pressed="true"]'
   }),
@@ -63,7 +63,7 @@ const ACCOUNT_ACTIONS = Object.freeze({
   }),
   email: Object.freeze({
     title: 'E-posta adresini güncelle',
-    description: 'Mevcut hesap şifren doğrulanır ve yeni adres doğrudan kaydedilir.',
+    description: 'Yeni adresi kaydetmek için mevcut şifrenizi doğrulayın.',
     icon: 'fa-envelope-circle-check',
     focus: '#accountNewEmail'
   }),

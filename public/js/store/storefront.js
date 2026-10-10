@@ -1,8 +1,8 @@
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation } from '../ui/app-ui.js?v=zentra-ui-v70';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v70';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v70';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v70';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v70';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation } from '../ui/app-ui.js?v=zentra-ui-v71';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v71';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v71';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v71';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v71';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -16,12 +16,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v70';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v70';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v70';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v70';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v70';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v70';
+} from './auth.js?v=zentra-ui-v71';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v71';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v71';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v71';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v71';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v71';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -34,18 +34,21 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v70';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v70';
+} from './customer-app.js?v=zentra-ui-v71';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v71';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
-  renderDeliveryCardView,
-  renderOrderCardView
-} from './customer-renderers.js?v=zentra-ui-v70';
+  renderDeliveryCardView
+} from './customer-renderers.js?v=zentra-ui-v71';
 
-const STORE_VERSION = 'storefront-v70';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v71';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v71';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v71';
+
+const STORE_VERSION = 'storefront-v71';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
 // Read historical keys once so existing customers keep their favorites during brand migration.
 const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
@@ -83,6 +86,10 @@ const state = {
   orders: [],
   ordersLoadedAt: 0,
   ordersPromise: null,
+  ordersReload: null,
+  ordersRevision: 0,
+  ordersError: '',
+  ordersRefreshing: false,
   orderNextCursor: '',
   orderPageLoading: false,
   selectedAvatarId: '1',
@@ -434,7 +441,18 @@ function renderCatalog() {
   renderStorefrontConfiguration();
 }
 
+function renderStorefrontStatus() {
+  const status = $('.topbar-status strong');
+  if (status) {
+    const mode = !navigator.onLine ? 'offline' : state.catalog?.stockVerified === false ? 'checking' : state.catalog?.storefront?.maintenance ? 'maintenance' : 'ready';
+    status.textContent = ({ offline: 'BAĞLANTI YOK', checking: 'KONTROL', maintenance: 'BAKIM', ready: 'AKTİF' })[mode];
+    status.closest('.topbar-status').dataset.state = mode;
+    status.closest('.topbar-status').setAttribute('aria-label', `Mağaza durumu: ${status.textContent}`);
+  }
+}
+
 function renderStorefrontConfiguration() {
+  renderStorefrontStatus();
   if (state.configuredCatalog === state.catalog) return;
   state.configuredCatalog = state.catalog;
   const storefront = state.catalog?.storefront || {};
@@ -463,13 +481,7 @@ function renderStorefrontConfiguration() {
     link.href = `https://t.me/${supportUsername}`;
   });
 
-  const status = $('.topbar-status strong');
-  if (status) {
-    const mode = !navigator.onLine ? 'offline' : state.catalog?.stockVerified === false ? 'checking' : storefront.maintenance ? 'maintenance' : 'ready';
-    status.textContent = ({ offline: 'BAĞLANTI YOK', checking: 'KONTROL', maintenance: 'BAKIM', ready: 'AKTİF' })[mode];
-    status.closest('.topbar-status').dataset.state = mode;
-    status.closest('.topbar-status').setAttribute('aria-label', `Mağaza durumu: ${status.textContent}`);
-  }
+
 }
 
 async function subscribeSelectedStock() {
@@ -714,30 +726,22 @@ function openPurchase(productId, planKey = '', trigger = null) {
   if (!product) return;
   state.selectedProduct = product;
   state.selectedPlan = purchasablePlan(product, planKey);
-  const productStock = stockView(product.stock, { product });
-  const productChannel = salesChannelView(product, productStock);
+  const stock = stockView(product.stock, { product });
   productGalleryController?.destroy();
   productGalleryController = installProductGallery($('#purchaseImage'), product);
-  if ($('#purchaseBadges')) $('#purchaseBadges').innerHTML = `<span>${iconMarkup(product.platform === 'ios' ? 'fa-apple' : 'fa-android', 'fa-brands')} ${escapeHtml(platformName(product.platform))}</span><span>${iconMarkup(product.badgeIcon)} ${escapeHtml(product.badge)}</span><span class="is-stock-${productStock.state}">${iconMarkup(productStock.icon)} ${escapeHtml(productStock.label)}</span>${productTagMarkup(product)}`;
-  if ($('#purchaseTitle')) $('#purchaseTitle').textContent = product.name;
-  if ($('#purchaseDescription')) $('#purchaseDescription').textContent = product.description;
-  const features = product.features || [];
-  $('#purchaseFeatures').hidden = features.length === 0;
-  $('#purchaseFeatureList').innerHTML = features.map((feature) => `<li><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>${escapeHtml(feature)}</span></li>`).join('');
-  if ($('#purchaseDeliveryAssurance')) $('#purchaseDeliveryAssurance').innerHTML = `${iconMarkup(productChannel.assuranceIcon)} ${escapeHtml(productChannel.assuranceLabel)}`;
-  if ($('#purchasePlans')) {
-    $('#purchasePlans').innerHTML = product.plans.map((plan) => {
-      const stock = stockView(plan.stock, { product });
-      const channel = salesChannelView(product, stock);
-      const selected = plan.key === state.selectedPlan?.key;
-      const telegramRoute = !channel.automaticReady && channel.telegramOpen;
-      const routeLabel = channel.automaticReady
-        ? (channel.telegramOpen ? 'Otomatik teslimat · Telegram alternatifi' : 'Otomatik teslimat')
-        : channel.telegramOpen ? 'Telegram ile sipariş' : channel.deliveryLabel;
-      return `<button class="plan-option${selected ? ' is-selected' : ''}${telegramRoute ? ' is-telegram-route' : ''} is-stock-${stock.state}" type="button" data-purchase-plan="${escapeHtml(plan.key)}" aria-pressed="${String(selected)}">${iconMarkup('fa-clock')}<span><strong>${escapeHtml(plan.label)}</strong><small>${escapeHtml(plan.duration)} · ${escapeHtml(routeLabel)}</small></span><b>${escapeHtml(formatStorePrice(plan.priceKurus))}</b></button>`;
-    }).join('');
-  }
+  $('#purchaseBadges').innerHTML = `<span>${iconMarkup(product.platform === 'ios' ? 'fa-apple' : 'fa-android', 'fa-brands')} ${escapeHtml(platformName(product.platform))}</span><span>${iconMarkup(product.badgeIcon)} ${escapeHtml(product.badge)}</span><span class="is-stock-${stock.state}">${iconMarkup(stock.icon)} ${escapeHtml(stock.label)}</span>`;
+  $('#purchaseTitle').textContent = product.name;
+  $('#purchaseDescription').textContent = product.description;
+  const features = Array.isArray(product.features) ? product.features : [];
+  $('#purchaseFeatures').hidden = !features.length;
+  $('#purchaseFeatureCount').textContent = `${features.length} özellik`;
+  $('#purchaseFeatureList').innerHTML = renderProductFeatures(features);
+  $('#purchasePlans').innerHTML = renderProductPlans(product.plans, state.selectedPlan?.key, {
+    formatPrice: formatStorePrice,
+    channelFor: (plan) => salesChannelView(product, stockView(plan.stock, { product }))
+  });
   renderPurchaseSummary();
+  $('[data-product-detail-scroll]')?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   openLayer($('#purchaseModal'), trigger);
   recordNavigation(`product/${encodeURIComponent(product.id)}`);
 }
@@ -745,55 +749,36 @@ function openPurchase(productId, planKey = '', trigger = null) {
 function renderPurchaseSummary() {
   const product = state.selectedProduct;
   const plan = state.selectedPlan;
-  if (!product || !$('#purchaseSummary')) return;
-  if (!plan) {
-    $('#purchaseSummary').innerHTML = `<span><small>PAKET DURUMU</small><b>Şu anda satın alınabilir paket bulunmuyor.</b><em class="purchase-stock is-out">Bildirim almak için aşağıdan bir paket seçebilirsin.</em></span><strong>—</strong>`;
-    if ($('#purchaseDeliveryAssurance')) $('#purchaseDeliveryAssurance').innerHTML = `${iconMarkup('fa-bell')} Stok bildirimi kullanılabilir`;
-    $$('#purchasePlans [data-purchase-plan]').forEach((button) => {
-      button.classList.remove('is-selected');
-      button.setAttribute('aria-pressed', 'false');
-    });
-    const add = $('#addToCartButton');
-    const telegram = $('#buyTelegramButton');
-    const notification = $('#notifyStockButton');
-    if (add) { add.disabled = true; $('span', add).textContent = 'Satın Alınabilir Paket Yok'; }
-    if (telegram) { telegram.disabled = true; $('span', telegram).textContent = 'Telegram Siparişi Kapalı'; }
-    if (notification) notification.hidden = true;
-    return;
-  }
-  const stock = stockView(plan.stock, { product });
-  const channel = salesChannelView(product, stock);
+  if (!product) return;
+  const stock = plan ? stockView(plan.stock, { product }) : null;
+  const channel = stock ? salesChannelView(product, stock) : null;
   const maintenance = state.catalog?.storefront?.maintenance === true;
-  const automaticUnavailable = !channel.automaticReady;
-  const telegramUnavailable = !channel.telegramOpen;
-  const routeLabel = channel.automaticReady
-    ? (channel.telegramOpen ? 'Otomatik teslimat hazır · Telegram alternatifi açık' : 'Otomatik teslimat hazır')
-    : channel.telegramOpen ? 'Telegram siparişi açık' : channel.deliveryLabel;
-  $('#purchaseSummary').innerHTML = `<span><small>SEÇİLEN PAKET</small><b>${escapeHtml(product.name)} · ${escapeHtml(platformName(product.platform))} · ${escapeHtml(plan.label)}</b><em class="purchase-stock is-${stock.state}">${escapeHtml(routeLabel)}</em></span><strong>${escapeHtml(formatStorePrice(plan.priceKurus))}</strong>`;
-  if ($('#purchaseDeliveryAssurance')) $('#purchaseDeliveryAssurance').innerHTML = `${iconMarkup(channel.assuranceIcon)} ${escapeHtml(channel.assuranceLabel)}`;
+  $('#purchaseSummary').innerHTML = renderProductSummary(plan, { formatPrice: formatStorePrice, channel });
+  $('#purchaseFooterPlan').textContent = plan ? `${plan.label} · ${plan.duration}` : 'Paket bulunmuyor';
+  $('#purchaseFooterPrice').textContent = plan ? formatStorePrice(plan.priceKurus) : '—';
+  $('#purchaseDeliveryAssurance').textContent = !plan ? 'Şu anda satın alınabilir paket bulunmuyor.' : maintenance ? 'Mağaza bakımdadır. Satış işlemleri geçici olarak kapalı.' : channel.assuranceLabel;
   $$('#purchasePlans [data-purchase-plan]').forEach((button) => {
-    const active = button.dataset.purchasePlan === plan.key;
-    button.classList.toggle('is-selected', active);
-    button.setAttribute('aria-pressed', String(active));
+    const selected = button.dataset.purchasePlan === plan?.key;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+    const check = $('.detail-plan__check i', button);
+    if (check) check.className = `fa-solid ${selected ? 'fa-circle-check' : 'fa-circle'}`;
   });
   const add = $('#addToCartButton');
   const telegram = $('#buyTelegramButton');
-  if (add) {
-    add.disabled = automaticUnavailable;
-    $('span', add).textContent = maintenance ? 'Satış Geçici Kapalı' : automaticUnavailable ? 'Otomatik Satış Kullanılamıyor' : 'Sepete Ekle';
-  }
-  if (telegram) {
-    telegram.disabled = telegramUnavailable;
-    $('span', telegram).textContent = telegramUnavailable ? 'Telegram Siparişi Kapalı' : 'Telegram ile Al';
-  }
+  const automaticReady = !!channel?.automaticReady && !maintenance;
+  const telegramReady = !!channel?.telegramOpen && !maintenance;
+  add.hidden = !automaticReady && telegramReady;
+  add.disabled = !automaticReady;
+  $('span', add).textContent = maintenance ? 'Satış geçici olarak kapalı' : automaticReady ? 'Sepete ekle' : 'Otomatik satış kullanılamıyor';
+  telegram.hidden = !telegramReady;
+  telegram.disabled = !telegramReady;
   const notification = $('#notifyStockButton');
-  if (notification) {
-    notification.hidden = channel.telegramOnly || !(state.catalog?.stockVerified !== false && stock.available < 1);
-    const subscribed = state.restockSubscriptions.has(cartKey(product.id, plan.key));
-    notification.disabled = subscribed;
-    notification.classList.toggle('is-confirmed', subscribed);
-    notification.innerHTML = `${iconMarkup(subscribed ? 'fa-circle-check' : 'fa-bell')}<span>${subscribed ? 'Otomatik stok bildirimi aktif' : 'Otomatik stok gelince bildir'}</span>`;
-  }
+  const subscribed = !!plan && state.restockSubscriptions.has(cartKey(product.id, plan.key));
+  notification.hidden = !plan || !!channel?.telegramOnly || state.catalog?.stockVerified === false || stock.available > 0 || maintenance;
+  notification.disabled = subscribed;
+  notification.classList.toggle('is-confirmed', subscribed);
+  notification.innerHTML = `${iconMarkup(subscribed ? 'fa-circle-check' : 'fa-bell')}<span>${subscribed ? 'Stok bildirimi açık' : 'Stok geldiğinde bildir'}</span>`;
 }
 
 function cartKey(productId, planKey) {
@@ -1119,6 +1104,7 @@ async function submitOrder(lines, paymentMethod, options = {}) {
       renderAccountHeader();
     }
     if (payload.order) {
+      state.ordersRevision += 1;
       state.orders = [payload.order, ...state.orders.filter((order) => order.id !== payload.order.id)];
       state.ordersLoadedAt = Date.now();
       renderOrders();
@@ -1191,7 +1177,7 @@ async function recoverPendingPurchase() {
   if (!attempt || state.checkingPurchase) return;
   state.checkingPurchase = true;
   renderCart();
-  const finishLoading = beginRegion($('#customerApp .customer-main'), 'İşlemin sonucu kontrol ediliyor…');
+  const finishLoading = beginRegion($('#customerApp [data-client-scroll]'), 'İşlemin sonucu kontrol ediliyor…');
   try {
     const payload = await purchaseTracker.verify(attempt);
     if (String(state.auth.user?.uid || '') !== attempt.uid) return;
@@ -1210,6 +1196,7 @@ async function completeRecoveredPurchase(payload, attempt) {
   if (String(state.auth.user?.uid || '') !== attempt.uid || !payload.order) return;
   purchaseTracker.finish(attempt);
   resetCheckoutAttempt();
+  state.ordersRevision += 1;
   state.orders = [payload.order, ...state.orders.filter((order) => order.id !== payload.order.id)];
   state.ordersLoadedAt = Date.now();
   if (state.auth.account && Number.isFinite(payload.balanceKurus)) state.auth.account.balanceKurus = payload.balanceKurus;
@@ -1308,7 +1295,7 @@ function orderProductVisual(order = {}) {
 
 function orderCardMarkup(order) {
   return renderOrderCardView(order, {
-    status: ORDER_STATUS[order.status] || ORDER_STATUS.awaiting_payment,
+    status: ORDER_STATUS[order.status] || { label: 'Durum bilgisi alınamadı', icon: 'fa-circle-info' },
     mediaHtml: orderProductVisual(order),
     formatPrice: formatStorePrice,
     formatDate: formatOrderDate,
@@ -1342,6 +1329,10 @@ function clearCustomerSessionState({ closeProtectedLayer = false } = {}) {
   state.orders = [];
   state.ordersLoadedAt = 0;
   state.ordersPromise = null;
+  state.ordersReload = null;
+  state.ordersError = '';
+  state.ordersRefreshing = false;
+  state.ordersRevision += 1;
   state.orderNextCursor = '';
   state.orderPageLoading = false;
   state.orderOperationId = '';
@@ -1366,8 +1357,8 @@ function clearCustomerSessionState({ closeProtectedLayer = false } = {}) {
   if ($('#orderSearchInput')) $('#orderSearchInput').value = '';
   const orderSearch = $('#orderSearchForm');
   if (orderSearch) {
-    orderSearch.hidden = true;
-    orderSearch.inert = true;
+    orderSearch.hidden = false;
+    orderSearch.inert = false;
   }
   $('#couponWallet')?.replaceChildren();
   clearAppliedPromotion();
@@ -1491,40 +1482,34 @@ async function loadCoupons({ force = false } = {}) {
 function renderOrders() {
   const ordersHost = $('#ordersList');
   const deliveriesHost = $('#deliveriesList');
+  const known = state.ordersLoadedAt > 0;
   const metrics = summarizeCustomerOrders(state.orders);
-  if ($('#orderMetricTotal')) $('#orderMetricTotal').textContent = String(metrics.total);
-  if ($('#orderMetricDelivered')) $('#orderMetricDelivered').textContent = String(metrics.delivered);
-  if ($('#orderMetricPending')) $('#orderMetricPending').textContent = String(metrics.pending);
-  if ($('#deliveryMetricDelivered')) $('#deliveryMetricDelivered').textContent = String(metrics.delivered);
-  if ($('#deliveryMetricLatest')) $('#deliveryMetricLatest').textContent = latestDeliveryLabel(state.orders);
+  const counts = { orderMetricTotal: metrics.total, orderMetricDelivered: metrics.delivered, orderMetricPending: metrics.pending + metrics.approved, deliveryMetricDelivered: metrics.delivered };
+  for (const [id, count] of Object.entries(counts)) if ($(`#${id}`)) $(`#${id}`).textContent = known ? String(count) : '—';
+  if ($('#deliveryMetricLatest')) $('#deliveryMetricLatest').textContent = known ? latestDeliveryLabel(state.orders) : '—';
   $$('#orderFilterBar [data-order-filter]').forEach((button) => {
     const active = button.dataset.orderFilter === state.orderFilter;
     button.classList.toggle('is-active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+  const query = normalizeSearch(state.orderSearch || '');
+  const selected = state.orders.filter((order) => orderMatchesFilter(order, state.orderFilter)
+    && (!query || normalizeSearch(`${order.orderNumber} ${(order.items || []).map((item) => `${item.productName} ${item.planLabel}`).join(' ')}`).includes(query)));
+  const filtered = !!query || state.orderFilter !== 'all';
+  if ($('#ordersResultLabel')) $('#ordersResultLabel').textContent = known ? `${selected.length} eşleşen · ${state.orders.length} yüklendi` : 'Siparişler doğrulanıyor…';
+  $$('#customerViewOrders [data-order-reset]').forEach((button) => { if (!button.closest('.screen-empty')) button.hidden = !filtered; });
+  if ($('#ordersUpdatedLabel')) $('#ordersUpdatedLabel').textContent = state.ordersRefreshing ? 'Güncelleniyor…' : state.ordersError ? (known ? 'Yenilenemedi. Önceki kayıtlar gösteriliyor.' : 'Bağlantı kontrolü gerekli') : known ? `Son güncelleme ${new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' }).format(new Date(state.ordersLoadedAt))}` : 'Siparişler yükleniyor…';
   if (ordersHost) {
-    const query = normalizeSearch(state.orderSearch || '');
-    const selected = state.orders.filter((order) => orderMatchesFilter(order, state.orderFilter)
-      && (!query || normalizeSearch(`${order.orderNumber} ${(order.items || []).map((item) => `${item.productName} ${item.planLabel}`).join(' ')}`).includes(query)));
-    ordersHost.innerHTML = selected.length
-      ? selected.map(orderCardMarkup).join('')
-      : renderCustomerEmpty({
-        icon: 'fa-box-open',
-        title: state.orders.length ? 'Bu durumda sipariş bulunmuyor' : 'Henüz siparişin yok',
-        message: state.orders.length ? 'Başka bir durum filtresi seçerek siparişlerini görüntüleyebilirsin.' : 'Sepetine ürün ekleyip sipariş verdiğinde kayıtların burada görünecek.'
-      });
+    if (!known && state.ordersError) ordersHost.innerHTML = renderOrdersEmpty({ error: state.ordersError });
+    else if (!known) ordersHost.innerHTML = renderOrdersLoading();
+    else ordersHost.innerHTML = selected.length ? selected.map(orderCardMarkup).join('') : renderOrdersEmpty({ filtered });
   }
   if (deliveriesHost) {
-    const activeOrders = state.orders.filter((order) => order.deliveryVisible === true && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(order.status));
-    deliveriesHost.innerHTML = activeOrders.length
-      ? activeOrders.map(deliveryCardMarkup).join('')
-      : renderCustomerEmpty({ icon: 'fa-key', title: 'Onaylanmış teslimat yok', message: 'Telegram ödemen onaylandığında veya bakiye ödemen tamamlandığında teslim alanı otomatik açılır.' });
+    const active = deliveryEligibleOrders();
+    deliveriesHost.innerHTML = !known && state.ordersError ? renderOrdersEmpty({ error: state.ordersError }) : !known ? skeletonMarkup({ count: 2, label: 'Teslimatlar yükleniyor' }) : active.length ? active.map(deliveryCardMarkup).join('') : renderCustomerEmpty({ icon: 'fa-box-open', title: 'Henüz teslimat yok', message: 'Onaylanan siparişlerinizin teslimat bilgileri burada görünecek.' });
   }
   const more = $('#loadMoreOrdersButton');
-  if (more) {
-    more.hidden = !state.orderNextCursor;
-    more.disabled = state.orderPageLoading;
-  }
+  if (more) { more.hidden = !state.orderNextCursor; more.disabled = state.orderPageLoading || state.ordersRefreshing; }
   syncDeliveryTabVisibility();
 }
 
@@ -1561,7 +1546,7 @@ async function cancelOrder(orderId = '') {
       timeoutMs: 20_000
     });
     if (String(state.auth.user?.uid || '') !== requestedUserId) return;
-    if (payload.order) state.orders = state.orders.map((item) => item.id === id ? payload.order : item);
+    if (payload.order) { state.ordersRevision += 1; state.orders = state.orders.map((item) => item.id === id ? payload.order : item); }
     if (state.auth.account && Number.isFinite(Number(payload.balanceKurus))) {
       state.auth.account.balanceKurus = Number(payload.balanceKurus);
       renderAccountHeader();
@@ -1584,50 +1569,58 @@ async function cancelOrder(orderId = '') {
 async function loadOrders(force = false) {
   if (!state.auth.user) return [];
   if (!force && state.ordersLoadedAt && Date.now() - state.ordersLoadedAt < 90_000) return state.orders;
-  if (state.ordersPromise) return state.ordersPromise;
-  const hasExistingOrders = state.orders.length > 0;
-  const requestedUserId = String(state.auth.user.uid || '');
-  const loading = skeletonMarkup({ count: 2, label: 'Siparişler yükleniyor' });
+  if (state.ordersPromise) {
+    if (!force) return state.ordersPromise;
+    if (!state.ordersReload) {
+      const uid = state.auth.user.uid;
+      const queued = state.ordersPromise.catch(() => null).then(() => state.auth.user?.uid === uid ? loadOrders(true) : []).finally(() => { if (state.ordersReload === queued) state.ordersReload = null; });
+      state.ordersReload = queued;
+    }
+    return state.ordersReload;
+  }
+  const requestedUserId = state.auth.user.uid;
+  const revision = state.ordersRevision;
+  state.ordersError = '';
+  state.ordersRefreshing = true;
+  renderOrders();
   const finishLoading = beginRegion($('#ordersList'), 'Siparişler yükleniyor…');
-  if (!hasExistingOrders && $('#ordersList')) $('#ordersList').innerHTML = loading;
-  if (!hasExistingOrders && $('#deliveriesList')) $('#deliveriesList').innerHTML = loading;
   const operation = storeApi('/api/store/orders?limit=40')
     .then((payload) => {
-      if (String(state.auth.user?.uid || '') !== requestedUserId) return [];
+      if (state.auth.user?.uid !== requestedUserId) return [];
+      if (state.ordersRevision !== revision) return state.orders;
       state.orders = Array.isArray(payload.orders) ? payload.orders : [];
       state.orderNextCursor = String(payload.nextCursor || '');
       state.ordersLoadedAt = Date.now();
-      renderOrders();
       return state.orders;
     })
     .catch((error) => {
-      if (String(state.auth.user?.uid || '') !== requestedUserId) return [];
-      if (state.orders.length > 0) {
-        renderOrders();
-      } else {
-        const markup = renderCustomerEmpty({ icon: 'fa-triangle-exclamation', title: 'Siparişler şu anda yenilenemedi', message: friendlyStoreError(error) });
-        if ($('#ordersList')) $('#ordersList').innerHTML = markup;
-        if ($('#deliveriesList')) $('#deliveriesList').innerHTML = markup;
-      }
+      if (state.auth.user?.uid !== requestedUserId) return [];
+      if (state.ordersRevision === revision) state.ordersError = friendlyStoreError(error);
       throw error;
     })
     .finally(() => {
       finishLoading();
-      if (state.ordersPromise === operation) state.ordersPromise = null;
+      if (state.ordersPromise === operation) {
+        state.ordersPromise = null;
+        state.ordersRefreshing = false;
+        renderOrders();
+      }
     });
   state.ordersPromise = operation;
   return operation;
 }
 
 async function loadMoreCustomerOrders() {
-  if (!state.orderNextCursor || state.orderPageLoading || !state.auth.user) return;
+  if (!state.orderNextCursor || state.orderPageLoading || state.ordersRefreshing || !state.auth.user) return;
   const requestedUserId = String(state.auth.user.uid || '');
+  const cursor = state.orderNextCursor;
+  const revision = state.ordersRevision;
   const button = $('#loadMoreOrdersButton');
   state.orderPageLoading = true;
   setButtonBusy(button, true, 'Önceki siparişler yükleniyor...');
   try {
-    const payload = await storeApi(`/api/store/orders?limit=40&cursor=${encodeURIComponent(state.orderNextCursor)}`);
-    if (String(state.auth.user?.uid || '') !== requestedUserId) return;
+    const payload = await storeApi(`/api/store/orders?limit=40&cursor=${encodeURIComponent(cursor)}`);
+    if (String(state.auth.user?.uid || '') !== requestedUserId || state.ordersRevision !== revision || state.orderNextCursor !== cursor || state.ordersRefreshing) return;
     const incoming = Array.isArray(payload.orders) ? payload.orders : [];
     const existing = new Set(state.orders.map((order) => order.id));
     state.orders.push(...incoming.filter((order) => !existing.has(order.id)));
@@ -1686,44 +1679,11 @@ function renderAvatarPicker() {
 }
 
 function renderAccountSecurity() {
-  const auth = state.auth || {};
-  const user = auth.user;
-  const account = auth.account || {};
-  const card = $('#accountEmailSecurityCard');
-  if (!card) return;
-  const email = account.email || user?.email || '—';
-  card.classList.toggle('is-verified', !!user);
-  card.classList.remove('is-unverified');
-  $('#accountEmailSecurityStatus').textContent = user ? 'E-posta adresin hazır' : 'Hesap gerekli';
-  $('#accountEmailSecurityDetail').textContent = user
-    ? `${email} · Yeni adres mevcut hesap şifrenle anında güncellenir.`
-    : 'E-posta adresini yönetmek için hesabına giriş yap.';
-  const action = $('#accountEmailActionButton');
-  if (action) {
-    action.disabled = !user || !!state.accountSecurityBusy;
-  }
-  const birthDate = String(account.birthDate || '');
-  const formattedBirthDate = /^\d{4}-\d{2}-\d{2}$/.test(birthDate)
-    ? birthDate.split('-').reverse().join('.') : 'Doğum tarihi belirtilmedi';
-  const fields = [
-    { field: 'username', button: '#accountUsernameActionButton', detail: '#accountUsernameDetail', badge: '#accountUsernameRemaining', fallback: 3, value: account.username || 'Kullanıcı adı belirtilmedi' },
-    { field: 'fullName', button: '#accountNameActionButton', detail: '#accountFullNameDetail', badge: '#accountNameRemaining', fallback: 1, value: account.fullName || [account.firstName, account.lastName].filter(Boolean).join(' ') || 'İsim bilgisi belirtilmedi' },
-    { field: 'birthDate', button: '#accountBirthDateActionButton', detail: '#accountBirthDateDetail', badge: '#accountBirthDateRemaining', fallback: 1, value: formattedBirthDate }
-  ];
-  fields.forEach(({ field, button, detail, badge, fallback, value }) => {
-    const remaining = Math.max(0, Number(account.profileChanges?.[field]?.remaining ?? fallback) || 0);
-    const control = $(button);
-    if ($(detail)) $(detail).textContent = value;
-    if ($(badge)) {
-      $(badge).textContent = remaining > 0 ? `${remaining} HAK` : 'HAK DOLDU';
-      $(badge).classList.toggle('is-exhausted', remaining < 1);
-    }
-    if (control) {
-      control.disabled = !user || !!state.accountSecurityBusy || remaining < 1;
-      control.setAttribute('aria-disabled', String(control.disabled));
-      control.title = remaining < 1 ? 'Bu bilgi için değişiklik hakkı doldu.' : '';
-    }
-    if (field === 'username' && $('#accountUsernameModalRemaining')) $('#accountUsernameModalRemaining').textContent = String(remaining);
+  updateAccountView($('#customerApp'), {
+    user: state.auth.user,
+    account: state.auth.account,
+    busy: !!state.accountSecurityBusy,
+    formatBalance: formatTopbarBalance
   });
 }
 
@@ -1758,17 +1718,6 @@ function renderAccountHeader() {
   if ($('#accountBalance')) $('#accountBalance').textContent = balanceLabel;
   if ($('#cartWalletAmount')) $('#cartWalletAmount').textContent = balanceLabel;
   if ($('#cartWalletBalance')) $('#cartWalletBalance').textContent = account ? `Mevcut bakiye: ${formatStorePrice(balanceKurus)}` : 'Bakiye yükleniyor…';
-  const status = $('#accountStatusLabel');
-  if (status) {
-    const label = account?.accountStatus === 'suspended'
-      ? 'Hesap askıda'
-      : account?.accountStatus === 'purchase_blocked' ? 'Satın alma kısıtlı' : 'Hesabın güvende';
-    const statusIcon = document.createElement('i');
-    statusIcon.className = `fa-solid ${account?.accountStatus === 'active' || !account?.accountStatus ? 'fa-shield-halved' : 'fa-circle-exclamation'}`;
-    statusIcon.setAttribute('aria-hidden', 'true');
-    status.replaceChildren(statusIcon, document.createTextNode(` ${label}`));
-    status.classList.toggle('is-warning', !!account?.accountStatus && account.accountStatus !== 'active');
-  }
   applyAvatar($('#topbarAvatar'), avatarId);
   applyAvatar($('#accountAvatar'), avatarId);
   renderAvatarPicker();
@@ -1795,7 +1744,7 @@ function setCustomerView(view = 'profile', { focus = false, force = false } = {}
   syncCustomerNavigation(safe);
   if (safe === 'orders' || safe === 'deliveries') loadOrders().catch(() => null);
   if (safe === 'coupons') loadCoupons().catch(() => null);
-  const main = $('#customerApp .customer-main');
+  const main = $('#customerApp [data-client-scroll]');
   restoreViewScroll(main, previousView, safe);
   animateView($(`[data-customer-view="${safe}"]`));
   if (state.activeLayer === $('#customerApp')) recordNavigation(`account/${safe}`);
@@ -1948,7 +1897,7 @@ async function handleLogin(event) {
       remember: !!$('#loginRemember')?.checked
     });
     closeActiveLayer({ restoreFocus: false });
-    showNotice('success', 'Hoş geldiniz', 'Hesabınıza giriş yaptınız. Güncel bilgileriniz hazırlanıyor.');
+    showNotice('success', 'Giriş tamamlandı', 'ZENTRA STORE’a hoş geldiniz.');
     const pending = state.pendingLayer;
     state.pendingLayer = '';
     if (pending === 'cart') openCustomer('cart');
@@ -2477,6 +2426,12 @@ function installInteractions() {
     const delivery = event.target.closest?.('[data-order-delivery]');
     if (delivery) {
       openCustomer('deliveries', delivery);
+      const id = String(delivery.dataset.orderDelivery || '');
+      const control = $(`[data-delivery-open="${CSS.escape(id)}"]`, $('#deliveriesList'));
+      if (control) {
+        control.scrollIntoView({ block: 'center', behavior: 'instant' });
+        openDeliveryAccess(id, control);
+      }
       return;
     }
     const start = event.target.closest?.('[data-order-cancel-start]');
@@ -2522,16 +2477,20 @@ function installInteractions() {
 
   $('#orderSearchForm')?.addEventListener('submit', (event) => event.preventDefault());
   $('#orderSearchClose')?.addEventListener('click', () => {
-    const form = $('#orderSearchForm');
-    const input = $('#orderSearchInput');
     state.orderSearch = '';
-    if (input) input.value = '';
-    if (form) {
-      form.hidden = true;
-      form.inert = true;
-    }
+    $('#orderSearchInput').value = '';
     renderOrders();
-    $('#customerHeaderAction')?.focus({ preventScroll: true });
+    $('#orderSearchInput').focus({ preventScroll: true });
+  });
+  $('#customerApp')?.addEventListener('click', (event) => {
+    if (event.target.closest?.('[data-order-reset]')) {
+      state.orderSearch = '';
+      state.orderFilter = 'all';
+      $('#orderSearchInput').value = '';
+      renderOrders();
+      $('#orderSearchInput').focus({ preventScroll: true });
+    }
+    if (event.target.closest?.('[data-order-retry]')) loadOrders(true).catch(() => null);
   });
 
   $('#customerHeaderAction')?.addEventListener('click', (event) => {
@@ -2549,11 +2508,7 @@ function installInteractions() {
       return;
     }
     if (view === 'orders') {
-      const form = $('#orderSearchForm');
-      if (!form) return;
-      form.hidden = false;
-      form.inert = false;
-      $('#orderSearchInput')?.focus({ preventScroll: true });
+      loadOrders(true).catch((error) => showNotice('error', 'Siparişler yenilenemedi', friendlyStoreError(error)));
       return;
     }
     if (view === 'coupons') {
@@ -2838,7 +2793,9 @@ export async function bootStorefront() {
     syncPaymentChoice();
     if (auth.user && purchaseTracker.pending()) void recoverPendingPurchase();
     if (auth.user && (!previouslySignedIn || identityChanged || !state.ordersLoadedAt)) {
-      loadOrders(true).catch(() => null);
+      loadOrders().catch(() => null);
+    }
+    if (auth.user && (!previouslySignedIn || identityChanged)) {
       loadNotifications().catch(() => null);
     }
     if (auth.user && !previouslySignedIn && !state.authOperation && state.activeLayer === $('#authSheet')) {
@@ -2846,8 +2803,8 @@ export async function bootStorefront() {
     }
   });
   observeNavigation();
-  window.addEventListener('online', () => renderStorefrontConfiguration());
-  window.addEventListener('offline', () => renderStorefrontConfiguration());
+  window.addEventListener('online', renderStorefrontStatus);
+  window.addEventListener('offline', renderStorefrontStatus);
   await Promise.all([initStoreAuth(), loadCatalog()]);
   installNavigation();
   renderCart();

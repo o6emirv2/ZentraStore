@@ -1,12 +1,4 @@
-function escapeCustomerHtml(value = '') {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-  }[character]));
-}
-
-function customerIcon(icon, family = 'fa-solid') {
-  return `<i class="${escapeCustomerHtml(family)} ${escapeCustomerHtml(icon)}" aria-hidden="true"></i>`;
-}
+import { escapeViewText as escapeCustomerHtml, viewIcon as customerIcon } from './view-utils.js?v=zentra-ui-v71';
 
 function renderCustomerEmpty({ icon = 'fa-inbox', title = 'Kayıt bulunamadı', message = '' } = {}) {
   return `<div class="customer-empty">${customerIcon(icon)}<strong>${escapeCustomerHtml(title)}</strong><p>${escapeCustomerHtml(message)}</p></div>`;
@@ -47,62 +39,6 @@ function renderAvatarPickerView(avatars = [], selectedId = '1', fallbackIcons = 
       <span class="customer-avatar-choice__check" aria-hidden="true">${customerIcon('fa-check')}</span>
     </button>`;
   }).join('');
-}
-
-function renderOrderTimelineView(order = {}) {
-  const status = String(order.status || '');
-  const terminal = ['cancelled', 'payment_rejected', 'refunded'].includes(status);
-  const approved = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(String(order.status || ''));
-  const terminalLabel = status === 'payment_rejected' ? 'Ödeme reddedildi' : status === 'refunded' ? 'İade edildi' : 'İptal edildi';
-  const stages = terminal
-    ? [
-      { label: 'Oluşturuldu', complete: true },
-      { label: terminalLabel, terminal: true },
-      { label: 'Süreç kapandı', terminal: true }
-    ]
-    : [
-      { label: 'Oluşturuldu', complete: true },
-      { label: 'Onaylandı', complete: approved },
-      { label: 'Teslim edildi', complete: status === 'delivered' }
-    ];
-  return stages.map((stage) => `<span class="${stage.complete ? 'is-complete' : ''}${stage.terminal ? ' is-terminal' : ''}"><i aria-hidden="true"></i><small>${escapeCustomerHtml(stage.label)}</small></span>`).join('');
-}
-
-function renderOrderCardView(order = {}, context = {}) {
-  const status = context.status || { label: 'Onay bekliyor', icon: 'fa-clock' };
-  const primary = (order.items || [])[0] || {};
-  const remaining = (order.items || []).slice(1);
-  const itemRows = remaining.map((item) => `<span><span>${escapeCustomerHtml(item.productName)} · ${escapeCustomerHtml(item.planLabel)}${Number(item.quantity) > 1 ? ` × ${Math.min(5, Number(item.quantity))}` : ''}</span><b>${escapeCustomerHtml(context.formatPrice?.(item.lineTotalKurus) || '')}</b></span>`).join('');
-  const canCancel = order.cancellable === true && ['awaiting_payment', 'paid'].includes(order.status);
-  const confirming = context.cancelConfirmId === order.id;
-  const busy = context.busyOrderId === order.id;
-  const telegramAction = order.paymentMethod === 'telegram' && order.status === 'awaiting_payment'
-    ? `<a class="customer-order-action customer-order-action--telegram" href="${escapeCustomerHtml(context.telegramUrl?.(order) || '#')}" target="_blank" rel="noopener noreferrer">${customerIcon('fa-telegram', 'fa-brands')}<span>Ödemeyi Telegram'da tamamla</span>${customerIcon('fa-arrow-up-right-from-square')}</a>`
-    : '';
-  const deliveryAction = order.deliveryVisible === true
-    ? `<button class="customer-order-action" type="button" data-order-delivery="${escapeCustomerHtml(order.id)}">${customerIcon('fa-key')}<span>Teslimatı görüntüle</span>${customerIcon('fa-chevron-right')}</button>`
-    : '';
-  const cancelAction = canCancel
-    ? (confirming
-      ? `<div class="customer-order-cancel" role="group" aria-label="Sipariş iptal onayı"><span>${customerIcon('fa-triangle-exclamation')} Bu siparişi iptal etmek istediğine emin misin?</span><div><button type="button" data-order-cancel-dismiss="${escapeCustomerHtml(order.id)}">Vazgeç</button><button class="is-danger" type="button" data-order-cancel-confirm="${escapeCustomerHtml(order.id)}"${busy ? ' disabled' : ''}>${busy ? `${customerIcon('fa-spinner fa-spin')} İptal ediliyor` : 'Siparişi iptal et'}</button></div></div>`
-      : `<button class="customer-order-action customer-order-action--danger" type="button" data-order-cancel-start="${escapeCustomerHtml(order.id)}">${customerIcon('fa-ban')}<span>Siparişi iptal et</span></button>`)
-    : '';
-  const quantity = Math.max(1, Math.min(5, Number(primary.quantity) || 1));
-  return `<article class="customer-order-card">
-    <header class="customer-order-card__header">
-      <div class="customer-order-card__media">${context.mediaHtml || ''}</div>
-      <div class="customer-order-card__identity">
-        <div><span>#${escapeCustomerHtml(order.orderNumber)}</span><span class="customer-status customer-status--${escapeCustomerHtml(order.status)}">${customerIcon(status.icon)} ${escapeCustomerHtml(status.label)}</span></div>
-        <strong>${escapeCustomerHtml(primary.productName || 'Mağaza siparişi')}</strong>
-        <small>${escapeCustomerHtml(primary.planLabel || 'Dijital ürün')}${quantity > 1 ? ` · ${quantity} adet` : ''}</small>
-      </div>
-    </header>
-    <div class="customer-order-card__facts"><span>${customerIcon('fa-calendar-days')}<small>Sipariş tarihi</small><strong>${escapeCustomerHtml(context.formatDate?.(order.createdAt) || '—')}</strong></span><span>${customerIcon('fa-credit-card')}<small>Ödeme</small><strong>${escapeCustomerHtml(order.paymentMethod === 'wallet' ? 'Mağaza bakiyesi' : 'Telegram')}</strong></span><span>${customerIcon('fa-receipt')}<small>Toplam</small><strong>${escapeCustomerHtml(context.formatPrice?.(order.totalKurus) || '')}</strong></span></div>
-    ${itemRows ? `<div class="customer-order-card__items">${itemRows}</div>` : ''}
-    ${Number(order.discountKurus || 0) > 0 ? `<div class="customer-order-card__promotion">${customerIcon('fa-ticket')} ${escapeCustomerHtml(order.promotion?.code || 'Kampanya')} · −${escapeCustomerHtml(context.formatPrice?.(order.discountKurus) || '')}</div>` : ''}
-    <div class="customer-order-timeline" aria-label="Sipariş ilerlemesi">${renderOrderTimelineView(order)}</div>
-    ${telegramAction || deliveryAction || cancelAction ? `<div class="customer-order-card__actions">${telegramAction}${deliveryAction}${cancelAction}</div>` : ''}
-  </article>`;
 }
 
 function renderDeliveryCardView(order = {}, context = {}) {
@@ -160,6 +96,5 @@ export {
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
-  renderDeliveryCardView,
-  renderOrderCardView
+  renderDeliveryCardView
 };

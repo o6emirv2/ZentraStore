@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v70';
+import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v71';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
