@@ -1,0 +1,767 @@
+{
+  "version": 11,
+  "currency": "TRY",
+  "telegramUsername": "ZENTRA_STORE",
+  "products": [
+    {
+      "id": "kingmod",
+      "platform": "android",
+      "game": "pubg",
+      "name": "KİNGMOD",
+      "badge": "PREMIUM",
+      "icon": "fa-crown",
+      "image": "/public/assets/products/kingmod.jpeg",
+      "accent": "255,72,160",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI KİNGMOD PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "zolo",
+      "platform": "android",
+      "game": "pubg",
+      "name": "ZOLO",
+      "badge": "PREMIUM",
+      "icon": "fa-bolt",
+      "image": "/public/assets/products/zolo.jpeg",
+      "accent": "68,214,121",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI ZOLO PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 20000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 60000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 120000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "contra-hax",
+      "platform": "android",
+      "game": "pubg",
+      "name": "CONTRAHAX",
+      "badge": "PREMIUM",
+      "icon": "fa-crosshairs",
+      "image": "/public/assets/products/contra-hax.jpeg",
+      "accent": "255,86,105",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI CONTRAHAX PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "aspect",
+      "platform": "android",
+      "game": "pubg",
+      "name": "ASPECT",
+      "badge": "MOD",
+      "icon": "fa-microchip",
+      "image": "/public/assets/products/aspect.jpeg",
+      "accent": "240,60,64",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI ASPECT PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 65000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 130000
+        }
+      ],
+      "badgeKey": "mod"
+    },
+    {
+      "id": "shield",
+      "platform": "android",
+      "game": "pubg",
+      "name": "SHİELD",
+      "badge": "PREMIUM",
+      "icon": "fa-shield-halved",
+      "image": "/public/assets/products/shield.jpeg",
+      "accent": "104,146,255",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI SHİELD PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 65000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 130000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "moon",
+      "platform": "android",
+      "game": "pubg",
+      "name": "MOON",
+      "badge": "PREMIUM",
+      "icon": "fa-moon",
+      "image": "/public/assets/products/moon.jpeg",
+      "accent": "180,37,255",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI MOON PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 65000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 130000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "obsidian",
+      "platform": "android",
+      "game": "pubg",
+      "name": "OBSİDİAN",
+      "badge": "PREMIUM",
+      "icon": "fa-gem",
+      "image": "/public/assets/products/obsidian.jpeg",
+      "accent": "126,86,255",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI OBSİDİAN PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 80000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 160000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "h-kernel",
+      "platform": "android",
+      "game": "pubg",
+      "name": "H-KERNEL",
+      "badge": "ROOTLU",
+      "icon": "fa-microchip",
+      "image": "/public/assets/products/h-kernel.PNG",
+      "accent": "39,161,255",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI H-KERNEL PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 90000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 180000
+        }
+      ],
+      "badgeKey": "rooted"
+    },
+
+    {
+      "id": "ios-kingmod",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "KİNGMOD",
+      "badge": "PREMIUM",
+      "icon": "fa-crown",
+      "image": "/public/assets/products/kingmod.jpeg",
+      "accent": "255,72,160",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN KİNGMOD PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "contra-hax-ios",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "CONTRAHAX",
+      "badge": "YENİ",
+      "icon": "fa-crosshairs",
+      "image": "/public/assets/products/contra-hax.jpeg",
+      "accent": "255,86,105",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN CONTRAHAX PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ],
+      "badgeKey": "new"
+    },
+    {
+      "id": "ios-aq-oxide",
+      "platform": "ios",
+      "game": "oxide",
+      "name": "AQ OXİDE",
+      "badge": "PREMIUM",
+      "icon": "fa-fire-flame-curved",
+      "image": "/public/assets/products/aq-oxide.JPG",
+      "accent": "255,65,38",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN AQ OXİDE PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 80000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 160000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "ios-star",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "STAR",
+      "badge": "PREMIUM",
+      "icon": "fa-star",
+      "image": "/public/assets/products/star.jpeg",
+      "accent": "255,197,53",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN STAR PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "ios-vn-hax",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "VN HAX",
+      "badge": "PREMIUM",
+      "icon": "fa-bullseye",
+      "image": "/public/assets/products/vn-hax.jpeg",
+      "accent": "115,91,255",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN VN-HAX PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "ios-dolphin",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "DOLPHİN",
+      "badge": "PREMIUM",
+      "icon": "fa-fish-fins",
+      "image": "/public/assets/products/dolphin.jpeg",
+      "accent": "255,185,36",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN DOLPHİN PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "ios-oasis",
+      "platform": "ios",
+      "game": "pubg",
+      "name": "OASİS",
+      "badge": "PREMIUM",
+      "icon": "fa-water",
+      "image": "/public/assets/products/oasis.jpeg",
+      "accent": "179,37,255",
+      "description": "İPHONE VE iPAD CİHAZLAR İÇİN OASİS PAKETLERİ.",
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ],
+      "badgeKey": "premium"
+    },
+    {
+      "id": "ios-gbox-ipad",
+      "platform": "ios",
+      "game": "other",
+      "name": "GBOX IPAD",
+      "badge": "YILLIK",
+      "icon": "fa-tablet-screen-button",
+      "image": "/public/assets/products/gbox.jpeg",
+      "accent": "38,220,125",
+      "description": "İPAD CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YANLIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
+      "plans": [
+        {
+          "key": "yearly",
+          "label": "Yıllık",
+          "duration": "365 Gün",
+          "priceKurus": 80000
+        }
+      ],
+      "fulfillmentMode": "telegram_only",
+      "badgeKey": "annual"
+    },
+    {
+      "id": "ios-gbox-iphone",
+      "platform": "ios",
+      "game": "other",
+      "name": "GBOX IPHONE",
+      "badge": "YILLIK",
+      "icon": "fa-mobile-screen-button",
+      "image": "/public/assets/products/gbox.jpeg",
+      "accent": "38,220,125",
+      "description": "İPHONE CİHAZLAR İÇİN YILLIK GBOX PAKETİ. SİPARİŞ VE TESLİMAT YANLIZCA TELEGRAM ÜZERİNDEN YAPILIR.",
+      "plans": [
+        {
+          "key": "yearly",
+          "label": "Yıllık",
+          "duration": "365 Gün",
+          "priceKurus": 80000
+        }
+      ],
+      "fulfillmentMode": "telegram_only",
+      "badgeKey": "annual"
+    },
+    {
+      "id": "ios-ultima-oxide",
+      "platform": "ios",
+      "game": "oxide",
+      "name": "ULTİMA OXİDE",
+      "image": "/public/assets/products/aq-oxide.JPG",
+      "icon": "fa-fire-flame-curved",
+      "accent": "255,65,38",
+      "description": "İPHONE VE İPAD İÇİN ULTİMA PAKETLERİ.",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ]
+    },
+    {
+      "id": "titan",
+      "platform": "android",
+      "game": "pubg",
+      "name": "TİTAN",
+      "image": "/public/assets/products/titan.jpeg",
+      "icon": "fa-microchip",
+      "accent": "67,216,242",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI TİTAN PAKETLERİ. SADECE HAFTALIK VE AYLIK SATIŞ MEVCUT.",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 100000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 200000
+        }
+      ]
+    },
+    {
+      "id": "eta",
+      "platform": "android",
+      "game": "oxide",
+      "name": "ETA",
+      "image": "/public/assets/products/eta-oxide.JPG",
+      "icon": "fa-fire-flame-curved",
+      "accent": "255,65,38",
+      "description": "ANDROİD CİHAZLAR İÇİN YÜKSEK PERFORMANSLI ETA PAKETLERİ.",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ]
+    },
+    {
+      "id": "cry4me",
+      "platform": "android",
+      "game": "oxide",
+      "name": "CRY4ME",
+      "image": "/public/assets/products/CRY4ME.JPG",
+      "icon": "fa-fire-flame-curved",
+      "accent": "255,65,38",
+      "description": "ANDROİD CİHAZLAR İÇİN YÜKSEK PERFORMANSLI CRY4ME PAKETLERİ.",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ]
+    },
+    {
+      "id": "lebro-oxide",
+      "platform": "android",
+      "game": "oxide",
+      "name": "LEBRO",
+      "image": "/public/assets/products/lebro-oxide.JPG",
+      "icon": "fa-gem",
+      "accent": "245,52,45",
+      "description": "ANDROID CİHAZLAR İÇİN YÜKSEK PERFORMANSLI LEBRO PAKETLERİ.",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ]
+    }
+  ],
+  "badgeOptions": [
+    {
+      "key": "premium",
+      "label": "PREMIUM",
+      "icon": "fa-gem",
+      "tone": "premium"
+    },
+    {
+      "key": "cheat",
+      "label": "HİLE",
+      "icon": "fa-wand-magic-sparkles",
+      "tone": "danger"
+    },
+    {
+      "key": "rooted",
+      "label": "ROOTLU",
+      "icon": "fa-microchip",
+      "tone": "root"
+    },
+    {
+      "key": "new",
+      "label": "YENİ",
+      "icon": "fa-star",
+      "tone": "new"
+    },
+    {
+      "key": "bestseller",
+      "label": "EN ÇOK SATILAN",
+      "icon": "fa-crown",
+      "tone": "bestseller"
+    },
+    {
+      "key": "popular",
+      "label": "ÇOK TERCİH EDİLEN",
+      "icon": "fa-fire-flame-curved",
+      "tone": "popular"
+    },
+    {
+      "key": "discounted",
+      "label": "İNDİRİMLİ",
+      "icon": "fa-tags",
+      "tone": "discounted"
+    },
+    {
+      "key": "mod",
+      "label": "MOD",
+      "icon": "fa-puzzle-piece",
+      "tone": "mod"
+    },
+    {
+      "key": "guaranteed-login",
+      "label": "KESİN GİRİŞ",
+      "icon": "fa-circle-check",
+      "tone": "verified"
+    },
+    {
+      "key": "annual",
+      "label": "YILLIK",
+      "icon": "fa-calendar-check",
+      "tone": "annual"
+    },
+    {
+      "key": "verified",
+      "label": "DOĞRULANMIŞ",
+      "icon": "fa-shield-halved",
+      "tone": "verified"
+    }
+  ]
+}

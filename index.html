@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.80, minimum-scale=0.80, maximum-scale=0.80, user-scalable=no, viewport-fit=cover" />
+  <title>ZENTRA STORE | Premium Oyun ve Dijital Ürün Mağazası</title>
+  <meta name="description" content="ZENTRA STORE: iOS ve Android koleksiyonları; güvenli bakiye, şifreli stok, gerçek sipariş takibi ve kontrollü dijital teslimat." />
+  <meta name="keywords" content="ZENTRA STORE, Android, iOS, KingMod, OXİDE, Zolo, Aspect, Obsidian, Star, Dolphin, GBox, random hesap" />
+  <meta name="author" content="ZENTRA STORE" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="theme-color" content="#070B16" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="application-name" content="ZENTRA STORE" />
+  <meta name="apple-mobile-web-app-title" content="ZENTRA STORE" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no" />
+  <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
+  <link rel="canonical" href="https://zentrastore.com.tr/" />
+  <link rel="icon" href="/public/assets/images/favicon.ico?v=brand-v67" />
+  <link rel="apple-touch-icon" href="/public/assets/images/apple-touch-icon.png?v=brand-v67" />
+
+  <meta property="og:locale" content="tr_TR" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ZENTRA STORE" />
+  <meta property="og:title" content="ZENTRA STORE | Oyunun Yeni Seviyesi" />
+  <meta property="og:description" content="Android ve iOS koleksiyonları; güvenli sepet, şifreli teslimat ve canlı sipariş takibi." />
+  <meta property="og:url" content="https://zentrastore.com.tr/" />
+  <meta property="og:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
+  <meta property="og:image:width" content="1254" />
+  <meta property="og:image:height" content="1254" />
+  <meta property="og:image:alt" content="ZENTRA STORE premium oyun mağazası" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ZENTRA STORE | Oyunun Yeni Seviyesi" />
+  <meta name="twitter:description" content="Android ve iOS ürünleri, güvenli sepet ve sipariş takibi." />
+  <meta name="twitter:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
+
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
+  <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v72" fetchpriority="high" />
+  <link rel="stylesheet" href="/style.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v72" />
+  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v72" />
+</head>
+<body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
+  <a class="skip-link" href="#catalog">Ürünlere geç</a>
+
+  <div class="page-effects" aria-hidden="true"><span class="page-glow page-glow--red"></span><span class="page-glow page-glow--blue"></span><span class="page-noise"></span></div>
+
+  <header class="topbar store-header" id="topbar">
+    <div class="topbar__inner">
+      <button class="brand" id="brandStorefront" type="button" aria-label="ZENTRA STORE ana sayfasına dön">
+        <img class="brand__mark" src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" width="50" height="50" />
+        <span class="brand__copy"><strong>ZENTRA</strong><small>STORE</small></span>
+      </button>
+      <nav class="desktop-nav" aria-label="Mağaza bölümleri">
+        <button class="is-active" type="button" data-store-scroll="storefront">Ana Sayfa</button>
+        <button type="button" data-store-scroll="catalog">Ürünler</button>
+        <button type="button" data-store-open="orders">Siparişlerim</button>
+        <button type="button" data-store-open="account">Hesabım</button>
+      </nav>
+      <div class="topbar__actions"><span class="auth-pending" id="authPending" role="status"><span class="activity-indicator activity-indicator--small" aria-hidden="true"><span style="--spoke:0"></span><span style="--spoke:1"></span><span style="--spoke:2"></span><span style="--spoke:3"></span><span style="--spoke:4"></span><span style="--spoke:5"></span><span style="--spoke:6"></span><span style="--spoke:7"></span><span style="--spoke:8"></span><span style="--spoke:9"></span><span style="--spoke:10"></span><span style="--spoke:11"></span></span><span>Oturum kontrol ediliyor…</span></span>
+        <span class="topbar-status" aria-label="Mağaza durumu kontrol ediliyor" data-state="checking"><span class="live-dot" aria-hidden="true"></span><span><small>MAĞAZA</small><strong>KONTROL</strong></span></span>
+        <button class="header-wallet" id="topBalanceButton" type="button" data-store-open="account" aria-label="Bakiyeyi ve hesabı aç" data-auth-only hidden><span class="header-wallet__label"><i class="fa-solid fa-wallet" aria-hidden="true"></i><small>Kullanılabilir bakiye</small></span><strong id="topBalanceValue" aria-live="polite">—</strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+        <button class="icon-button cart-trigger" id="cartButton" type="button" data-store-open="cart" aria-label="Sepeti aç" data-auth-only hidden><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span class="count-badge" id="cartCount" hidden>0</span></button>
+        <button class="header-account" id="accountButton" type="button" data-store-open="account" aria-label="Hesabımı aç" hidden><span class="avatar-shell avatar-shell--small" id="topbarAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-crown" aria-hidden="true"></i></span></span><span class="account-trigger__copy"><small>HESABIM</small><strong id="topbarUsername">Üye</strong></span></button>
+        <div class="auth-actions" id="guestActions" data-guest-only hidden>
+          <button class="button button--login button--compact" id="loginBtn" type="button" data-store-auth="login" aria-controls="authSheet" aria-haspopup="dialog">Giriş yap</button>
+          <button class="button button--primary button--compact" id="registerBtn" type="button" data-store-auth="register" aria-controls="authSheet" aria-haspopup="dialog">Kayıt ol</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+
+  <main class="page-shell" id="mainContent">
+    <section class="storefront-intro" id="storefront" aria-labelledby="storeGreeting"><span aria-hidden="true"></span><p id="storeGreeting">Hoş geldiniz, <strong id="storeGreetingName">Oyuncu</strong></p></section>
+
+    <section class="store-announcement" id="storeAnnouncement" aria-live="polite" hidden></section>
+
+    <section class="showcase-slider" data-showcase-slider aria-label="ZENTRA STORE ürün ve oyun görselleri" aria-roledescription="carousel">
+      <h1 class="showcase-slider__accessible-title">ZENTRA STORE premium oyun mağazası</h1>
+      <div class="showcase-slider__viewport" data-showcase-viewport tabindex="0" aria-label="Görseller arasında sağa veya sola kaydır">
+        <div class="showcase-slider__track" data-showcase-track aria-live="off"><figure class="showcase-slide showcase-slide--logo is-active" data-showcase-slide data-showcase-group="kingmod" aria-label="1 / 52: KİNGMOD" aria-hidden="false"><img src="/public/assets/products/kingmod.jpeg?v=storefront-v72" loading="eager" fetchpriority="high" alt="KİNGMOD yazılı ürün görseli" width="640" height="640" decoding="async" draggable="false" /></figure></div>
+        <div class="showcase-slider__copy"><small data-showcase-group-position>Logo · 1/10</small><strong data-showcase-group-label>KİNGMOD</strong><span>Ürün görsellerini inceleyin, paketinizi seçin.</span><button type="button" data-showcase-details disabled>Detayları gör <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
+        <button class="showcase-slider__arrow showcase-slider__arrow--previous" type="button" data-showcase-control data-showcase-previous aria-label="Önceki görseli göster"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button><button class="showcase-slider__arrow showcase-slider__arrow--next" type="button" data-showcase-control data-showcase-next aria-label="Sonraki görseli göster"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+        <div class="showcase-slider__toolbar"><button class="showcase-slider__autoplay" type="button" data-showcase-control data-showcase-toggle aria-pressed="false" aria-label="Otomatik görsel geçişini durdur"><i class="fa-solid fa-pause showcase-slider__pause-icon" aria-hidden="true"></i><i class="fa-solid fa-play showcase-slider__play-icon" aria-hidden="true"></i></button><span class="showcase-slider__counter" aria-label="Toplam slayt sırası"><small>TOPLAM</small><strong data-showcase-current>01</strong><span>/</span><span data-showcase-total>52</span></span></div>
+        <span class="showcase-slider__progress" aria-hidden="true"><span data-showcase-progress></span></span>
+      </div>
+      <nav class="showcase-slider__groups" data-showcase-groups aria-label="Slaytta markaya göre geçiş"></nav>
+    </section>
+
+    <section class="quick-links-section" data-quick-links-section aria-labelledby="quickLinksTitle"><header class="quick-links-section__header"><div><span>ZENTRA STORE</span><h2 id="quickLinksTitle">Resmî kanallar</h2><p>İçerikleri takip edin, topluluğa katılın ve destek alın.</p></div></header><nav class="showcase-socials" id="quickLinksGrid" aria-label="ZENTRA STORE sosyal medya, kanal ve destek bağlantıları">
+      <a class="showcase-social showcase-social--telegram" data-quick-link-id="official-telegram" data-telegram-channel href="https://t.me/+B_m6rCQxMhQ5MjFk" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Resmî Telegram Kanalı</strong><small>Resmî kanalımızı takip et</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--telegram" data-quick-link-id="guarantee-telegram" href="https://t.me/+t17sK4mUhbszZTM0" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Güvence Kanalı</strong><small>Güvence paylaşımlarımızı incele</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--telegram" data-quick-link-id="chat-telegram" href="https://t.me/+chmRui3czAdhNTE0" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Sohbet Grubu</strong><small>Sohbet grubumuza katıl</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--free" data-quick-link-id="free-telegram" href="https://t.me/zentrastorefree" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Ücretsiz İçerik</strong><small>Ücretsiz içerikleri keşfet</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--tiktok" data-quick-link-id="tiktok-official" href="https://www.tiktok.com/@shelbystorelive" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-tiktok"></i></span><span class="showcase-social__copy"><strong>TikTok</strong><small>Videolarımızı izle</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--whatsapp" data-quick-link-id="whatsapp-support" href="https://wa.me/905339673730" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-whatsapp"></i></span><span class="showcase-social__copy"><strong>WhatsApp Destek</strong><small>Destek ekibimize ulaş</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+      <a class="showcase-social showcase-social--support" data-quick-link-id="support-telegram" href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Telegram Destek</strong><small>Destek ekibimize güvenle ulaş</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
+    </nav></section>
+
+    <section class="catalog" id="catalog" aria-labelledby="catalogTitle">
+      <section class="discovery-panel" aria-label="Ürün arama ve filtreleme"><label class="sr-only" for="productSearch">Ürün adı veya açıklaması ile arayın</label>
+        <div class="searchbar" role="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="productSearch" type="search" aria-label="Ürün ara" placeholder="Ürün ara" autocomplete="off" enterkeyhint="search" /><button id="clearSearch" type="button" aria-label="Aramayı temizle" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+      </section>
+      <div class="game-categories" id="gameCategories" role="group" aria-label="Ürün kategorisi">
+        <button class="game-category is-active" type="button" data-filter="all" aria-pressed="true"><span class="game-category__symbol"><i class="fa-solid fa-border-all" aria-hidden="true"></i></span><span class="game-category__copy"><strong>Tümü</strong><span>Bütün ürünler</span></span><small data-category-count="all"></small></button>
+        <button class="game-category" type="button" data-filter="pubg-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
+                  <small class="game-category__count" data-category-count="pubg-ios" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="pubg-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
+          <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
+                  <small class="game-category__count" data-category-count="pubg-android" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="oxide-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v72" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
+                  <small class="game-category__count" data-category-count="oxide-ios" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="oxide-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
+          <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v72" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
+          <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
+                  <small class="game-category__count" data-category-count="oxide-android" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="random-account" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <img class="game-category__image" src="/public/assets/products/random.jpeg?v=storefront-v72" alt="" width="44" height="44" loading="lazy" decoding="async" />
+          <span class="game-category__copy"><strong>RANDOM</strong><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i> HESAPLAR</span></span>
+          <small class="game-category__count" data-category-count="random-account" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="gbox" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
+          <img class="game-category__image" src="/public/assets/products/gbox.jpeg?v=storefront-v72" alt="" width="44" height="44" loading="lazy" decoding="async" />
+          <span class="game-category__copy"><strong>GBOX</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS / IPAD</span></span>
+          <small class="game-category__count" data-category-count="gbox" aria-label="Ürün sayısı"></small>
+        </button>
+        <button class="game-category" type="button" data-filter="favorites" aria-pressed="false"><span class="game-category__symbol"><i class="fa-solid fa-heart" aria-hidden="true"></i></span><span class="game-category__copy"><strong>Favoriler</strong><span>Seçtiğiniz ürünler</span></span><small data-category-count="favorites"></small></button>
+      </div>
+      <div class="section-heading"><div><span class="section-kicker" id="catalogKicker">ÜRÜN KATALOĞU</span><h2 id="catalogTitle">Ürünleri keşfedin</h2><p id="catalogDescription">Kategorinizi seçin, ürünleri karşılaştırın ve paketleri inceleyin.</p></div><span class="catalog-count" aria-live="polite" aria-atomic="true"><strong id="visibleProductCount">—</strong> ürün</span></div>
+      <div class="catalog-loading" id="catalogLoading" role="status"><span></span><strong>Ürünler hazırlanıyor</strong></div>
+      <section class="platform-section platform-section--android" id="androidProducts" aria-labelledby="androidTitle" hidden><div class="platform-banner"><div class="platform-banner__icon"><i class="fa-brands fa-android" aria-hidden="true"></i></div><div><span>ANDROID</span><h2 id="androidTitle">Android Ürünleri</h2><p>Telefon ve tablet için premium seçenekler.</p></div><strong id="androidCount">0 ürün</strong></div><div class="products-grid" id="androidGrid" aria-live="polite"></div></section>
+      <section class="platform-section platform-section--ios" id="iosProducts" aria-labelledby="iosTitle" hidden><div class="platform-banner"><div class="platform-banner__icon"><i class="fa-brands fa-apple" aria-hidden="true"></i></div><div><span>APPLE</span><h2 id="iosTitle">iOS Ürünleri</h2><p>iPhone ve iPad için premium seçenekler.</p></div><strong id="iosCount">0 ürün</strong></div><div class="products-grid" id="iosGrid" aria-live="polite"></div></section>
+      <div class="empty-state" id="productsEmpty" hidden><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><strong>Bu aramaya uygun ürün bulunamadı.</strong><span>Arama metnini değiştirin veya filtreleri temizleyin.</span><button class="button button--glass" id="resetCatalog" type="button">Filtreleri temizle</button></div>
+    </section>
+
+    <section class="store-highlights" aria-label="ZENTRA STORE güvenceleri"><article><span><i class="fa-solid fa-shield-halved"></i></span><div><strong>Güvenli ödeme</strong><small>Tüm tutarlar sunucuda doğrulanır.</small></div></article><article><span><i class="fa-solid fa-bolt"></i></span><div><strong>Hızlı teslimat</strong><small>Uygun stok otomatik kasadan açılır.</small></div></article><article><span><i class="fa-solid fa-headset"></i></span><div><strong>Gerçek destek</strong><small>Sipariş aşamalarında iletişim açık.</small></div></article></section>
+  </main>
+
+  <footer class="site-footer" aria-label="ZENTRA STORE mağaza bilgileri"><div class="site-footer__main"><div class="site-footer__brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><div><strong>ZENTRA STORE</strong><small>ZENTRA PREMIUM GAME STORE</small></div></div><p>Android ve iOS dijital ürünleri için güvenli alışveriş merkezi.</p></div><div class="site-footer__links"><button type="button" data-store-scroll="catalog">Ürünler</button><button type="button" data-store-open="orders">Siparişlerim</button><button type="button" data-store-open="account">Hesabım</button><a data-telegram-channel href="https://t.me/+B_m6rCQxMhQ5MjFk" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><i class="fa-brands fa-telegram"></i> Telegram</a></div><small><i class="fa-solid fa-lock"></i> Güvenli bağlantı · © 2026 ZENTRA STORE</small></footer>
+
+  <nav class="mobile-nav" id="mobileBottomNav" aria-label="Alt gezinme">
+    <button class="is-active" type="button" data-store-action="storefront" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Ana Sayfa</span></button>
+    <button type="button" data-store-action="catalog"><i class="fa-solid fa-border-all" aria-hidden="true"></i><span>Ürünler</span></button>
+    <button type="button" data-store-action="orders" data-auth-only hidden><i class="fa-solid fa-box" aria-hidden="true"></i><span>Siparişlerim</span></button>
+    <button type="button" data-store-auth="login" data-guest-only hidden><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i><span>Giriş Yap</span></button>
+    <button type="button" data-store-action="account" data-auth-only hidden><i class="fa-solid fa-user" aria-hidden="true"></i><span>Hesabım</span></button>
+    <button type="button" data-store-auth="register" data-guest-only hidden><i class="fa-solid fa-user-plus" aria-hidden="true"></i><span>Kayıt Ol</span></button>
+    <span class="mobile-nav__pending" role="status" data-auth-pending>Oturum kontrol ediliyor…</span>
+    <span id="mobileDeliveryNav" hidden></span><span id="mobileCartCount" hidden>0</span>
+  </nav>
+
+  <div class="modal-layer" id="purchaseModal" aria-hidden="true" inert>
+    <div class="modal-layer__backdrop" data-close-layer></div>
+    <section class="product-detail" role="dialog" aria-modal="true" aria-labelledby="purchaseTitle" tabindex="-1">
+      <header class="product-detail__header"><div><small>ZENTRA STORE · Ürün detayları</small><h2 id="purchaseTitle">Ürün</h2></div><button class="screen-icon-button" type="button" data-close-layer aria-label="Ürün detaylarını kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+      <div class="product-detail__body" data-product-detail-scroll>
+        <div class="product-detail__layout">
+          <div class="product-detail__media" id="purchaseImage"></div>
+          <div class="product-detail__information">
+            <div class="product-detail__badges" id="purchaseBadges"></div>
+            <p class="product-detail__description" id="purchaseDescription">Ürün bilgileri hazırlanıyor.</p>
+            <section class="detail-section" aria-labelledby="purchasePlansTitle"><header><h3 id="purchasePlansTitle">Paketinizi seçin</h3><span>Süre ve teslimat</span></header><div class="detail-plans" id="purchasePlans"></div></section>
+            <div class="detail-summary" id="purchaseSummary" aria-live="polite"></div>
+            <p class="detail-availability" id="purchaseDeliveryAssurance"></p>
+            <button class="screen-button detail-restock" id="notifyStockButton" type="button" hidden><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Stok geldiğinde bildir</span></button>
+            <section class="detail-section detail-features" id="purchaseFeatures" aria-labelledby="purchaseFeaturesTitle" hidden><header><h3 id="purchaseFeaturesTitle">Ürün özellikleri</h3><span id="purchaseFeatureCount"></span></header><ul id="purchaseFeatureList"></ul></section>
+            <p class="product-detail__help"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Telegram ile sipariş verdiğinizde ürününüz ve seçtiğiniz paket sipariş mesajına eklenir.</span></p>
+          </div>
+        </div>
+      </div>
+      <footer class="product-detail__footer"><div class="product-detail__price"><small id="purchaseFooterPlan">Seçilen paket</small><strong id="purchaseFooterPrice">—</strong></div><div class="product-detail__actions"><button class="screen-button screen-button--primary" id="addToCartButton" type="button"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><span>Sepete ekle</span></button><button class="screen-button screen-button--telegram" id="buyTelegramButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile al</span></button></div></footer>
+    </section>
+  </div>
+
+  <div class="sheet-layer" id="authSheet" aria-hidden="true" inert>
+    <div class="sheet-layer__backdrop" data-close-layer></div>
+    <section class="side-sheet side-sheet--auth" role="dialog" aria-modal="true" aria-labelledby="authTitle" tabindex="-1">
+      <header class="side-sheet__header"><div><span class="section-kicker">ZENTRA STORE HESABI</span><h2 id="authTitle">Giriş yap</h2></div><button class="dialog-close" type="button" data-close-layer aria-label="Hesap penceresini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+      <div class="side-sheet__body" id="authSheetBody">
+        <button class="notice-sound-control" type="button" data-notice-sound-toggle aria-pressed="true"><i class="fa-solid fa-volume-low" aria-hidden="true"></i><span data-notice-sound-label>Bildirim sesi açık</span></button><div class="auth-intro"><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span><div><strong>ZENTRA STORE hesabınız</strong><p>Siparişlerinizi, bakiyenizi ve kuponlarınızı tek yerden yönetin.</p></div></div>
+        <div class="segmented-control" id="authTabs" role="tablist" aria-label="Hesap işlemi">
+          <button class="is-active" type="button" id="authLoginTab" role="tab" aria-selected="true" aria-controls="loginForm" tabindex="0" data-auth-tab="login">Giriş Yap</button>
+          <button type="button" id="authRegisterTab" role="tab" aria-selected="false" aria-controls="registerForm" tabindex="-1" data-auth-tab="register">Kayıt Ol</button>
+        </div>
+
+        <form class="auth-form" id="loginForm" aria-labelledby="authLoginTab" novalidate>
+          <label class="form-field"><span>E-posta veya kullanıcı adı</span><span class="form-field__input"><i class="fa-solid fa-user" aria-hidden="true"></i><input id="loginIdentifier" name="identifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next" required placeholder="ornek@eposta.com veya kullanıcı adın" /></span></label>
+          <div class="form-field"><label for="loginPassword">Şifre</label><span class="form-field__input"><i class="fa-solid fa-lock" aria-hidden="true"></i><input id="loginPassword" name="password" type="password" autocomplete="current-password" minlength="6" enterkeyhint="go" required placeholder="Şifren" /><button type="button" data-toggle-password="loginPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div>
+          <div class="form-options"><label class="check-field"><input id="loginRemember" name="remember" type="checkbox" /><span></span>Beni hatırla</label><button class="text-button" id="forgotPasswordButton" type="button">Şifremi unuttum</button></div>
+          <button class="button button--primary button--large button--full" type="submit"><span>Giriş Yap</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+        </form>
+
+        <form class="auth-form" id="registerForm" aria-labelledby="authRegisterTab" novalidate hidden inert>
+          <div class="form-grid">
+            <label class="form-field"><span>İsim</span><span class="form-field__input"><i class="fa-solid fa-id-card" aria-hidden="true"></i><input id="registerFirstName" name="firstName" type="text" autocomplete="given-name" autocapitalize="words" spellcheck="false" enterkeyhint="next" minlength="2" maxlength="50" required placeholder="İsmin" /></span></label>
+            <label class="form-field"><span>Soyisim</span><span class="form-field__input"><i class="fa-solid fa-id-card" aria-hidden="true"></i><input id="registerLastName" name="lastName" type="text" autocomplete="family-name" autocapitalize="words" spellcheck="false" enterkeyhint="next" minlength="2" maxlength="50" required placeholder="Soyismin" /></span></label>
+          </div>
+          <label class="form-field"><span>Kullanıcı adı</span><span class="form-field__input"><i class="fa-solid fa-at" aria-hidden="true"></i><input id="registerUsername" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" enterkeyhint="next" minlength="5" maxlength="20" required placeholder="5-20 karakter" /></span><small>Harf, sayı, nokta, alt çizgi ve tire kullanabilirsin.</small></label>
+          <label class="form-field"><span>E-posta</span><span class="form-field__input"><i class="fa-solid fa-envelope" aria-hidden="true"></i><input id="registerEmail" name="email" type="email" inputmode="email" autocomplete="email" spellcheck="false" enterkeyhint="next" required placeholder="ornek@eposta.com" /></span></label>
+          <fieldset class="birth-field"><legend>Doğum tarihi</legend><div><label><span>Gün</span><select id="birthDay" name="birthDay" autocomplete="bday-day" required><option value="">Gün</option></select></label><label><span>Ay</span><select id="birthMonth" name="birthMonth" autocomplete="bday-month" required><option value="">Ay</option></select></label><label><span>Yıl</span><select id="birthYear" name="birthYear" autocomplete="bday-year" required><option value="">Yıl</option></select></label></div><small>Hesap güvenliği için zorunludur ve daha sonra yalnızca 1 kez değiştirilebilir.</small></fieldset>
+          <div class="form-grid">
+            <div class="form-field"><label for="registerPassword">Şifre</label><span class="form-field__input"><i class="fa-solid fa-lock" aria-hidden="true"></i><input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" enterkeyhint="next" required placeholder="En az 8 karakter" /><button type="button" data-toggle-password="registerPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div>
+            <div class="form-field"><label for="registerPasswordRepeat">Şifre tekrar</label><span class="form-field__input"><i class="fa-solid fa-lock" aria-hidden="true"></i><input id="registerPasswordRepeat" name="passwordRepeat" type="password" autocomplete="new-password" minlength="8" enterkeyhint="done" required placeholder="Şifreni tekrarla" /><button type="button" data-toggle-password="registerPasswordRepeat" aria-label="Şifre tekrarını göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div>
+          </div>
+          <label class="check-field"><input id="registerRemember" name="remember" type="checkbox" checked /><span></span>Beni hatırla</label>
+          <button class="button button--primary button--large button--full" type="submit"><span>Hesabımı Oluştur</span><i class="fa-solid fa-user-plus" aria-hidden="true"></i></button>
+          <small class="form-legal"><i class="fa-solid fa-envelope" aria-hidden="true"></i> Hesabınız oluşturulduktan sonra e-posta doğrulama durumunu Hesabım bölümünden takip edebilirsiniz.</small>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <div class="sheet-layer customer-layer" id="customerApp" aria-hidden="true" inert>
+    <div class="sheet-layer__backdrop" data-close-layer></div>
+    <section class="client-shell" role="dialog" aria-modal="true" aria-labelledby="customerTitle" aria-describedby="customerDescription" data-customer-shell data-customer-active-view="profile" tabindex="-1">
+      <header class="client-header" data-customer-main>
+        <button class="client-header__brand" type="button" data-customer-home aria-label="Mağazaya dön"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" width="44" height="44" /></button>
+        <div class="client-header__title"><small>ZENTRA STORE</small><h1 id="customerTitle">Hesabım</h1><p id="customerDescription">Hesap bilgileriniz ve alışverişleriniz</p></div>
+        <div class="client-header__actions"><button class="screen-icon-button" id="customerHeaderAction" type="button" data-customer-header-action="profile" aria-label="Hesap işlemleri"><i class="fa-solid fa-rotate" aria-hidden="true"></i></button><button class="screen-icon-button" type="button" data-close-layer aria-label="Müşteri merkezini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+      </header>
+      <main class="client-main" data-customer-main data-client-scroll>
+        <section class="customer-view customer-view--cart" id="customerViewCart" data-customer-view="cart" aria-labelledby="customerTitle" hidden inert>
+          <div class="customer-view__intro">
+            <div><span class="customer-eyebrow"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> GÜVENLİ ALIŞVERİŞ</span><h2>Sepetini tamamla</h2><p id="cartSelectedSummary">Sepetindeki ürünleri güvenle incele.</p></div>
+            <button class="customer-text-button" id="cartClearButton" type="button" hidden><i class="fa-regular fa-trash-can" aria-hidden="true"></i> Sepeti temizle</button>
+          </div>
+          <section id="cartPending" class="app-pending-purchase" hidden aria-labelledby="cartPendingTitle"><h3 id="cartPendingTitle">Önceki işlemin sonucu bekleniyor</h3><p>Yeni sipariş başlatmadan önce mevcut isteği doğrulayın. Tamamlanmış bir sipariş ikinci kez ücretlendirilmez.</p><div><button class="secondary-action" type="button" id="checkPendingPurchase">Durumu kontrol et</button><button class="secondary-action" type="button" id="retryPendingPurchase">Aynı siparişi yeniden gönder</button><button class="secondary-action" type="button" id="cancelPendingPurchase">Bekleyen isteği iptal et</button></div></section><div class="customer-empty customer-empty--cart" id="cartEmpty">
+            <i class="fa-solid fa-bag-shopping" aria-hidden="true"></i><strong>Sepetin henüz boş</strong>
+            <p>Android veya iOS koleksiyonundan bir ürün seçerek güvenli alışverişe başlayabilirsin.</p>
+            <button class="button button--primary" type="button" data-close-and-scroll="catalog">Ürünleri incele</button>
+          </div>
+          <div class="customer-cart-layout" id="cartContent" hidden inert>
+            <div class="customer-cart-layout__items">
+              <div class="customer-cart-items" id="cartItems"></div>
+              <form class="customer-promotion" id="cartPromotionForm" novalidate>
+                <header><span><i class="fa-solid fa-ticket" aria-hidden="true"></i></span><div><label for="cartPromotionCode">Kupon kodun var mı?</label><p>İndirim kodun sunucuda doğrulanır.</p></div></header>
+                <div class="customer-promotion__controls"><input id="cartPromotionCode" type="text" maxlength="32" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Kupon kodunu gir" /><button type="submit">Uygula</button></div>
+                <div class="customer-promotion__status" id="cartPromotionStatus" aria-live="polite"></div>
+              </form>
+            </div>
+            <aside class="customer-checkout" id="cartFooter" hidden inert>
+              <section class="customer-checkout__wallet"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span><small>KULLANILABİLİR BAKİYE</small><strong id="cartWalletAmount">₺0,00</strong><em id="cartWalletBalance">Mevcut bakiye: 0,00 ₺</em></span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></section>
+              <fieldset class="customer-payment"><legend>Sipariş yöntemi</legend>
+                <label><input type="radio" name="paymentMethod" value="wallet" checked /><span><i class="fa-solid fa-wallet" aria-hidden="true"></i><strong>Mağaza bakiyesi</strong><small>Anında ve korumalı ödeme</small><b>ÖNERİLEN</b></span></label>
+                <label><input type="radio" name="paymentMethod" value="telegram" /><span><i class="fa-brands fa-telegram" aria-hidden="true"></i><strong>Telegram siparişi</strong><small>Hazır sipariş mesajı</small></span></label>
+              </fieldset>
+              <section class="customer-summary" aria-labelledby="cartSummaryTitle"><h3 id="cartSummaryTitle">Sipariş özeti</h3><dl><div><dt>Ürün adedi</dt><dd id="cartLineCount">0</dd></div><div><dt>Ara toplam</dt><dd id="cartSubtotal">0,00 ₺</dd></div><div id="cartDiscountRow" hidden><dt>Kupon indirimi</dt><dd id="cartDiscount">−0,00 ₺</dd></div><div><dt>Ödenecek toplam</dt><dd id="cartTotal">0,00 ₺</dd></div></dl></section>
+              <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="orders-page" id="customerViewOrders" data-customer-view="orders" aria-labelledby="customerTitle" hidden inert>
+          <div class="orders-page__intro"><div><span class="screen-eyebrow">Alışveriş geçmişiniz</span><h2>Siparişlerinizi takip edin</h2><p>Ödeme ve teslimat durumlarını tek yerden görüntüleyin.</p></div><p class="orders-page__updated" id="ordersUpdatedLabel" role="status">Siparişler yükleniyor…</p></div>
+          <div class="orders-page__summary" aria-label="Görüntülenen siparişlerin özeti"><article><span>Görüntülenen</span><strong id="orderMetricTotal">—</strong></article><article><span>Teslim edildi</span><strong id="orderMetricDelivered">—</strong></article><article><span>Devam ediyor</span><strong id="orderMetricPending">—</strong></article></div>
+          <form class="orders-page__search" id="orderSearchForm" role="search"><label for="orderSearchInput">Siparişlerde ara</label><div><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="orderSearchInput" type="search" autocomplete="off" maxlength="80" placeholder="Sipariş numarası veya ürün adı" /><button class="screen-icon-button" type="button" id="orderSearchClose" aria-label="Sipariş aramasını temizle"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div></form>
+          <div class="orders-page__filters" id="orderFilterBar" role="group" aria-label="Sipariş durumuna göre filtrele"><button class="is-active" type="button" data-order-filter="all" aria-pressed="true">Tümü</button><button type="button" data-order-filter="pending" aria-pressed="false">Bekleyen</button><button type="button" data-order-filter="approved" aria-pressed="false">Hazırlanan</button><button type="button" data-order-filter="delivered" aria-pressed="false">Teslim edilen</button><button type="button" data-order-filter="closed" aria-pressed="false">Kapanan</button></div>
+          <div class="orders-page__results"><span id="ordersResultLabel" role="status"></span><button class="orders-page__reset" type="button" data-order-reset>Filtreleri temizle</button></div>
+          <div class="orders-page__list" id="ordersList"></div>
+          <button class="screen-button orders-page__more" id="loadMoreOrdersButton" type="button" hidden>Önceki siparişleri yükle</button>
+          <a class="screen-support" data-telegram-support href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="screen-support__icon"><i class="fa-solid fa-headset" aria-hidden="true"></i></span><span><strong>Siparişinizle ilgili yardım alın</strong><small>Telegram destek ekibine ulaşın</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+        </section>
+
+        <section class="customer-view customer-view--deliveries" id="customerViewDeliveries" data-customer-view="deliveries" aria-labelledby="customerTitle" hidden inert>
+          <article class="customer-trust"><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span><div><small>KORUMALI TESLİMAT</small><strong>Bilgilerin yalnızca senin oturumunda açılır</strong><p>Parola veya e-posta doğrulaması istenmez; sipariş sahipliği ve şifreli kasa bütünlüğü sunucuda denetlenir.</p></div></article>
+          <div class="customer-metrics customer-metrics--delivery"><article><i class="fa-solid fa-box-open" aria-hidden="true"></i><span><small>TESLİM EDİLDİ</small><strong id="deliveryMetricDelivered">0</strong></span></article><article><i class="fa-regular fa-calendar-days" aria-hidden="true"></i><span><small>SON TESLİMAT</small><strong id="deliveryMetricLatest">—</strong></span></article></div>
+          <div class="customer-delivery-list" id="deliveriesList" aria-live="polite"></div>
+        </section>
+
+        <section class="customer-view customer-view--coupons" id="customerViewCoupons" data-customer-view="coupons" aria-labelledby="customerTitle" hidden inert>
+          <article class="customer-coupon-hero"><span><i class="fa-solid fa-ticket" aria-hidden="true"></i></span><div><small>SANA ÖZEL FIRSATLAR</small><strong><b id="couponHeroCount">—</b> kullanılabilir kupon</strong><p>Uygun kuponunu seçip sepetinde güvenle kullan.</p></div></article>
+          <div class="customer-filter" id="couponFilterBar" role="group" aria-label="Kupon durumuna göre filtrele"><button class="is-active" type="button" data-coupon-filter="available" aria-pressed="true">Kullanılabilir</button><button type="button" data-coupon-filter="scheduled" aria-pressed="false">Yakında</button><button type="button" data-coupon-filter="used" aria-pressed="false">Kullanıldı</button><button type="button" data-coupon-filter="expired" aria-pressed="false">Süresi doldu</button></div>
+          <div class="customer-coupon-list" id="couponWallet" aria-live="polite"></div>
+          <form class="customer-coupon-form" id="accountCouponApplyForm" novalidate><label for="accountCouponCode">Kupon kodunu sepette kullan</label><div><span><i class="fa-solid fa-gift" aria-hidden="true"></i><input id="accountCouponCode" name="coupon" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="32" required placeholder="Kupon kodunu gir" /></span><button class="button button--primary" type="submit">Sepette kullan</button></div></form>
+          <details class="customer-terms"><summary><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Kupon kullanım koşulları</summary><p>Kuponlar ürün kapsamı, kullanım sınırı ve geçerlilik tarihine göre sunucuda doğrulanır. İndirim, sipariş oluşturulmadan önce yeniden hesaplanır.</p></details>
+        </section>
+
+        <section class="account-page is-active" id="customerViewProfile" data-customer-view="profile" aria-labelledby="customerTitle">
+          <article class="account-page__identity"><button class="account-page__avatar" type="button" data-account-action-open="avatar" aria-label="Profil avatarını değiştir"><span class="avatar-shell" id="accountAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-user" aria-hidden="true"></i></span></span><span class="account-page__avatar-edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></span></button><div><span class="screen-eyebrow">Size özel alan</span><h2 id="accountUsername">—</h2><p id="accountEmail">—</p><span class="account-page__status" id="accountStatusLabel">Hesap yükleniyor…</span></div></article>
+          <article class="account-page__wallet"><div class="account-page__wallet-heading"><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Mağaza bakiyeniz</span><i class="fa-solid fa-lock" aria-hidden="true"></i></div><strong id="accountBalance">—</strong><p id="accountBalanceDescription">Bakiyeniz yükleniyor…</p><div class="account-page__shortcuts"><button type="button" data-customer-nav-target="orders"><i class="fa-solid fa-box" aria-hidden="true"></i>Siparişlerim</button><button type="button" data-customer-nav-target="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i>Kuponlarım</button><button type="button" data-customer-nav-target="cart"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>Sepetim</button></div></article>
+          <aside class="account-email-pending" id="accountEmailPending" hidden><i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i><div><strong>E-posta doğrulaması bekleniyor</strong><p id="accountPendingEmailText"></p><button class="screen-button" type="button" id="accountRefreshIdentity">Doğrulama durumunu kontrol et</button></div></aside><button class="notice-sound-control" type="button" data-notice-sound-toggle aria-pressed="true"><i class="fa-solid fa-volume-low" aria-hidden="true"></i><span data-notice-sound-label>Bildirim sesi açık</span></button><section class="account-page__section" aria-labelledby="accountDetailsHeading"><header><h3 id="accountDetailsHeading">Hesap bilgileri</h3><p>Bilgilerinizi görüntüleyin ve güncelleyin.</p></header><div class="account-page__rows">
+            <button class="account-row" id="accountUsernameActionButton" type="button" data-account-action-open="username"><i class="fa-solid fa-at" aria-hidden="true"></i><span><strong>Kullanıcı adı</strong><small id="accountUsernameDetail">—</small><em id="accountUsernameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <button class="account-row" id="accountNameActionButton" type="button" data-account-action-open="name"><i class="fa-regular fa-address-card" aria-hidden="true"></i><span><strong>Ad ve soyad</strong><small id="accountFullNameDetail">—</small><em id="accountNameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <button class="account-row" id="accountBirthDateActionButton" type="button" data-account-action-open="birthdate"><i class="fa-regular fa-calendar-days" aria-hidden="true"></i><span><strong>Doğum tarihi</strong><small id="accountBirthDateDetail">—</small><em id="accountBirthDateRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+            <div id="accountEmailSecurityCard"><button class="account-row" id="accountEmailActionButton" type="button"><i class="fa-regular fa-envelope" aria-hidden="true"></i><span><strong>E-posta adresi</strong><small id="accountEmailSecurityDetail">—</small><em id="accountEmailSecurityStatus">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>
+          </div></section>
+          <section class="account-page__section" aria-labelledby="accountSecurityHeading"><header><h3 id="accountSecurityHeading">Güvenlik ve destek</h3><p>Hassas değişikliklerde mevcut şifreniz istenir.</p></header><div class="account-page__rows"><button class="account-row" id="accountPasswordActionButton" type="button" data-account-action-open="password"><i class="fa-solid fa-key" aria-hidden="true"></i><span><strong>Şifremi değiştir</strong><small>Hesap şifrenizi güncelleyin</small></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button><a class="account-row" data-telegram-support href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-headset" aria-hidden="true"></i><span><strong>Destek alın</strong><small>Telegram üzerinden bize ulaşın</small></span><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></div></section>
+          <button class="screen-button screen-button--danger account-page__logout" id="logoutButton" type="button"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>Oturumu kapat</button>
+        </section>
+      </main>
+
+      <nav class="client-nav" id="customerNav" aria-label="Müşteri merkezi bölümleri" data-customer-main>
+        <button type="button" data-customer-home><span><i class="fa-solid fa-house" aria-hidden="true"></i></span><small>Ana Sayfa</small></button>
+        <button type="button" data-customer-products><span><i class="fa-solid fa-border-all" aria-hidden="true"></i></span><small>Ürünler</small></button>
+        <button type="button" data-customer-nav="orders"><span><i class="fa-solid fa-box" aria-hidden="true"></i></span><small>Siparişlerim</small></button>
+        <button class="is-active" type="button" data-customer-nav="profile" aria-current="page"><span><i class="fa-regular fa-user" aria-hidden="true"></i></span><small>Hesabım</small></button>
+      </nav>
+
+      <div class="customer-action" id="accountActionModal" role="dialog" aria-modal="true" aria-labelledby="accountActionTitle" aria-describedby="accountActionDescription" aria-hidden="true" hidden inert>
+        <button class="customer-action__backdrop" type="button" data-account-action-close aria-label="Hesap işlem penceresini kapat"></button>
+        <section class="customer-action__card">
+          <header class="customer-action__header"><span><i class="fa-solid fa-user-astronaut" id="accountActionIcon" aria-hidden="true"></i></span><div><small>KORUMALI HESAP İŞLEMİ</small><h3 id="accountActionTitle">Hesap işlemi</h3><p id="accountActionDescription">Güvenli hesap ayarlarını yönet.</p></div><button class="customer-icon-button" type="button" data-account-action-close aria-label="İşlem penceresini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header>
+
+          <section class="customer-action__panel customer-avatar-panel" data-account-action-panel="avatar" hidden inert>
+            <header><div><small>PROFİL GÖRÜNÜMÜ</small><h4>Avatarını seç</h4><p>Tüm görseller kırpılmadan ve doğru oranla gösterilir.</p></div><span id="avatarChoiceCount">5 SEÇENEK</span></header>
+            <div class="customer-avatar-grid" id="avatarPicker"></div>
+            <footer><button class="button button--primary button--large button--full" id="saveAvatarButton" type="button"><i class="fa-solid fa-check" aria-hidden="true"></i><span>Seçimi kaydet</span></button></footer>
+          </section>
+
+          <section class="customer-action__panel" data-account-action-panel="username" hidden inert><form class="customer-action-form" id="accountUsernameChangeForm" novalidate><div class="customer-form-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Kalan kullanıcı adı değişikliği: <strong id="accountUsernameModalRemaining">3</strong></span></div><label class="form-field"><span>Yeni kullanıcı adın</span><span class="form-field__input"><i class="fa-solid fa-at" aria-hidden="true"></i><input id="accountNewUsername" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="5" maxlength="20" required placeholder="Yeni kullanıcı adın" /></span></label><div class="form-field"><label for="accountUsernameCurrentPassword">Mevcut hesap şifren</label><span class="form-field__input"><i class="fa-solid fa-key" aria-hidden="true"></i><input id="accountUsernameCurrentPassword" type="password" autocomplete="current-password" minlength="6" required data-account-sensitive placeholder="Mevcut şifren" /><button type="button" data-toggle-password="accountUsernameCurrentPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="customer-action-form__buttons"><button class="button button--glass" type="button" data-account-action-close>Vazgeç</button><button class="button button--primary" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span>Kullanıcı adını kaydet</span></button></div></form></section>
+
+          <section class="customer-action__panel" data-account-action-panel="name" hidden inert><form class="customer-action-form" id="accountNameChangeForm" novalidate><div class="customer-form-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>Ad ve soyad birlikte yalnızca <strong>1 kez</strong> değiştirilebilir.</span></div><div class="customer-name-fields"><label class="form-field"><span>Ad</span><span class="form-field__input"><i class="fa-solid fa-user" aria-hidden="true"></i><input id="accountNewFirstName" type="text" autocomplete="given-name" maxlength="50" required placeholder="Adın" /></span></label><label class="form-field"><span>Soyad</span><span class="form-field__input"><i class="fa-solid fa-user-check" aria-hidden="true"></i><input id="accountNewLastName" type="text" autocomplete="family-name" maxlength="50" required placeholder="Soyadın" /></span></label></div><div class="form-field"><label for="accountNameCurrentPassword">Mevcut hesap şifren</label><span class="form-field__input"><i class="fa-solid fa-key" aria-hidden="true"></i><input id="accountNameCurrentPassword" type="password" autocomplete="current-password" minlength="6" required data-account-sensitive placeholder="Mevcut şifren" /><button type="button" data-toggle-password="accountNameCurrentPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="customer-action-form__buttons"><button class="button button--glass" type="button" data-account-action-close>Vazgeç</button><button class="button button--primary" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span>Bilgileri kaydet</span></button></div></form></section>
+
+          <section class="customer-action__panel" data-account-action-panel="birthdate" hidden inert><form class="customer-action-form" id="accountBirthDateChangeForm" novalidate><div class="customer-form-note"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span>Doğum tarihi yalnızca <strong>1 kez</strong> değiştirilebilir.</span></div><fieldset class="customer-birth-fields"><legend>Yeni doğum tarihin</legend><label><span>Gün</span><select id="accountBirthDay" required><option value="">Gün</option></select></label><label><span>Ay</span><select id="accountBirthMonth" required><option value="">Ay</option></select></label><label><span>Yıl</span><select id="accountBirthYear" required><option value="">Yıl</option></select></label></fieldset><div class="form-field"><label for="accountBirthCurrentPassword">Mevcut hesap şifren</label><span class="form-field__input"><i class="fa-solid fa-key" aria-hidden="true"></i><input id="accountBirthCurrentPassword" type="password" autocomplete="current-password" minlength="6" required data-account-sensitive placeholder="Mevcut şifren" /><button type="button" data-toggle-password="accountBirthCurrentPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="customer-action-form__buttons"><button class="button button--glass" type="button" data-account-action-close>Vazgeç</button><button class="button button--primary" type="submit"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span>Tarihi kaydet</span></button></div></form></section>
+
+          <section class="customer-action__panel" data-account-action-panel="email" hidden inert><form class="customer-action-form" id="accountEmailChangeForm" novalidate><label class="form-field"><span>Mevcut e-posta adresiniz</span><span class="form-field__input"><i class="fa-solid fa-envelope" aria-hidden="true"></i><input id="accountCurrentEmail" type="email" readonly autocomplete="off" /></span></label><label class="form-field"><span>Yeni e-posta adresin</span><span class="form-field__input"><i class="fa-solid fa-envelope" aria-hidden="true"></i><input id="accountNewEmail" type="email" inputmode="email" autocomplete="email" spellcheck="false" required placeholder="yeni@eposta.com" /></span></label><div class="form-field"><label for="accountEmailCurrentPassword">Mevcut hesap şifren</label><span class="form-field__input"><i class="fa-solid fa-key" aria-hidden="true"></i><input name="currentPassword" id="accountEmailCurrentPassword" type="password" autocomplete="current-password" minlength="6" required data-account-sensitive placeholder="Mevcut şifren" /><button type="button" data-toggle-password="accountEmailCurrentPassword" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="customer-form-note customer-form-note--success"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Yeni adrese doğrulama bağlantısı gönderilir. Bağlantıyı onaylayana kadar mevcut e-posta adresiniz korunur.</span></div><div class="customer-action-form__buttons"><button class="button button--glass" id="accountEmailChangeCancel" type="button" data-account-action-close>Vazgeç</button><button class="button button--primary" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><span>Doğrulama bağlantısı gönder</span></button></div></form></section>
+
+          <section class="customer-action__panel" data-account-action-panel="password" hidden inert><form class="customer-action-form" id="accountPasswordForm" novalidate><div class="form-field"><label for="accountPasswordCurrent">Mevcut şifre</label><span class="form-field__input"><i class="fa-solid fa-lock" aria-hidden="true"></i><input id="accountPasswordCurrent" type="password" autocomplete="current-password" minlength="6" required data-account-sensitive placeholder="Mevcut şifren" /><button type="button" data-toggle-password="accountPasswordCurrent" aria-label="Şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="form-field"><label for="accountPasswordNew">Yeni şifre</label><span class="form-field__input"><i class="fa-solid fa-shield" aria-hidden="true"></i><input id="accountPasswordNew" type="password" autocomplete="new-password" minlength="8" required data-account-sensitive placeholder="En az 8 karakter" /><button type="button" data-toggle-password="accountPasswordNew" aria-label="Yeni şifreyi göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><div class="customer-password-meter" id="accountPasswordMeter" aria-live="polite"><span><i></i></span><small>En az 8 karakter, harf ve sayı kullan.</small></div><div class="form-field"><label for="accountPasswordRepeat">Yeni şifre tekrar</label><span class="form-field__input"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><input id="accountPasswordRepeat" type="password" autocomplete="new-password" minlength="8" required data-account-sensitive placeholder="Yeni şifreni tekrarla" /><button type="button" data-toggle-password="accountPasswordRepeat" aria-label="Yeni şifre tekrarını göster" aria-pressed="false"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></span></div><small class="customer-password-match" id="accountPasswordMatch" aria-live="polite">Şifreler henüz eşleşmedi.</small><div class="customer-action-form__buttons"><button class="button button--glass" id="accountPasswordChangeCancel" type="button" data-account-action-close>Vazgeç</button><button class="button button--primary" type="submit"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Şifremi değiştir</span></button></div></form></section>
+
+          <section class="customer-action__panel" data-account-action-panel="logout" hidden inert><article class="customer-logout-notice"><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span><div><strong id="accountLogoutName">ZENTRA STORE üyesi</strong><p>Çıkış yapıldığında bu cihazdaki oturum ve açık teslimat bilgileri temizlenir.</p></div></article><div class="customer-action-form__buttons"><button class="button button--glass" type="button" data-account-action-close data-account-action-cancel>Vazgeç</button><button class="button button--danger" id="accountLogoutConfirm" type="button"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i><span>Güvenle çıkış yap</span></button></div></section>
+        </section>
+      </div>
+
+      <div class="customer-delivery-access" id="deliveryAccessModal" role="dialog" aria-modal="true" aria-labelledby="deliveryAccessTitle" aria-describedby="deliveryAccessDescription" aria-hidden="true" hidden inert>
+        <button class="customer-delivery-access__backdrop" type="button" data-delivery-access-close aria-label="Teslimat hazırlama penceresini kapat"></button>
+        <section class="customer-delivery-access__card"><button class="customer-icon-button" type="button" data-delivery-access-close aria-label="Teslimat hazırlama penceresini kapat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button><span class="customer-delivery-access__icon"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><b aria-hidden="true"></b></span><small>KORUMALI TESLİMAT</small><h3 id="deliveryAccessTitle">Teslimatın hazırlanıyor</h3><p id="deliveryAccessDescription">Güvenli hesap oturumun kontrol ediliyor.</p><em id="deliveryAccessOrderNumber"></em><div class="customer-delivery-progress" aria-label="Teslimat güvenlik kontrolleri"><span data-delivery-access-step="0" class="is-current"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i><b>Oturum</b></span><span data-delivery-access-step="1"><i class="fa-solid fa-user-shield" aria-hidden="true"></i><b>Sahiplik</b></span><span data-delivery-access-step="2"><i class="fa-solid fa-key" aria-hidden="true"></i><b>Şifreli kasa</b></span></div><span class="customer-delivery-progress__bar" aria-hidden="true"><i id="deliveryAccessProgress"></i></span><span class="customer-delivery-access__note"><i class="fa-solid fa-lock" aria-hidden="true"></i> Parola istenmez; bilgiler bu oturumda 30 saniye görünür.</span></section>
+      </div>
+    </section>
+  </div>
+
+  <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+  <script type="module" src="/script.js?v=zentra-ui-v72"></script>
+</body>
+</html>
