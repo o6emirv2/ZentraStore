@@ -151,10 +151,7 @@ main>small {
   font-size:0.75rem;
   overflow-wrap:anywhere
 }
-a:focus-visible {
-  outline:3px solid rgba(53,212,244,.8);
-  outline-offset:3px
-}
+a:focus-visible {outline:none;box-shadow:0 0 0 3px #22D3EE66;border-radius:12px}
 @media(min-width:600px) {
   .gate {
     padding:22px;

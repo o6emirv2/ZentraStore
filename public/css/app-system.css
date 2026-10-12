@@ -22,7 +22,12 @@ button{transition:background-color var(--app-duration),border-color var(--app-du
 button:not(:disabled):active{transform:translateY(1px)}
 button:disabled{cursor:not-allowed}
 button[aria-busy=true]{cursor:progress;opacity:1}
-:focus-visible{outline:3px solid var(--app-cyan)!important;outline-offset:3px}
+:focus-visible{outline:none!important}
+:is(button,a,[role=button],[tabindex]):not([tabindex="-1"]):focus-visible{box-shadow:0 0 0 3px #22D3EE;border-radius:12px}
+:is(input,textarea,select):focus-visible{box-shadow:none!important}
+:is(input[type=checkbox],input[type=radio]):focus-visible{box-shadow:0 0 0 3px var(--app-cyan)!important;border-radius:6px}
+input[type=radio]:focus-visible{border-radius:50%}
+:is(input,textarea,select):focus{border-color:var(--app-cyan)}
 input:not([type=checkbox]):not([type=radio]),textarea,select{font-size:16px;min-height:44px;color:var(--app-text);caret-color:var(--app-cyan)}
 input::placeholder,textarea::placeholder{color:#A7B4CC;opacity:1}
 [aria-invalid=true]{border-color:var(--app-danger)!important}

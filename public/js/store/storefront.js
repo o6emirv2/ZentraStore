@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v73';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v73';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v73';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v73';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v73';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v73';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v74';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v74';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v74';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v74';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v74';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v74';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v73';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v73';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v73';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v73';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v73';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v73';
+} from './auth.js?v=zentra-ui-v74';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v74';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v74';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v74';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v74';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v74';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,21 +35,21 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v73';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v73';
+} from './customer-app.js?v=zentra-ui-v74';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v74';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v73';
+} from './customer-renderers.js?v=zentra-ui-v74';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v73';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v73';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v73';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v74';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v74';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v74';
 
-const STORE_VERSION = 'storefront-v73';
+const STORE_VERSION = 'storefront-v74';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
 // Read historical keys once so existing customers keep their favorites during brand migration.
 const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
@@ -1006,6 +1006,48 @@ function syncPaymentChoice() {
 
 function setButtonBusy(button, busy, label = 'İşlem yapılıyor…') {
   setActionBusy(button, busy, label);
+}
+
+async function applyAccountCode(event) {
+  event.preventDefault();
+  if (state.balanceCodeBusy || !requireSignedIn('coupons')) return;
+  const field = $('#accountCouponCode');
+  const code = String(field.value || '').trim().toLocaleUpperCase('en-US');
+  clearFieldError(field);
+  if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code)) { setFieldError(field, 'Kod 3-32 karakter olmalı; harf, sayı, tire veya alt çizgi kullanın.'); return; }
+  if ($('#accountCodeType').value !== 'balance') {
+    $('#cartPromotionCode').value = code;
+    if (cartLines().length) { setCustomerView('cart'); await applyCartPromotion(); }
+    else { closeActiveLayer({ restoreFocus: false }); scrollToStore('catalog'); showNotice('info', 'Önce ürün seçin', 'İndirim kuponunuz sepette kullanılmak üzere hazır.'); }
+    return;
+  }
+  const uid = state.auth.user.uid;
+  const button = $('#accountCodeSubmit');
+  state.balanceCodeBusy = true;
+  field.disabled = true;
+  $('#accountCodeType').disabled = true;
+  setActionBusy(button, true, { label: 'Kod kontrol ediliyor…' });
+  try {
+    const result = await storeApi('/api/store/balance-codes/redeem', { body: { code }, timeoutMs: 30_000 });
+    if (state.auth.user?.uid !== uid) return;
+    if (result.committed !== true || !Number.isSafeInteger(result.creditedKurus) || result.creditedKurus < 1) throw new Error('Kod sonucu doğrulanamadı. Aynı kodu yeniden kontrol edin.');
+    field.value = '';
+    showNotice(result.idempotentReplay ? 'info' : 'success', result.idempotentReplay ? 'Kod daha önce kullanıldı' : 'Bakiye eklendi', result.idempotentReplay ? 'Önceki kayıt doğrulandı; bakiye ikinci kez eklenmedi.' : `${formatStorePrice(result.creditedKurus)} hesabınıza eklendi.`, { operation: 'BAKİYE', sound: true });
+    try { await refreshStoreAccount(); } catch (_) {
+      if (state.auth.user?.uid === uid) {
+        $('#topBalanceValue').textContent = '—'; $('#accountBalance').textContent = '—';
+        showNotice('warning', 'Bakiye kaydı tamamlandı', 'Güncel tutar okunamadı. Hesap bakiyesini yeniden yükleyin.', { operation: 'BAKİYE', actionLabel: 'Yenile', onAction: () => refreshStoreAccount() });
+      }
+    }
+  } catch (error) {
+    if (state.auth.user?.uid !== uid) return;
+    const uncertain = isUncertainMutationError(error);
+    const message = uncertain ? 'Sonuç doğrulanamadı. Aynı kodu tekrar kontrol edin; bakiye ikinci kez eklenmez.' : friendlyStoreError(error);
+    setFieldError(field, message);
+    showNotice(uncertain ? 'warning' : 'error', uncertain ? 'Kod sonucu kontrol edilmeli' : 'Kod kullanılamadı', message, { operation: 'BAKİYE' });
+  } finally {
+    state.balanceCodeBusy = false; field.disabled = false; $('#accountCodeType').disabled = false; setActionBusy(button, false);
+  }
 }
 
 function requireSignedIn(returnLayer = '') {
@@ -2531,21 +2573,12 @@ function installInteractions() {
   });
 
   $('#cartPromotionForm')?.addEventListener('submit', applyCartPromotion);
-  $('#accountCouponApplyForm')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const code = String($('#accountCouponCode')?.value || '').trim().toLocaleUpperCase('en-US');
-    if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code)) {
-      return showNotice('warning', 'Kupon kodunu kontrol et', 'Kupon kodu 3-32 karakter olmalı ve yalnızca harf, sayı, tire veya alt çizgi içermelidir.');
-    }
-    if ($('#cartPromotionCode')) $('#cartPromotionCode').value = code;
-    if (cartLines().length) {
-      setCustomerView('cart');
-      applyCartPromotion();
-    } else {
-      closeActiveLayer({ restoreFocus: false });
-      scrollToStore('catalog');
-      showNotice('info', 'Önce ürün seç', `${code} kuponun hazır. Bir ürün seçtiğinde kod sepette seni bekleyecek.`);
-    }
+  $('#accountCouponApplyForm')?.addEventListener('submit', applyAccountCode);
+  $('#accountCodeType')?.addEventListener('change', () => {
+    const balance = $('#accountCodeType').value === 'balance';
+    $('#accountCodeHelp').textContent = balance ? 'Bakiye kodunun tutarı, doğrulama tamamlandığında hesabınıza eklenir.' : 'İndirim kuponu, seçtiğiniz ürünlerle birlikte sepette doğrulanır.';
+    $('#accountCodeSubmit').textContent = balance ? 'Kodu kullan' : 'Sepette kullan';
+    clearFieldError($('#accountCouponCode'));
   });
   $('#couponWallet')?.addEventListener('click', (event) => {
     const button = event.target.closest?.('[data-use-coupon]');

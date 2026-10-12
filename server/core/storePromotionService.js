@@ -50,7 +50,7 @@ function publicPromotion(row = {}, { customer = false } = {}) {
   const result = {
     code: safeText(row.code, 32),
     title: safeText(row.title, 100),
-    type: row.type === 'fixed' ? 'fixed' : 'percent',
+    type: ['fixed', 'balance'].includes(row.type) ? row.type : 'percent',
     value: Math.max(0, Number(row.value || 0)),
     minimumSubtotalKurus: Math.max(0, Number(row.minimumSubtotalKurus || 0)),
     maxDiscountKurus: Math.max(0, Number(row.maxDiscountKurus || 0)),
@@ -72,8 +72,8 @@ function publicPromotion(row = {}, { customer = false } = {}) {
 }
 
 function normalizePromotion(code, input = {}, previous = {}) {
-  if (input.type !== undefined && !['fixed', 'percent'].includes(input.type)) throw promotionError('STORE_PROMOTION_VALUE_INVALID');
-  const type = input.type === 'fixed' ? 'fixed' : 'percent';
+  if (input.type !== undefined && !['fixed', 'percent', 'balance'].includes(input.type)) throw promotionError('STORE_PROMOTION_VALUE_INVALID');
+  const type = ['fixed', 'balance'].includes(input.type) ? input.type : 'percent';
   const perUserLimit = positiveInteger(input.perUserLimit, 1, 100);
   if (perUserLimit < 1) throw promotionError('STORE_PROMOTION_VALUE_INVALID');
   const amount = positiveInteger(input.value, 0, type === 'percent' ? 90 : MAX_DISCOUNT_KURUS);
@@ -95,6 +95,9 @@ function normalizePromotion(code, input = {}, previous = {}) {
   const usageLimit = positiveInteger(input.usageLimit);
   const usedCount = Math.max(0, Number(previous.usedCount || 0));
   if (usageLimit > 0 && usageLimit < usedCount) throw promotionError('STORE_PROMOTION_LIMIT_INVALID');
+  if (type === 'balance' && (usageLimit < 1 || perUserLimit !== 1 || Number(input.minimumSubtotalKurus || 0) || Number(input.maxDiscountKurus || 0) || platforms.length || productIds.length)) throw promotionError('BALANCE_CODE_CONFIGURATION_INVALID');
+  if (previous.type && (previous.type === 'balance' || type === 'balance') && previous.type !== type) throw promotionError('STORE_PROMOTION_TYPE_LOCKED', 409);
+  if (previous.type === 'balance' && usedCount > 0 && amount !== previous.value) throw promotionError('BALANCE_CODE_VALUE_LOCKED', 409);
   return {
     code,
     title: safeText(input.title || code, 100),
@@ -109,7 +112,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
     platforms,
     productIds,
     active: input.active !== false,
-    visibleInWallet: input.visibleInWallet === true,
+    visibleInWallet: type !== 'balance' && input.visibleInWallet === true,
     usedCount,
     createdAt: Math.max(0, Number(previous.createdAt || Date.now())),
     updatedAt: Date.now()
@@ -118,6 +121,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
 
 function calculatePromotion(row, cart = {}, userUsage = 0) {
   const now = Date.now();
+  if (row?.type === 'balance') throw promotionError('BALANCE_CODE_USE_ACCOUNT', 409);
   if (!row || row.active !== true) throw promotionError('STORE_PROMOTION_NOT_FOUND', 404);
   if (Number(row.startsAt || 0) > now || (Number(row.endsAt || 0) > 0 && Number(row.endsAt) <= now)) {
     throw promotionError('STORE_PROMOTION_EXPIRED', 409);
@@ -142,7 +146,7 @@ function calculatePromotion(row, cart = {}, userUsage = 0) {
   discountKurus = Math.max(0, Math.min(subtotalKurus - 1, Math.trunc(discountKurus)));
   if (!discountKurus) throw promotionError('STORE_PROMOTION_VALUE_INVALID', 409);
   return {
-    code: normalizeCode(row.code), title: safeText(row.title, 100), type: row.type === 'fixed' ? 'fixed' : 'percent',
+    code: normalizeCode(row.code), title: safeText(row.title, 100), type: ['fixed', 'balance'].includes(row.type) ? row.type : 'percent',
     value: Math.max(0, Number(row.value || 0)), subtotalKurus, discountKurus, totalKurus: subtotalKurus - discountKurus
   };
 }
@@ -225,7 +229,7 @@ async function listWalletPromotions(uid = '') {
     .get();
   const campaigns = snapshot.docs
     .map((document) => ({ id: document.id, row: document.data() || {} }))
-    .filter(({ row }) => row.active === true);
+    .filter(({ row }) => row.active === true && row.type !== 'balance');
   if (!campaigns.length) return [];
 
   const references = campaigns.map(({ id, row }) => usageReference(db, row.code || id, uid));
@@ -246,7 +250,7 @@ async function listPromotions() {
   return snapshot.docs.map((doc) => publicPromotion(doc.data())).sort((left, right) => right.updatedAt - left.updatedAt);
 }
 
-async function savePromotion(code = '', input = {}, actor = {}) {
+async function savePromotion(code = '', input = {}, actor = {}, { canManageBalance = false } = {}) {
   const normalized = normalizeCode(code);
   const { db } = database();
   if (Array.isArray(input?.productIds) && input.productIds.length) {
@@ -260,10 +264,11 @@ async function savePromotion(code = '', input = {}, actor = {}) {
     const snapshot = await transaction.get(reference);
     if (input.createOnly === true && snapshot.exists) throw promotionError('STORE_PROMOTION_CODE_EXISTS', 409);
     if (input.createOnly === false && !snapshot.exists) throw promotionError('STORE_PROMOTION_NOT_FOUND', 404);
+    if ((input.type === 'balance' || snapshot.data()?.type === 'balance') && !canManageBalance) throw promotionError('STORE_PERMISSION_DENIED', 403);
     const row = normalizePromotion(normalized, input, snapshot.exists ? snapshot.data() : {});
     row.updatedBy = { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() };
     transaction.set(reference, row, { merge: false });
-    recordMutationAudit(transaction, db, 'store.promotion.update', actor, { code: normalized, before: snapshot.exists ? publicPromotion(snapshot.data()) : null, after: publicPromotion(row) });
+    recordMutationAudit(transaction, db, 'store.promotion.update', actor, row.type === 'balance' ? { codeFingerprint: crypto.createHash('sha256').update(normalized).digest('hex'), type: 'balance', value: row.value, active: row.active, usageLimit: row.usageLimit } : { code: normalized, before: snapshot.exists ? publicPromotion(snapshot.data()) : null, after: publicPromotion(row) });
     result = publicPromotion(row);
   });
   return result;

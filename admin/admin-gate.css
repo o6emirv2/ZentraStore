@@ -49,10 +49,7 @@ button {
 [hidden] {
   display:none!important
 }
-:focus-visible {
-  outline:3px solid rgba(53,212,244,.82);
-  outline-offset:3px
-}
+
 #ambientCanvas {
   position:fixed;
   inset:0;

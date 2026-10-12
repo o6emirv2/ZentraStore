@@ -121,10 +121,7 @@ body[data-authenticated="true"] [data-guest-only] {
   visibility:hidden!important;
   pointer-events:none!important
 }
-:focus-visible {
-  outline:3px solid rgba(53,212,244,.85);
-  outline-offset:3px
-}
+
 ::selection {
   background:rgba(71,138,255,.5);
   color:#fff

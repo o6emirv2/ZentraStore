@@ -56,13 +56,14 @@ const {
   listAuditLogs,
   listStaff,
   upsertStaff,
-  invalidateAdminStoreCaches
+  invalidateAdminStoreCaches, staffHasPermission
 } = require('../core/adminStoreService');
 const { listWalletPromotions, listPromotions, savePromotion } = require('../core/storePromotionService');
 const {
   updateProfileUsername, updateProfileFullName,
   updateProfileBirthDate, prepareProfileEmailChange
 } = require('../core/storeProfileService');
+const { redeemBalanceCode } = require('../core/storeBalanceCodeService');
 const router = createRouter();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
@@ -209,6 +210,13 @@ router.post('/store/promotions/validate', requireAuth, strictLimiter, asyncRoute
   res.json({ ok: true, promotion });
 }));
 
+router.post('/store/balance-codes/redeem', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
+  const result = await redeemBalanceCode(req.user.uid, req.body, { requestId: req.requestId });
+  invalidateAdminStoreCaches();
+  noStore(res);
+  res.json({ ok: true, ...result });
+}));
+
 router.get('/store/promotions', requireAuth, asyncRoute(async (req, res) => {
   noStore(res);
   res.json({ ok: true, promotions: await listWalletPromotions(req.user.uid) });
@@ -340,15 +348,16 @@ router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), 
   res.json({ ok: true, links });
 }));
 
-router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
+router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (req, res) => {
   noStore(res);
-  res.json({ ok: true, promotions: await listPromotions() });
+  const promotions = await listPromotions();
+  res.json({ ok: true, promotions: promotions.filter((row) => row.type !== 'balance' || staffHasPermission(req.adminPolicy, 'store.wallet.write')) });
 }));
 
 router.put('/admin/store/promotions/:code', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
-  const promotion = await savePromotion(req.params.code, req.body || {}, req.user);
+  const promotion = await savePromotion(req.params.code, req.body || {}, req.user, { canManageBalance: staffHasPermission(req.adminPolicy, 'store.wallet.write') });
   await writeSupplementalAdminAudit(req, 'store.promotion.update', {
-    code: promotion.code, type: promotion.type, active: promotion.active,
+    code: promotion.type === 'balance' ? '[BALANCE_CODE]' : promotion.code, type: promotion.type, active: promotion.active,
     value: promotion.value, usageLimit: promotion.usageLimit, perUserLimit: promotion.perUserLimit
   });
   noStore(res);
