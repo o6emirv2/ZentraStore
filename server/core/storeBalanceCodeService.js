@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
-const { normalizeCode } = require('./storePromotionService');
+const { normalizeCode, savePromotion, listPromotions } = require('./storePromotionService');
 const { invalidateCreatedAtPageCache } = require('./firestorePagination');
 const MAX_BALANCE_KURUS = 1_000_000_000_000;
 const MAX_CREDIT_KURUS = 100_000_000;
@@ -57,4 +57,19 @@ async function redeemBalanceCode(uid, input = {}, { requestId = '' } = {}) {
   return result;
 }
 
-module.exports = { redeemBalanceCode };
+async function saveBalanceCode(code, input = {}, actor = {}) {
+  const fields = ['title', 'value', 'usageLimit', 'perUserLimit', 'startsAt', 'endsAt', 'active', 'createOnly'];
+  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some((field) => !fields.includes(field))
+    || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 100
+    || typeof input.createOnly !== 'boolean' || typeof input.active !== 'boolean'
+    || !Number.isSafeInteger(input.value) || input.value < 1 || input.value > MAX_CREDIT_KURUS
+    || !Number.isSafeInteger(input.usageLimit) || input.usageLimit < 1 || input.usageLimit > 1000000
+    || (input.perUserLimit !== undefined && input.perUserLimit !== 1)) fail('BALANCE_CODE_INPUT_INVALID', 400);
+  if (typeof code !== 'string' || !/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code.trim().toUpperCase())) fail('STORE_PROMOTION_CODE_INVALID', 400);
+  if ([input.startsAt, input.endsAt].some((time) => time !== undefined && (!Number.isSafeInteger(time) || time < 0 || time > 8640000000000000))) fail('STORE_PROMOTION_DATE_INVALID', 400);
+  return savePromotion(code, { ...input, type: 'balance', perUserLimit: 1, visibleInWallet: false }, actor, { canManageBalance: true, kind: 'balance' });
+}
+
+async function listBalanceCodes() { return listPromotions({ kind: 'balance' }); }
+
+module.exports = { redeemBalanceCode, saveBalanceCode, listBalanceCodes };

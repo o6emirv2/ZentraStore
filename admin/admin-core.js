@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v74';
+import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v75';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -103,9 +103,10 @@ function errorMessage(payload = {}, status = 0) {
     ADMIN_AUDIT_UNAVAILABLE: 'Güvenlik kayıt alanı şu anda kullanılamıyor.',
     STORE_ACCOUNT_MODERATION_FAILED: 'Hesap durumu güvenli biçimde güncellenemedi.',
     STORE_ACCOUNT_STATUS_INVALID: 'Seçilen hesap durumu geçerli değil.',
-    BALANCE_CODE_CONFIGURATION_INVALID: 'Bakiye kodu için pozitif toplam limit ve kişi başına 1 kullanım belirleyin; sepet/ürün koşulu eklemeyin.',
-    BALANCE_CODE_VALUE_LOCKED: 'Kullanılmış bakiye kodunun tutarı değiştirilemez. Yeni kod oluşturun.',
-    STORE_PROMOTION_TYPE_LOCKED: 'Bakiye kodu ile indirim kuponu arasında tür dönüşümü yapılamaz. Yeni kod oluşturun.',
+    BALANCE_CODE_INPUT_INVALID: 'Promosyon adı, tutarı, kullanım limiti ve aktiflik bilgilerini kontrol edin.',
+    BALANCE_CODE_CONFIGURATION_INVALID: 'Promosyon kodu için pozitif toplam limit ve kişi başına 1 kullanım belirleyin; sepet/ürün koşulu eklemeyin.',
+    BALANCE_CODE_VALUE_LOCKED: 'Kullanılmış promosyon kodunun tutarı değiştirilemez. Yeni kod oluşturun.',
+    STORE_PROMOTION_TYPE_LOCKED: 'Promosyon kodu ile indirim kuponu arasında tür dönüşümü yapılamaz. Yeni kod oluşturun.',
     STORE_PROMOTION_CODE_INVALID: 'Kampanya kodu 3-32 karakter olmalı; yalnızca harf, sayı, tire ve alt çizgi kullanılabilir.',
     STORE_PROMOTION_CODE_EXISTS: 'Bu kupon kodu zaten kayıtlı. Mevcut kaydı düzenleyin veya farklı bir kod kullanın.',
     STORE_PROMOTION_NOT_FOUND: 'Düzenlenen kupon bulunamadı. Listeyi yenileyip tekrar seçin.',

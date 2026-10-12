@@ -119,7 +119,6 @@ button {font-weight:650}
 .admin-form input:focus,.admin-form select:focus,.admin-form textarea:focus,.product-admin-card input:focus,.product-admin-card select:focus,.product-admin-card textarea:focus {border-color:#22D3EE}
 .toggle-row {border-color:#34415C;background:#17223A;border-radius:12px;min-height:72px;gap:12px;padding:12px}
 .toggle-row strong {font-size:14px;font-weight:650}.toggle-row small {font-size:12px;line-height:1.5;color:#B7C1D8}
-[data-discount-only][hidden]{display:none!important}
 .plan-admin-list>div {border-color:#34415C;background:#17223A;border-radius:14px;padding:16px;gap:12px}
 .metric-grid,.summary-grid,.dashboard-columns,.product-admin-grid {gap:16px}
 .summary-grid>article,.metric-grid>article {background:#10182B;border-color:#2B3853;border-radius:16px;box-shadow:none;padding:20px}

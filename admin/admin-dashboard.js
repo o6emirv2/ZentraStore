@@ -1,18 +1,19 @@
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v74';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v74';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v74';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v74';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v74';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v74';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v74';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v74';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v75';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v75';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v75';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v75';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v75';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v75';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v75';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v75';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v75';
 
 installInteractionGuard();
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const PANELS = Object.freeze(['overview', 'orders', 'inventory', 'products', 'users', 'wallet', 'content', 'links', 'coupons', 'staff', 'audit', 'security']);
-const PANEL_PERMISSIONS = Object.freeze({ overview: 'store.overview.read', orders: 'store.orders.read', inventory: 'store.inventory.read', products: 'store.catalog.read', users: 'store.users.read', wallet: 'store.wallet.read', content: 'store.content.read', links: 'store.content.read', coupons: 'store.content.read', staff: 'store.staff.read', audit: 'store.audit.read', security: 'store.security.read' });
+const PANELS = Object.freeze(['overview', 'orders', 'inventory', 'products', 'users', 'wallet', 'content', 'links', 'coupons', 'promocodes', 'staff', 'audit', 'security']);
+const PANEL_PERMISSIONS = Object.freeze({ overview: 'store.overview.read', orders: 'store.orders.read', inventory: 'store.inventory.read', products: 'store.catalog.read', users: 'store.users.read', wallet: 'store.wallet.read', content: 'store.content.read', links: 'store.content.read', coupons: 'store.content.read', promocodes: 'store.wallet.write', staff: 'store.staff.read', audit: 'store.audit.read', security: 'store.security.read' });
 const revealedStockFields = new WeakMap();
 const state = {
   activePanel: 'overview', loaded: new Set(), overview: null, orders: [], catalog: null, inventory: [], users: [],
@@ -101,7 +102,7 @@ function applyAdminPermissions() {
   const staticWriteControls = [
     ['#inventoryKeys, #inventoryImportForm button[type="submit"], #inventoryMigrateShared, #inventoryRotateKeys', 'store.inventory.write'],
     ['#openProductCreate', 'store.catalog.write'],
-    ['#walletForm input, #walletForm select, #walletForm textarea, #walletForm button', 'store.wallet.write'],
+    ['#walletForm input, #walletForm select, #walletForm textarea, #walletForm button, #promoCodeForm input, #promoCodeForm button', 'store.wallet.write'],
     ['#contentForm input, #contentForm select, #contentForm textarea, #contentForm button, #promotionForm input, #promotionForm select, #promotionForm textarea, #promotionForm button, #quickLinksForm input, #quickLinksForm select, #quickLinksForm textarea, #quickLinksForm button', 'store.content.write'],
     ['#staffForm input, #staffForm select, #staffForm textarea, #staffForm button', 'store.staff.write']
   ];
@@ -1642,23 +1643,10 @@ async function saveQuickLinks(event) {
 }
 
 function promotionAdminMarkup(promotion = {}) {
-  const value = ['fixed', 'balance'].includes(promotion.type) ? `${promotion.type === 'balance' ? 'Bakiye · ' : ''}${formatPrice(promotion.value)}` : `%${Number(promotion.value || 0)}`;
+  const value = promotion.type === 'fixed' ? formatPrice(promotion.value) : `%${Number(promotion.value || 0)}`;
   const stateLabel = promotion.status === 'available' ? 'AKTİF' : promotion.status === 'expired' ? 'SÜRESİ DOLDU' : promotion.status === 'scheduled' ? 'PLANLANDI' : promotion.status === 'exhausted' ? 'TÜKENDİ' : 'PASİF';
   const limit = promotion.usageLimit ? `${promotion.usedCount}/${promotion.usageLimit}` : `${promotion.usedCount} kullanım`;
-  return `<div class="promotion-admin-item"><span><strong>${escapeHtml(promotion.code)} · ${escapeHtml(value)}</strong><small>${escapeHtml(promotion.title)} · ${escapeHtml(limit)} · ${escapeHtml(stateLabel)}</small></span><button class="secondary-action" type="button" data-edit-promotion="${escapeHtml(promotion.code)}"${permissionDisabled(promotion.type === 'balance' ? 'store.wallet.write' : 'store.content.write')}>Düzenle</button></div>`;
-}
-
-function syncPromotionType() {
-  const balance = $('#promotionType').value === 'balance';
-  $$('[data-discount-only]').forEach((group) => { group.hidden = balance; $$('input,select', group).forEach((input) => { input.disabled = balance; }); });
-  $('#promotionFormTitle').textContent = balance ? 'Bakiye kodu oluştur' : 'İndirim kodu oluştur';
-  $('#promotionValueLabel').textContent = balance ? 'Eklenecek bakiye (₺)' : 'İndirim değeri';
-  $('#promotionTypeHelp').textContent = balance ? 'Bakiye doğrudan hesaba eklenir. Her kullanıcı aynı koddan yalnız bir kez yararlanır; kod müşterilere toplu listelenmez.' : 'İndirim sepette doğrulanır; kullanım ve ürün koşulları uygulanır.';
-  $('#promotionActiveHelp').textContent = balance ? 'Kapalı kodlar bakiye yükleme sırasında reddedilir.' : 'Kapalı kodlar satın alma sırasında reddedilir.';
-  $('#promotionUsageLimit').min = balance ? '1' : '0';
-  if (balance && !Number($('#promotionUsageLimit').value)) $('#promotionUsageLimit').value = '1';
-  $('#promotionUserLimit').disabled = balance;
-  if (balance) { $('#promotionUserLimit').value = '1'; $('#promotionVisible').checked = false; }
+  return `<div class="promotion-admin-item"><span><strong>${escapeHtml(promotion.code)} · ${escapeHtml(value)}</strong><small>${escapeHtml(promotion.title)} · ${escapeHtml(limit)} · ${escapeHtml(stateLabel)}</small></span><button class="secondary-action" type="button" data-edit-promotion="${escapeHtml(promotion.code)}"${permissionDisabled('store.content.write')}>Düzenle</button></div>`;
 }
 
 async function loadPromotions() {
@@ -1672,8 +1660,7 @@ async function loadPromotions() {
     state.loaded.add('coupons');
     const active = state.promotions.filter((promotion) => promotion.status === 'available').length;
     const visible = state.promotions.filter((promotion) => promotion.visibleInWallet === true).length;
-    const balances = state.promotions.filter((promotion) => promotion.type === 'balance').length;
-    renderLiveStatus('#couponMetrics', { icon: 'fa-ticket', title: `${active} aktif kod`, detail: `${state.promotions.length} kayıtlı kod · ${balances} bakiye kodu · ${visible} görünür indirim kuponu`, tone: active ? 'ok' : 'warning', meta: 'KOD YÖNETİMİ' });
+    renderLiveStatus('#couponMetrics', { icon: 'fa-ticket', title: `${active} aktif kupon kodu`, detail: `${state.promotions.length} kayıtlı kupon · ${visible} kupon müşteri hesabında görünür · indirim tutarları sunucuda hesaplanır`, tone: active ? 'ok' : 'warning', meta: 'GÜVENLİ İNDİRİM' });
     host.innerHTML = state.promotions.length
       ? state.promotions.map(promotionAdminMarkup).join('')
       : emptyMarkup('Kupon bulunmuyor', 'Bir indirim kodu oluşturduğunuzda burada görünecek.', 'fa-ticket');
@@ -1702,8 +1689,7 @@ function resetCouponForm() {
   $('#promotionActive').checked = true;
   $('#promotionVisible').checked = true;
   $('#promotionUserLimit').value = '1';
-  $('#promotionValue').value = '200';
-  syncPromotionType();
+  $('#promotionValue').value = '10';
   $('#promotionCode')?.focus();
 }
 
@@ -1723,7 +1709,7 @@ function editPromotion(code = '') {
   $('#promotionCode').value = promotion.code;
   $('#promotionTitle').value = promotion.title || '';
   $('#promotionType').value = promotion.type || 'percent';
-  $('#promotionValue').value = ['fixed', 'balance'].includes(promotion.type) ? Number(promotion.value || 0) / 100 : Number(promotion.value || 0);
+  $('#promotionValue').value = promotion.type === 'fixed' ? Number(promotion.value || 0) / 100 : Number(promotion.value || 0);
   $('#promotionMinimum').value = Number(promotion.minimumSubtotalKurus || 0) / 100;
   $('#promotionMaximum').value = Number(promotion.maxDiscountKurus || 0) / 100;
   $('#promotionUsageLimit').value = Number(promotion.usageLimit || 0);
@@ -1734,7 +1720,6 @@ function editPromotion(code = '') {
   $('#promotionProducts').value = (promotion.productIds || []).join(', ');
   $('#promotionActive').checked = promotion.active === true;
   $('#promotionVisible').checked = promotion.visibleInWallet === true;
-  syncPromotionType();
   $('#promotionForm').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
 }
 
@@ -1744,39 +1729,38 @@ async function savePromotion(event) {
   const issue = (id, title, message) => { const field = $(id); setFieldError(field, message); field?.focus(); toast('warning', title, message, { sound: true }); };
   const code = String($('#promotionCode').value || '').trim().toLocaleUpperCase('en-US');
   if (!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(code)) return issue('#promotionCode', 'Kampanya kodunu kontrol edin', 'Kod 3-32 karakter olmalı; harf, sayı, tire veya alt çizgi kullanabilirsiniz.');
-  const type = $('#promotionType').value;
-  if (type === 'balance' && !requirePermission('store.wallet.write', 'Bakiye kodu oluşturma')) return;
+  const type = $('#promotionType').value === 'fixed' ? 'fixed' : 'percent';
   const value = parseMoneyInput($('#promotionValue').value);
-  if (!Number.isFinite(value) || value <= 0 || value > 1_000_000 || (type === 'percent' && (!Number.isInteger(value) || value > 90))) {
-    return issue('#promotionValue', 'Kod değerini kontrol edin', type === 'percent' ? 'Yüzde kampanyaları 1-90 arasında tam sayı olmalıdır.' : 'Tutar 0,01 ile 1.000.000 ₺ arasında olmalıdır.');
+  if (!Number.isFinite(value) || value <= 0 || (type === 'percent' && (!Number.isInteger(value) || value > 90))) {
+    return issue('#promotionValue', 'İndirim değerini kontrol edin', 'Yüzde kampanyaları 1-90 arasında tam sayı olmalıdır.');
   }
   const startsAt = $('#promotionStarts').value ? new Date($('#promotionStarts').value).getTime() : 0;
   const endsAt = $('#promotionEnds').value ? new Date($('#promotionEnds').value).getTime() : 0;
   if ((startsAt && !Number.isFinite(startsAt)) || (endsAt && !Number.isFinite(endsAt)) || (startsAt && endsAt && endsAt <= startsAt)) {
     return issue('#promotionEnds', 'Kupon tarihlerini kontrol edin', 'Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
   }
-  const minimum = type === 'balance' ? 0 : parseMoneyInput($('#promotionMinimum').value || '0');
-  const maximum = type === 'balance' ? 0 : parseMoneyInput($('#promotionMaximum').value || '0');
+  const minimum = parseMoneyInput($('#promotionMinimum').value || '0');
+  const maximum = parseMoneyInput($('#promotionMaximum').value || '0');
   const usageLimit = Number($('#promotionUsageLimit').value || '0');
   const perUserLimit = Number($('#promotionUserLimit').value || '1');
   for (const [id, amount] of [['#promotionMinimum', minimum], ['#promotionMaximum', maximum]]) {
     if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000) return issue(id, 'Tutarı kontrol edin', 'Tutar 0 ile 1.000.000 ₺ arasında olmalıdır.');
   }
-  if (!Number.isSafeInteger(usageLimit) || usageLimit < (type === 'balance' ? 1 : 0) || usageLimit > 1_000_000) return issue('#promotionUsageLimit', 'Kullanım limitini kontrol edin', type === 'balance' ? 'Bakiye kodunun toplam limiti 1 ile 1.000.000 arasında olmalıdır.' : 'Toplam limit 0 ile 1.000.000 arasında olmalıdır; 0 sınırsızdır.');
+  if (!Number.isSafeInteger(usageLimit) || usageLimit < 0 || usageLimit > 1_000_000) return issue('#promotionUsageLimit', 'Kullanım limitini kontrol edin', 'Toplam limit 0 ile 1.000.000 arasında bir tam sayı olmalıdır; 0 sınırsız kullanım anlamına gelir.');
   if (!Number.isSafeInteger(perUserLimit) || perUserLimit < 1 || perUserLimit > 100) return issue('#promotionUserLimit', 'Kişi başı limiti kontrol edin', 'Kişi başı limit 1 ile 100 arasında bir tam sayı olmalıdır.');
   const body = {
     createOnly: !state.promotionEditingCode,
     title: $('#promotionTitle').value,
     type,
-    value: type === 'percent' ? value : Math.round(value * 100),
+    value: type === 'fixed' ? Math.round(value * 100) : value,
     minimumSubtotalKurus: Math.round(minimum * 100),
     maxDiscountKurus: Math.round(maximum * 100),
     usageLimit: usageLimit,
     perUserLimit: perUserLimit,
     startsAt,
     endsAt,
-    platforms: type !== 'balance' && $('#promotionPlatform').value ? [$('#promotionPlatform').value] : [],
-    productIds: type === 'balance' ? [] : String($('#promotionProducts').value || '').split(',').map((item) => item.trim()).filter(Boolean),
+    platforms: $('#promotionPlatform').value ? [$('#promotionPlatform').value] : [],
+    productIds: String($('#promotionProducts').value || '').split(',').map((item) => item.trim()).filter(Boolean),
     active: $('#promotionActive').checked,
     visibleInWallet: $('#promotionVisible').checked
   };
@@ -1785,10 +1769,10 @@ async function savePromotion(event) {
     await adminFetch(`/api/admin/store/promotions/${encodeURIComponent(code)}`, { method: 'PUT', timeoutMs: 30_000, body });
     state.promotionEditingCode = code;
     $('#promotionCode').readOnly = true;
-    toast('success', type === 'balance' ? 'Bakiye kodu kaydedildi' : 'Kupon kaydedildi', type === 'balance' ? `${code} kullanıldığında ${formatPrice(body.value)} hesaba eklenir.` : 'İndirim koşulları sepette doğrulanacak.');
-    try { await loadPromotions(); } catch (_) { toast('warning', 'Kod kaydedildi', 'Liste yenilenemedi. Kayıt başarılı; listeyi yeniden açabilirsiniz.'); }
+    toast('success', 'Kupon güvenle kaydedildi', `${code} kodu; süre, kullanım limiti ve ürün kapsamıyla müşteri hesabında ve sepette doğrulanacak.`);
+    await loadPromotions();
   } catch (error) {
-    const fields = { BALANCE_CODE_VALUE_LOCKED: '#promotionValue', BALANCE_CODE_CONFIGURATION_INVALID: '#promotionUsageLimit', STORE_PROMOTION_TYPE_LOCKED: '#promotionType', STORE_PROMOTION_CODE_EXISTS: '#promotionCode', STORE_PROMOTION_CODE_INVALID: '#promotionCode', STORE_PROMOTION_DATE_INVALID: '#promotionEnds', STORE_PROMOTION_SCOPE_INVALID: '#promotionProducts', STORE_PROMOTION_VALUE_INVALID: '#promotionValue', STORE_PROMOTION_LIMIT_INVALID: '#promotionUsageLimit' };
+    const fields = { STORE_PROMOTION_CODE_EXISTS: '#promotionCode', STORE_PROMOTION_CODE_INVALID: '#promotionCode', STORE_PROMOTION_DATE_INVALID: '#promotionEnds', STORE_PROMOTION_SCOPE_INVALID: '#promotionProducts', STORE_PROMOTION_VALUE_INVALID: '#promotionValue', STORE_PROMOTION_LIMIT_INVALID: '#promotionUsageLimit' };
     setFieldError($(fields[error.code] || '#promotionCode'), error.message);
     toast('error', 'Kupon kaydedilemedi', error.message, { sound: true });
   }
@@ -1853,7 +1837,8 @@ function renderPanelFailure(name, error) {
     security: '#securityRuntime',
     content: '#contentStatus',
     links: '#adminQuickLinks',
-    coupons: '#adminPromotionList'
+    coupons: '#adminPromotionList',
+    promocodes: '#promoCodeList'
   };
   const host = $(hosts[name]);
   if (host) host.innerHTML = failureMarkup('Panel verisi yüklenemedi', error, name);
@@ -1884,6 +1869,7 @@ async function loadPanel(name, force = false) {
       else if (name === 'content') await loadContent();
       else if (name === 'links') await loadQuickLinks();
       else if (name === 'coupons') await loadPromotions();
+      else if (name === 'promocodes') { await promoCodeManager.load(); state.loaded.add('promocodes'); }
       else if (name === 'staff') await loadStaff();
       else if (name === 'audit') await loadAudit();
       else if (name === 'security') await loadSecurity();
@@ -1936,7 +1922,10 @@ function bindAction(element, type, handler, label = 'İşlem yapılıyor…') {
   });
 }
 
+const promoCodeManager = createPromoCodeManager({ adminFetch, requestAdminReauth, toast, requirePermission, escapeHtml, formatPrice, parseMoneyInput, renderLiveStatus, loadingMarkup, emptyMarkup, failureMarkup, rememberForms, hasUnsavedForms, confirmDiscard });
+
 function bind() {
+  promoCodeManager.bind();
   let redirecting = false;
   window.addEventListener('zentra:admin-session-invalid', () => {
     if (redirecting) return;
@@ -2028,9 +2017,7 @@ function bind() {
     state.quickLinks = readQuickLinkDrafts();
     if (event.target.dataset.linkField === 'platform' || event.target.dataset.linkField === 'enabled') renderQuickLinkEditor();
   });
-  syncPromotionType();
-  $('#promotionType')?.addEventListener('change', syncPromotionType);
-  bindAction($('#promotionForm'), 'submit', savePromotion, 'Kod kaydediliyor…');
+  bindAction($('#promotionForm'), 'submit', savePromotion, 'Kupon kaydediliyor…');
   $('#generateCouponCode')?.addEventListener('click', generateCouponCode);
   $('#resetCouponForm')?.addEventListener('click', resetCouponForm);
   $('#refreshPromotions')?.addEventListener('click', () => loadPromotions().catch((error) => toast('error', 'Kuponlar yenilenemedi', error.message)));

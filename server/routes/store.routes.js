@@ -56,14 +56,14 @@ const {
   listAuditLogs,
   listStaff,
   upsertStaff,
-  invalidateAdminStoreCaches, staffHasPermission
+  invalidateAdminStoreCaches
 } = require('../core/adminStoreService');
 const { listWalletPromotions, listPromotions, savePromotion } = require('../core/storePromotionService');
 const {
   updateProfileUsername, updateProfileFullName,
   updateProfileBirthDate, prepareProfileEmailChange
 } = require('../core/storeProfileService');
-const { redeemBalanceCode } = require('../core/storeBalanceCodeService');
+const { redeemBalanceCode, saveBalanceCode, listBalanceCodes } = require('../core/storeBalanceCodeService');
 const router = createRouter();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
@@ -348,18 +348,26 @@ router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), 
   res.json({ ok: true, links });
 }));
 
-router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (req, res) => {
+router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
   noStore(res);
-  const promotions = await listPromotions();
-  res.json({ ok: true, promotions: promotions.filter((row) => row.type !== 'balance' || staffHasPermission(req.adminPolicy, 'store.wallet.write')) });
+  res.json({ ok: true, promotions: await listPromotions({ kind: 'discount' }) });
 }));
 
 router.put('/admin/store/promotions/:code', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
-  const promotion = await savePromotion(req.params.code, req.body || {}, req.user, { canManageBalance: staffHasPermission(req.adminPolicy, 'store.wallet.write') });
-  await writeSupplementalAdminAudit(req, 'store.promotion.update', {
-    code: promotion.type === 'balance' ? '[BALANCE_CODE]' : promotion.code, type: promotion.type, active: promotion.active,
-    value: promotion.value, usageLimit: promotion.usageLimit, perUserLimit: promotion.perUserLimit
-  });
+  const promotion = await savePromotion(req.params.code, req.body || {}, req.user, { kind: 'discount' });
+  await writeSupplementalAdminAudit(req, 'store.promotion.update', { code: promotion.code, type: promotion.type, active: promotion.active, value: promotion.value, usageLimit: promotion.usageLimit });
+  noStore(res);
+  res.json({ ok: true, promotion });
+}));
+
+router.get('/admin/store/balance-codes', ...adminChain, requireStorePermission('store.wallet.write'), asyncRoute(async (_req, res) => {
+  noStore(res);
+  res.json({ ok: true, codes: await listBalanceCodes() });
+}));
+
+router.put('/admin/store/balance-codes/:code', ...sensitiveAdminChain('store.wallet.write'), asyncRoute(async (req, res) => {
+  const promotion = await saveBalanceCode(req.params.code, req.body, req.user);
+  await writeSupplementalAdminAudit(req, 'store.balance-code.update', { type: promotion.type, active: promotion.active, value: promotion.value, usageLimit: promotion.usageLimit });
   noStore(res);
   res.json({ ok: true, promotion });
 }));

@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v74';
+import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v75';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -45,15 +45,15 @@ const USER_MESSAGES = Object.freeze({
   STORE_PRODUCT_NOT_FOUND: 'Seçtiğiniz ürün artık satışta değil veya bulunamadı.',
   STORE_SKU_INVALID: 'Seçtiğiniz ürün paketi doğrulanamadı. Lütfen ürün listesini yenileyin.',
   STORE_NOTIFICATION_ID_REQUIRED: 'Seçilen bildirim artık kullanılamıyor.',
-  BALANCE_CODE_INPUT_INVALID: 'Yalnızca geçerli bakiye kodunu girin.',
-  BALANCE_CODE_NOT_FOUND: 'Bu bakiye kodu bulunamadı. Kodu ve seçtiğiniz kod türünü kontrol edin.',
-  BALANCE_CODE_INACTIVE: 'Bu bakiye kodu şu anda kullanıma kapalı.',
-  BALANCE_CODE_NOT_STARTED: 'Bu bakiye kodunun kullanım dönemi henüz başlamadı.',
-  BALANCE_CODE_EXPIRED: 'Bu bakiye kodunun kullanım süresi doldu.',
-  BALANCE_CODE_LIMIT_REACHED: 'Bu bakiye kodunun kullanım hakkı doldu.',
-  BALANCE_CODE_CONFIGURATION_INVALID: 'Bakiye kodunun ayarları doğrulanamadı. Destek ekibine ulaşın.',
+  BALANCE_CODE_INPUT_INVALID: 'Yalnızca geçerli promosyon kodunu girin.',
+  BALANCE_CODE_NOT_FOUND: 'Bu promosyon kodu bulunamadı. Kodu ve seçtiğiniz kod türünü kontrol edin.',
+  BALANCE_CODE_INACTIVE: 'Bu promosyon kodu şu anda kullanıma kapalı.',
+  BALANCE_CODE_NOT_STARTED: 'Bu promosyon kodunun kullanım dönemi henüz başlamadı.',
+  BALANCE_CODE_EXPIRED: 'Bu promosyon kodunun kullanım süresi doldu.',
+  BALANCE_CODE_LIMIT_REACHED: 'Bu promosyon kodunun kullanım hakkı doldu.',
+  BALANCE_CODE_CONFIGURATION_INVALID: 'Promosyon kodunun ayarları doğrulanamadı. Destek ekibine ulaşın.',
   BALANCE_CODE_RECEIPT_INVALID: 'Kod kullanım kaydı doğrulanamadı. Destek ekibine ulaşın.',
-  BALANCE_CODE_USE_ACCOUNT: 'Bakiye kodunu Hesabım → Kuponlarım alanında kullanın.',
+  BALANCE_CODE_USE_ACCOUNT: 'Promosyon kodunu Hesabım → Kuponlarım alanında kullanın.',
   STORE_PROMOTION_CODE_INVALID: 'İndirim kodu geçersiz. Kodu kontrol edip yeniden deneyin.',
   CLIENT_UPDATE_REQUIRED: 'Mağaza sürümü yenilendi. Devam etmek için sayfayı yenileyin.',
   STORE_PROMOTION_NOT_FOUND: 'Bu indirim kodu bulunamadı veya artık aktif değil.',

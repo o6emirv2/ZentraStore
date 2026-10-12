@@ -42,6 +42,14 @@ test('order attempt lookup requires authentication and does not expose account d
   assert.equal((await response.json()).error, 'AUTH_REQUIRED');
 });
 
+test('wallet promotion listing, creation and redemption reject anonymous requests', async () => {
+  for (const [path, method] of [['/api/admin/store/balance-codes', 'GET'], ['/api/admin/store/balance-codes/ZENTRASTORE200', 'PUT'], ['/api/store/balance-codes/redeem', 'POST']]) {
+    const response = await request(path, { method, headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, ...(method === 'GET' ? {} : { body: JSON.stringify({ code: 'ZENTRASTORE200', value: 20000 }) }) });
+    assert.equal(response.status, 401); assert.equal((await response.json()).error, 'AUTH_REQUIRED');
+    assert.equal(response.headers.get('cache-control').includes('no-store'), true);
+  }
+});
+
 test('malformed JSON, prototype keys and untrusted origins produce specific failures', async () => {
   const common = { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' } };
   const invalid = await request('/api/store/orders', { ...common, body: '{' });
@@ -58,6 +66,9 @@ test('malformed JSON, prototype keys and untrusted origins produce specific fail
 test('removed upload route and private source paths are unavailable, and image formats are served', async () => {
   assert.equal((await request('/api/admin/store/products/image', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, body: '{}' })).status, 404);
   assert.equal((await request('/server/config/env.js')).status, 404);
+  const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v75');
+  assert.equal(promotionModule.status, 200);
+  assert.ok(promotionModule.headers.get('content-type').includes('javascript'));
   for (const path of ['/public/assets/products/gbox.jpeg', '/public/assets/products/random.jpeg', '/public/assets/products/h-kernel.PNG', '/public/assets/products/CRY4ME.JPG']) {
     const response = await request(path);
     assert.equal(response.status, 200, path);

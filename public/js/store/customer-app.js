@@ -1,4 +1,4 @@
-import { rememberForms, confirmDiscard, animateView, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v74';
+import { rememberForms, confirmDiscard, animateView, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v75';
 const CUSTOMER_VIEWS = Object.freeze(['cart', 'orders', 'deliveries', 'coupons', 'profile']);
 const ORDER_FILTERS = Object.freeze(['all', 'pending', 'approved', 'delivered', 'closed']);
 const COUPON_FILTERS = Object.freeze(['available', 'scheduled', 'used', 'expired']);

@@ -1,4 +1,4 @@
-import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-ui-v74';
+import { PRODUCT_MEDIA_GROUPS, PRODUCT_MEDIA_SOURCE_PATTERN, SHOWCASE_MEDIA } from './product-media.js?v=zentra-ui-v75';
 
 const AUTOPLAY_DELAY_MS = 3000;
 const SWIPE_THRESHOLD_PX = 42;

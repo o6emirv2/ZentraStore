@@ -70,13 +70,13 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v74" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v74" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v74" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v74" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v75" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v74"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v75"></script></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -305,7 +305,7 @@ app.use('/public', cacheVersionedAsset, express.static(path.join(root, 'public')
 app.get(['/admin', '/admin/', '/admin/index.html'], requireActiveAdminEntry, (_req, res) => res.sendFile(path.join(root, 'admin', 'index.html')));
 app.get('/admin/admin.html', requireAdminDashboardEntry, (_req, res) => res.sendFile(path.join(root, 'admin', 'admin.html')));
 const adminAssetAllowlist = new Set([
-  'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js',
+  'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js', 'promo-codes.js',
   'admin-gate.css', 'admin-gate.js'
 ]);
 app.get('/admin/:asset', (req, res, next) => {

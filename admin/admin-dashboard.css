@@ -917,6 +917,10 @@ img {
   border-radius:12px;
   background:#080d15
 }
+.promotion-admin-item>span{display:grid;gap:4px;min-width:0}
+.promotion-admin-item strong,.promotion-admin-item small{overflow-wrap:anywhere}
+.promotion-admin-item small{color:var(--dim);font-size:14px;line-height:1.5}
+.admin-form .promo-code-identity,.admin-form .promo-code-dates{grid-template-columns:1fr}
 .user-facts {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));

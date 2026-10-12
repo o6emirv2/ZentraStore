@@ -83,7 +83,7 @@
 .orders-page__search{display:grid;gap:8px}
 .orders-page__search label{font-size:13px;color:#B7C1D8;font-weight:550}
 .orders-page__search>div{display:flex;gap:12px;align-items:center;padding:0 8px 0 16px;border:1px solid #405172;border-radius:14px;background:#10182B}
-.orders-page__search>div:focus-within{border-color:#22D3EE;outline:2px solid #22D3EE26}
+.orders-page__search>div:focus-within{border-color:#22D3EE;box-shadow:0 0 0 3px #22D3EE19}
 .orders-page__search>div>i{color:#B7C1D8}
 .orders-page__search input{flex:1;width:100%;min-width:0;border:0;background:transparent;padding:12px 0;min-height:52px;color:#F1F5FF;font-size:16px;outline:none}
 .orders-page__search .screen-icon-button{background:transparent;border:0}

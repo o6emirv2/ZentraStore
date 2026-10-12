@@ -243,14 +243,17 @@ async function listWalletPromotions(uid = '') {
   })).sort((left, right) => right.endsAt - left.endsAt);
 }
 
-async function listPromotions() {
+async function listPromotions({ kind = '' } = {}) {
   const { db } = database();
-  const snapshot = await db.collection('storePromotions').orderBy('updatedAt', 'desc').limit(100).get()
-    .catch(() => db.collection('storePromotions').limit(100).get());
+  const collection = db.collection('storePromotions');
+  const query = kind === 'balance' ? collection.where('type', '==', 'balance')
+    : kind === 'discount' ? collection.where('type', 'in', ['fixed', 'percent']) : collection;
+  const snapshot = await query.orderBy('updatedAt', 'desc').limit(100).get()
+    .catch(() => query.limit(100).get());
   return snapshot.docs.map((doc) => publicPromotion(doc.data())).sort((left, right) => right.updatedAt - left.updatedAt);
 }
 
-async function savePromotion(code = '', input = {}, actor = {}, { canManageBalance = false } = {}) {
+async function savePromotion(code = '', input = {}, actor = {}, { canManageBalance = false, kind = '' } = {}) {
   const normalized = normalizeCode(code);
   const { db } = database();
   if (Array.isArray(input?.productIds) && input.productIds.length) {
@@ -262,13 +265,18 @@ async function savePromotion(code = '', input = {}, actor = {}, { canManageBalan
   let result = null;
   await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(reference);
+    const previousType = snapshot.data()?.type;
+    if ((kind === 'discount' && (input.type === 'balance' || previousType === 'balance'))
+      || (kind === 'balance' && (input.type !== 'balance' || (snapshot.exists && previousType !== 'balance')))) {
+      throw promotionError('STORE_PROMOTION_TYPE_LOCKED', 409);
+    }
     if (input.createOnly === true && snapshot.exists) throw promotionError('STORE_PROMOTION_CODE_EXISTS', 409);
     if (input.createOnly === false && !snapshot.exists) throw promotionError('STORE_PROMOTION_NOT_FOUND', 404);
     if ((input.type === 'balance' || snapshot.data()?.type === 'balance') && !canManageBalance) throw promotionError('STORE_PERMISSION_DENIED', 403);
     const row = normalizePromotion(normalized, input, snapshot.exists ? snapshot.data() : {});
     row.updatedBy = { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() };
     transaction.set(reference, row, { merge: false });
-    recordMutationAudit(transaction, db, 'store.promotion.update', actor, row.type === 'balance' ? { codeFingerprint: crypto.createHash('sha256').update(normalized).digest('hex'), type: 'balance', value: row.value, active: row.active, usageLimit: row.usageLimit } : { code: normalized, before: snapshot.exists ? publicPromotion(snapshot.data()) : null, after: publicPromotion(row) });
+    recordMutationAudit(transaction, db, row.type === 'balance' ? 'store.balance-code.update' : 'store.promotion.update', actor, row.type === 'balance' ? { codeFingerprint: crypto.createHash('sha256').update(normalized).digest('hex'), type: 'balance', value: row.value, active: row.active, usageLimit: row.usageLimit } : { code: normalized, before: snapshot.exists ? publicPromotion(snapshot.data()) : null, after: publicPromotion(row) });
     result = publicPromotion(row);
   });
   return result;

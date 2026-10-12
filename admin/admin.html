@@ -8,14 +8,14 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v74" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v75" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v74" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v74" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v74" />
-  <script src="./admin-auth.js?v=zentra-ui-v74"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v74" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v74" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v75" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v75" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v75" />
+  <script src="./admin-auth.js?v=zentra-ui-v75"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v75" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v75" />
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -43,6 +43,7 @@
         <button type="button" data-panel="content"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i><span>İçerikler</span></button>
         <button type="button" data-panel="links"><i class="fa-solid fa-link" aria-hidden="true"></i><span>Bağlantılar</span></button>
         <button type="button" data-panel="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i><span>Kupon Kodları</span></button>
+        <button type="button" data-panel="promocodes"><i class="fa-solid fa-gift" aria-hidden="true"></i><span>Promosyon Kodları</span></button>
         <button type="button" data-panel="staff"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><span>Yetkilendirme</span></button>
         <button type="button" data-panel="audit"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Denetim</span></button>
         <button type="button" data-panel="security"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Güvenlik</span></button>
@@ -131,22 +132,41 @@
       </section>
 
       <section class="admin-panel" data-admin-panel="coupons" hidden inert>
-        <header class="panel-title"><div><span>BAKİYE VE İNDİRİM KODLARI</span><h1>Kod yönetimi</h1><p>Bakiye kodu ile hesaba tutar ekleyin; indirim kuponları ile sepet kampanyaları oluşturun.</p></div><button class="secondary-action" type="button" data-refresh="coupons"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Kuponları Yenile</button></header>
+        <header class="panel-title"><div><span>GERÇEK İNDİRİM KODLARI</span><h1>Kupon kodları</h1><p>Kupon oluşturun; kullanım, süre ve ürün sınırlarını belirleyin. Kodlar müşteri hesabında ve sepette çalışır.</p></div><button class="secondary-action" type="button" data-refresh="coupons"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Kuponları Yenile</button></header>
         <div class="panel-live-status" id="couponMetrics" aria-live="polite"></div>
         <div class="dashboard-columns promotion-admin">
           <form class="admin-card admin-form" id="promotionForm">
-            <header><div><small>KUPON OLUŞTUR VEYA DÜZENLE</small><h2 id="promotionFormTitle">Bakiye kodu oluştur</h2></div><button class="secondary-action" id="resetCouponForm" type="button">Yeni Kupon</button></header>
-            <div class="form-grid"><label><span>Kod</span><span class="coupon-code-input"><input id="promotionCode" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="ZENTRASTORE200" required /><button id="generateCouponCode" type="button" aria-label="Güvenli kupon kodu oluştur"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button></span></label><label><span>Kod adı</span><input id="promotionTitle" maxlength="100" placeholder="200 ₺ bakiye kodu" required /></label></div>
-            <div class="form-grid"><label><span>Kod türü</span><select id="promotionType"><option value="balance" selected>Bakiye kodu (₺)</option><option value="percent">Yüzde (%)</option><option value="fixed">Sabit tutar (₺)</option></select></label><label><span id="promotionValueLabel">Eklenecek bakiye (₺)</span><input id="promotionValue" type="number" min="0.01" step="0.01" value="200" required /></label></div>
-            <div class="form-grid" data-discount-only><label><span>Minimum sepet (₺)</span><input id="promotionMinimum" type="number" min="0" step="0.01" value="0" /></label><label><span>Maksimum indirim (₺)</span><input id="promotionMaximum" type="number" min="0" step="0.01" value="0" /></label></div>
-            <div class="form-grid"><label><span>Toplam kullanım limiti</span><input id="promotionUsageLimit" type="number" min="1" step="1" value="1" /></label><label><span>Kullanıcı başına limit</span><input id="promotionUserLimit" type="number" min="1" step="1" value="1" /></label></div>
-            <p id="promotionTypeHelp">Bakiye doğrudan hesaba eklenir. Varsayılan kod tek kullanımlıdır; her kullanıcı aynı koddan yalnız bir kez yararlanır. Kodlar müşterilere toplu listelenmez.</p><div class="form-grid"><label><span>Başlangıç</span><input id="promotionStarts" type="datetime-local" /></label><label><span>Bitiş</span><input id="promotionEnds" type="datetime-local" /></label></div>
-            <div class="form-grid" data-discount-only><label><span>Platform kapsamı</span><select id="promotionPlatform"><option value="">Tüm platformlar</option><option value="android">Android</option><option value="ios">iOS</option></select></label><label><span>Ürün ID kapsamı</span><input id="promotionProducts" maxlength="500" placeholder="kingmod-ios, random-30sv-ios" /></label></div>
-            <label class="toggle-row"><input id="promotionActive" type="checkbox" checked /><span><strong>Kampanya aktif</strong><small id="promotionActiveHelp">Kapalı kodlar bakiye yükleme sırasında reddedilir.</small></span></label>
-            <label class="toggle-row" data-discount-only><input id="promotionVisible" type="checkbox" checked /><span><strong>Kupon cüzdanında göster</strong><small>Giriş yapan müşteriler kodu Hesabım → Kuponlarım alanında görür.</small></span></label>
-            <button class="primary-action primary-action--large" type="submit"><i class="fa-solid fa-lock"></i> <span id="promotionSubmitLabel">Parolayla kodu kaydet</span></button>
+            <header><div><small>KUPON OLUŞTUR VEYA DÜZENLE</small><h2>İndirim kodu oluştur</h2></div><button class="secondary-action" id="resetCouponForm" type="button">Yeni Kupon</button></header>
+            <div class="form-grid"><label><span>Kupon kodu</span><span class="coupon-code-input"><input id="promotionCode" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="ZENTRA10" required /><button id="generateCouponCode" type="button" aria-label="Güvenli kupon kodu oluştur"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button></span></label><label><span>Kupon adı</span><input id="promotionTitle" maxlength="100" placeholder="Yeni üye indirimi" required /></label></div>
+            <div class="form-grid"><label><span>İndirim türü</span><select id="promotionType"><option value="percent">Yüzde (%)</option><option value="fixed">Sabit tutar (₺)</option></select></label><label><span>İndirim değeri</span><input id="promotionValue" type="number" min="0.01" step="0.01" value="10" required /></label></div>
+            <div class="form-grid"><label><span>Minimum sepet (₺)</span><input id="promotionMinimum" type="number" min="0" step="0.01" value="0" /></label><label><span>Maksimum indirim (₺)</span><input id="promotionMaximum" type="number" min="0" step="0.01" value="0" /></label></div>
+            <div class="form-grid"><label><span>Toplam kullanım limiti</span><input id="promotionUsageLimit" type="number" min="0" step="1" value="0" /></label><label><span>Kullanıcı başına limit</span><input id="promotionUserLimit" type="number" min="1" step="1" value="1" /></label></div>
+            <div class="form-grid"><label><span>Başlangıç</span><input id="promotionStarts" type="datetime-local" /></label><label><span>Bitiş</span><input id="promotionEnds" type="datetime-local" /></label></div>
+            <div class="form-grid"><label><span>Platform kapsamı</span><select id="promotionPlatform"><option value="">Tüm platformlar</option><option value="android">Android</option><option value="ios">iOS</option></select></label><label><span>Ürün ID kapsamı</span><input id="promotionProducts" maxlength="500" placeholder="kingmod-ios, random-30sv-ios" /></label></div>
+            <label class="toggle-row"><input id="promotionActive" type="checkbox" checked /><span><strong>Kampanya aktif</strong><small>Kapalı kodlar satın alma sırasında reddedilir.</small></span></label>
+            <label class="toggle-row"><input id="promotionVisible" type="checkbox" checked /><span><strong>Kupon cüzdanında göster</strong><small>Giriş yapan müşteriler kodu Hesabım → Kuponlarım alanında görür.</small></span></label>
+            <button class="primary-action primary-action--large" type="submit"><i class="fa-solid fa-lock"></i> Parolayla Kuponu Kaydet</button>
           </form>
-          <article class="admin-card"><header><div><small>KULLANIM KAYITLARI</small><h2>Kayıtlı kodlar</h2></div><button class="secondary-action" id="refreshPromotions" type="button" aria-label="Kuponları yenile"><i class="fa-solid fa-rotate"></i></button></header><div class="compact-list promotion-admin-list" id="adminPromotionList"></div></article>
+          <article class="admin-card"><header><div><small>KULLANIM KAYITLARI</small><h2>Kayıtlı kuponlar</h2></div><button class="secondary-action" id="refreshPromotions" type="button" aria-label="Kuponları yenile"><i class="fa-solid fa-rotate"></i></button></header><div class="compact-list promotion-admin-list" id="adminPromotionList"></div></article>
+        </div>
+      </section>
+
+      <section class="admin-panel" data-admin-panel="promocodes" hidden inert>
+        <header class="panel-title"><div><span>BAKİYE PROMOSYONU</span><h1>Promosyon kodları</h1><p>Kullanıcı hesabına doğrudan bakiye ekleyen kodlar oluşturun. İndirim kuponları ayrı bölümde yönetilir.</p></div><button class="secondary-action" type="button" data-refresh="promocodes"><i class="fa-solid fa-rotate" aria-hidden="true"></i>Listeyi yenile</button></header>
+        <div class="panel-live-status" id="promoCodeMetrics" aria-live="polite"></div>
+        <div class="dashboard-columns promotion-admin">
+          <form class="admin-card admin-form" id="promoCodeForm" novalidate>
+            <header><div><small>PROMOSYON KODU</small><h2>Promosyon kodu oluştur</h2></div><button class="secondary-action" id="newPromoCode" type="button">Yeni promosyon</button></header>
+            <div class="form-grid promo-code-identity"><label for="promoCode"><span>Promosyon kodu</span><span class="coupon-code-input"><input id="promoCode" maxlength="32" autocomplete="off" autocapitalize="characters" placeholder="ZENTRASTORE200" required /><button id="generatePromoCode" type="button" aria-label="Güvenli promosyon kodu oluştur"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button></span></label><label for="promoTitle"><span>Promosyon adı</span><input id="promoTitle" maxlength="100" placeholder="200 ₺ bakiye promosyonu" required /></label></div>
+            <div class="form-grid"><label for="promoAmount"><span>Eklenecek bakiye (₺)</span><input id="promoAmount" type="number" min="0.01" max="1000000" step="0.01" value="200" required /></label><label for="promoLimit"><span>Toplam kullanım limiti</span><input id="promoLimit" type="number" min="1" max="1000000" step="1" value="1" required /></label></div>
+            <label for="promoPerUser"><span>Kullanıcı başına kullanım</span><input id="promoPerUser" type="number" value="1" readonly /><small>Her hesap aynı promosyon kodundan yalnız bir kez yararlanır.</small></label>
+            <div class="form-grid promo-code-dates"><label for="promoStarts"><span>Başlangıç (isteğe bağlı)</span><input id="promoStarts" type="datetime-local" /></label><label for="promoEnds"><span>Bitiş (isteğe bağlı)</span><input id="promoEnds" type="datetime-local" /></label></div>
+            <label class="toggle-row"><input id="promoActive" type="checkbox" checked /><span><strong>Promosyon aktif</strong><small>Pasif kodlar bakiye ekleyemez.</small></span></label>
+            <p>Promosyon kodu sepet indirimi uygulamaz. Kayıtlı tutar, kod doğrulandıktan sonra kullanıcının bakiyesine eklenir. Kodlar müşterilere toplu listelenmez.</p>
+            <p id="promoEditStatus" role="status"></p>
+            <button class="primary-action primary-action--large" type="submit"><i class="fa-solid fa-lock" aria-hidden="true"></i>Parolayla promosyonu kaydet</button>
+          </form>
+          <article class="admin-card"><header><div><small>KAYITLI PROMOSYONLAR</small><h2>Promosyon kodu listesi</h2></div><i class="fa-solid fa-wallet" aria-hidden="true"></i></header><div class="compact-list promotion-admin-list" id="promoCodeList"></div></article>
         </div>
       </section>
 
@@ -199,6 +219,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-dashboard.js?v=zentra-ui-v74"></script>
+  <script type="module" src="./admin-dashboard.js?v=zentra-ui-v75"></script>
 </body>
 </html>
