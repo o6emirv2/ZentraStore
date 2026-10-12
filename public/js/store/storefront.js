@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v72';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v72';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v72';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v72';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v72';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v72';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v73';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v73';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v73';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v73';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v73';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v73';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v72';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v72';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v72';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v72';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v72';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v72';
+} from './auth.js?v=zentra-ui-v73';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v73';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v73';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v73';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v73';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v73';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,21 +35,21 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v72';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v72';
+} from './customer-app.js?v=zentra-ui-v73';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v73';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v72';
+} from './customer-renderers.js?v=zentra-ui-v73';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v72';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v72';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v72';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v73';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v73';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v73';
 
-const STORE_VERSION = 'storefront-v72';
+const STORE_VERSION = 'storefront-v73';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
 // Read historical keys once so existing customers keep their favorites during brand migration.
 const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
@@ -805,34 +805,6 @@ function clearAppliedPromotion({ message = '' } = {}) {
   }
 }
 
-function animateFlyToCart() {
-  if (typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const source = $('#purchaseImage .product-gallery__slide.is-active img, #purchaseImage img, #purchaseImage [data-product-image]');
-  const destination = $('#cartButton:not([hidden])') || $('.mobile-nav [data-store-action="cart"]:not([hidden])');
-  if (!source || !destination || typeof source.animate !== 'function') return;
-  const start = source.getBoundingClientRect();
-  const finish = destination.getBoundingClientRect();
-  if (!start.width || !start.height || !finish.width || !finish.height) return;
-  const flyer = source.cloneNode(true);
-  flyer.removeAttribute('id');
-  flyer.setAttribute('aria-hidden', 'true');
-  Object.assign(flyer.style, {
-    position: 'fixed', left: `${start.left}px`, top: `${start.top}px`,
-    width: `${start.width}px`, height: `${start.height}px`, objectFit: 'cover',
-    borderRadius: '18px', pointerEvents: 'none', zIndex: '220', willChange: 'transform, opacity'
-  });
-  document.body.appendChild(flyer);
-  const x = finish.left + finish.width / 2 - start.left - start.width / 2;
-  const y = finish.top + finish.height / 2 - start.top - start.height / 2;
-  const movement = flyer.animate([
-    { transform: 'translate3d(0, 0, 0) scale(1)', opacity: 0.86 },
-    { transform: `translate3d(${x * 0.56}px, ${y * 0.7 - 28}px, 0) scale(0.48)`, opacity: 0.75, offset: 0.62 },
-    { transform: `translate3d(${x}px, ${y}px, 0) scale(0.12)`, opacity: 0 }
-  ], { duration: 520, easing: 'cubic-bezier(.22,.76,.28,1)', fill: 'forwards' });
-  movement.addEventListener('finish', () => flyer.remove(), { once: true });
-  movement.addEventListener('cancel', () => flyer.remove(), { once: true });
-}
-
 function addToCart(product, plan, quantity = 1) {
   if (state.orderBusy || purchaseTracker.pending()) { showNotice('warning', 'Sipariş sonucu bekleniyor', 'Sepetinizi değiştirmeden önce önceki işlemi kontrol edin.', { actionLabel: 'Durumu kontrol et', onAction: () => recoverPendingPurchase() }); return false; }
   if (!product || !plan) return;
@@ -842,7 +814,6 @@ function addToCart(product, plan, quantity = 1) {
   state.cart.set(key, current);
   clearAppliedPromotion({ message: 'Sepet değiştiği için indirim kodunu yeniden doğrulayın.' });
   renderCart();
-  animateFlyToCart();
   showNotice('success', 'Ürün sepetinize eklendi', `${product.name} · ${platformName(product.platform)} · ${plan.label}`);
 }
 
@@ -920,10 +891,7 @@ function renderCart() {
   if ($('#cartDiscount')) $('#cartDiscount').textContent = `−${formatStorePrice(discountKurus)}`;
   if ($('#cartDiscountRow')) $('#cartDiscountRow').hidden = discountKurus < 1;
   if ($('#cartTotal')) $('#cartTotal').textContent = formatStorePrice(totalKurus);
-  if ($('#cartCount')) {
-    $('#cartCount').textContent = String(totalQuantity);
-    $('#cartCount').hidden = totalQuantity < 1;
-  }
+
   if ($('#mobileCartCount')) {
     $('#mobileCartCount').textContent = String(totalQuantity);
     $('#mobileCartCount').hidden = totalQuantity < 1;

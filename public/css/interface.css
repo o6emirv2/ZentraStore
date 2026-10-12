@@ -56,6 +56,7 @@ button {font-weight:650}
 .product-card__media {aspect-ratio:1.12/1;background:#0B1222;border-bottom:1px solid #22304B}
 .product-card__media::after {display:none}
 .product-card__image {object-fit:contain;padding:12px;transition:none}
+.product-card__media>.product-card__image {position:absolute;inset:0;width:100%;height:100%}
 .product-card:hover .product-card__image {transform:none}
 .product-card__favorite {background:#10182BF0;backdrop-filter:none;border-radius:12px;border-color:#405172}
 .product-tag,.product-badge {background:#10182BF0;backdrop-filter:none;line-height:1.25;font-weight:650}
@@ -65,7 +66,7 @@ button {font-weight:650}
 .product-card__title {font-size:16px;line-height:1.4;font-weight:700;min-height:2.8em;letter-spacing:-.02em}
 .product-card__description {display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.8em;font-size:13px;line-height:1.4;color:#B7C1D8}
 .sales-channel-stock span {font-size:12px;font-weight:600;white-space:normal;overflow-wrap:anywhere}
-.product-card__price {align-items:center}
+.product-card__price {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
 .product-card__price strong {font-size:20px;font-weight:750;color:#F1F5FF;letter-spacing:-.03em}
 .product-card__cta {padding:12px;border-radius:12px;font-size:14px;font-weight:650}
 .mobile-nav {background:#10182B;border-color:#34415C;backdrop-filter:none;box-shadow:none}
@@ -152,7 +153,7 @@ html[data-app-hidden] .activity-indicator>span,html[data-app-hidden] .app-skelet
   .admin-sidebar {width:244px}
 }
 @media(max-width:899px) {
-  :root {--mobile-nav-height:84px}
+  :root {--mobile-nav-height:72px}
   .topbar__inner,.page-shell {width:calc(100% - 32px)}
   .topbar__inner {gap:12px}
   .topbar__actions {gap:8px}
@@ -163,42 +164,44 @@ html[data-app-hidden] .activity-indicator>span,html[data-app-hidden] .app-skelet
   .button,.primary-action,.secondary-action,.product-card__cta,.icon-button,.icon-action,.customer-icon-button {min-height:55px}
   .icon-button,.icon-action,.customer-icon-button,.product-card__favorite {min-width:55px;min-height:55px}
   input:not([type=checkbox]):not([type=radio]),textarea,select {font-size:20px!important;min-height:55px}
-  .product-card__body {padding:14px;gap:12px}
-  .product-card__title {font-size:18px;line-height:1.4;min-height:2.8em}
-  .product-card__description {font-size:14px;min-height:2.8em}
-  .product-card__price strong {font-size:23px}
-  .product-card__cta {font-size:15px}
+  .product-card__media {aspect-ratio:1.28/1}
+  .product-card__price span {min-width:0;font-size:12px}
+  .product-card__body {padding:12px;gap:8px}
+  .product-card__title {font-size:16px;line-height:1.35;min-height:2.7em}
+  .product-card__description {font-size:13px;min-height:2.8em}
+  .product-card__price strong {font-size:18px;white-space:nowrap}
+  .product-card__cta {font-size:14px;padding:10px 8px}
   .product-card__favorite {right:8px;top:8px}
   .product-card__tags {max-width:calc(100% - 72px)}
   .product-tag {font-size:12px}
-  .sales-channel-stock span {font-size:13px}
+  .sales-channel-stock span {font-size:12px}
   .mobile-nav {padding:8px 12px max(8px,var(--safe-bottom));gap:4px}
-  .mobile-nav button {min-height:68px;font-size:24px}
-  .mobile-nav button span {font-size:14px}
+  .mobile-nav button {min-height:55px;font-size:20px}
+  .mobile-nav button span {font-size:12px;white-space:nowrap}
   .side-sheet {border-radius:24px 24px 0 0}
   .customer-delivery-card,.customer-cart-item,.customer-coupon-card {padding:20px}
   .admin-topbar {padding-inline:16px}
   .admin-sidebar {padding:12px 16px;background:#10182B}
   .admin-sidebar button {font-size:15px;min-height:55px}
-  .admin-content {padding:24px 16px}
-  .panel-title {gap:16px}.panel-title h1 {font-size:30px}
+  .admin-content {padding:20px 16px}
+  .panel-title {gap:12px}.panel-title h1 {font-size:25px}
   .panel-title {display:flex;flex-direction:column;align-items:stretch}
   .panel-title__actions {display:flex;flex-wrap:wrap;width:100%;gap:12px}
   .panel-title__actions button {flex:1 1 160px}
   .panel-live-status {align-items:start;flex-wrap:wrap}
   .panel-live-status>span {flex-basis:calc(100% - 56px)}
   .panel-live-status>b {margin-left:56px}
-  .panel-title p {font-size:16px}
-  .admin-card,.product-admin-card,.wallet-form,.metric-card,.overview-hero,.security-hero,.panel-live-status {padding:20px}
-  .admin-card h2,.product-admin-card h2 {font-size:21px}
+  .panel-title p {font-size:14px}
+  .admin-card,.product-admin-card,.wallet-form,.metric-card,.overview-hero,.security-hero,.panel-live-status {padding:16px}
+  .admin-card h2,.product-admin-card h2 {font-size:18px}
   .product-admin-grid,.dashboard-columns {gap:16px}
-  .data-table {font-size:16px}
+  .data-table {font-size:14px}
   .table-action,.data-table th button {min-height:55px}
-  .toggle-row {min-height:88px}.toggle-row strong {font-size:16px}.toggle-row small {font-size:14px}
-  .interface-toolbar {padding:16px;gap:12px}
-  .interface-toolbar label {font-size:15px}
+  .toggle-row {min-height:72px}.toggle-row strong {font-size:14px}.toggle-row small {font-size:13px}
+  .interface-toolbar {padding:12px;gap:8px}
+  .interface-toolbar label {font-size:14px}
   .interface-toolbar output {font-size:14px}
-  .panel-live-status strong {font-size:18px}.panel-live-status small {font-size:15px}
+  .panel-live-status strong {font-size:16px}.panel-live-status small {font-size:13px}
 }
 @media(hover:none) {.product-card:hover {transform:none}}
 @media(pointer:coarse) {
@@ -211,5 +214,5 @@ html[data-app-hidden] .activity-indicator>span,html[data-app-hidden] .app-skelet
   .product-card {transition:none}
 }
 
-@media(max-width:899px){.admin-brand{flex:1;min-width:0}.admin-brand strong{white-space:normal;line-height:1.25;font-size:16px;max-width:9ch}.admin-topbar__actions{flex-shrink:0}}
+@media(max-width:899px){.admin-brand{flex:1;min-width:0}.admin-brand strong{white-space:normal;line-height:1.25;font-size:15px;max-width:none}.admin-topbar__actions{flex-shrink:0}}
 @media(max-width:360px){.admin-topbar{padding-inline:12px;gap:8px}.admin-brand{gap:8px}.admin-brand img{width:36px;height:36px;flex-basis:36px}.admin-brand strong{font-size:14px;letter-spacing:.025em}.admin-topbar__actions{gap:4px}}

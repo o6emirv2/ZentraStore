@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { findUsernameProfiles } = require('./storeUsername');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { inventorySummary, inventoryReadiness } = require('./storeInventoryService');
@@ -173,11 +174,14 @@ async function resolveStoreUser(identifier = '') {
   } else {
     try { authUser = await auth.getUser(query); } catch (_) {}
     if (!authUser) {
-      const lower = query.toLocaleLowerCase('tr-TR');
-      const snapshot = await db.collection('users').where('usernameLower', '==', lower).limit(2).get();
-      if (snapshot.size > 1) throw serviceError('STORE_USER_IDENTIFIER_AMBIGUOUS', 409);
-      if (!snapshot.empty) {
-        try { authUser = await auth.getUser(snapshot.docs[0].id); } catch (_) {}
+      let profiles;
+      try { profiles = await findUsernameProfiles(db, query); } catch (error) {
+        if (!['INVALID_USERNAME', 'USERNAME_RESERVED'].includes(error.code)) throw error;
+        profiles = [];
+      }
+      if (profiles.length > 1) throw serviceError('STORE_USER_IDENTIFIER_AMBIGUOUS', 409);
+      if (profiles.length === 1) {
+        try { authUser = await auth.getUser(profiles[0].id); } catch (_) {}
       }
     }
   }

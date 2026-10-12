@@ -283,7 +283,7 @@ img {
 .panel-title>div {
   min-width:0
 }
-.panel-title span {
+.panel-title>div:first-child>span {
   color:var(--red-bright);
   font-size:0.875rem;
   font-weight:900;

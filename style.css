@@ -372,24 +372,6 @@ body[data-authenticated="true"] [data-guest-only] {
   color:var(--text-soft);
   font-size:1rem
 }
-.cart-trigger {
-  color:#fff
-}
-.count-badge {
-  position:absolute;
-  top:-5px;
-  right:-5px;
-  min-width:20px;
-  height:20px;
-  padding:0 5px;
-  display:grid;
-  place-items:center;
-  border:2px solid #050810;
-  border-radius:999px;
-  background:var(--red);
-  font-size:0.75rem;
-  font-weight:900
-}
 .auth-actions {
   display:flex;
   align-items:center;
@@ -545,7 +527,9 @@ body[data-authenticated="true"] [data-guest-only] {
   font-weight:800
 }
 .catalog-count {
-  grid-column:1/-1;
+  grid-column:auto;
+  justify-self:end;
+  white-space:nowrap;
   width:max-content;
   color:var(--text-dim);
   font-size:0.875rem

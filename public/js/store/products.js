@@ -1,5 +1,5 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v72';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v72';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v73';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v73';
 
 let catalogCache = null;
 let catalogCachedAt = 0;

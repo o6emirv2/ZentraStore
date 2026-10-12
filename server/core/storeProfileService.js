@@ -1,11 +1,11 @@
 'use strict';
 
-const crypto = require('crypto');
+const { usernameKeys, usernameRegistryId, validateUsername, findUsernameProfiles } = require('./storeUsername');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAccount } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
-const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'moderator', 'system', 'zentra', 'zentra_store', 'zentrastore', 'root', 'owner', 'official', 'staff', 'yonetici', 'yönetici', 'destek', 'sistem']);
+
 
 function profileError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
@@ -13,26 +13,6 @@ function profileError(code, statusCode = 400, message = '') {
 
 function safeProfileText(value = '', max = 200) {
   return String(value || '').trim().replace(/[<>\u0000-\u001f\u007f]/g, '').slice(0, max);
-}
-
-function usernameKeys(value = '') {
-  const raw = safeProfileText(value, 20).replace(/\s+/g, '');
-  return [...new Set([raw.toLocaleLowerCase('tr-TR'), raw.toLowerCase()].filter(Boolean))];
-}
-
-function usernameRegistryId(key = '') {
-  return crypto.createHash('sha256').update(String(key)).digest('hex');
-}
-
-function validateUsername(value = '') {
-  const username = safeProfileText(value, 20).replace(/\s+/g, '');
-  if (!/^[\p{L}\p{N}._-]{5,20}$/u.test(username)) {
-    throw profileError('INVALID_USERNAME', 400, 'Kullanıcı adı 5-20 karakter olmalı; harf, sayı, nokta, alt çizgi ve tire kullanılabilir.');
-  }
-  if (usernameKeys(username).some((key) => RESERVED_USERNAMES.has(key))) {
-    throw profileError('USERNAME_RESERVED', 409, 'Bu kullanıcı adı sistem tarafından ayrılmıştır.');
-  }
-  return username;
 }
 
 function validatePersonName(value = '', label = 'İsim') {
@@ -98,8 +78,8 @@ async function updateProfileUsername(uid = '', authUser = {}, input = {}) {
         throw profileError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       }
     }
-    const legacy = await transaction.get(db.collection('users').where('usernameLower', newKeys.length === 1 ? '==' : 'in', newKeys.length === 1 ? newKeys[0] : newKeys).limit(4));
-    if (legacy.docs.some((doc) => doc.id !== safeUid)) throw profileError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
+    const legacy = await findUsernameProfiles(db, username, { transaction, includeRegistry: false });
+    if (legacy.some((doc) => doc.id !== safeUid)) throw profileError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
     const now = Date.now();
     for (const entry of registryEntries) {
       if (newKeys.includes(entry.key)) {

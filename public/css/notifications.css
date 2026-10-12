@@ -27,10 +27,10 @@
 @keyframes notice-emphasis{20%{opacity:.7}to{opacity:0}}
 @media(max-width:899px){
  .notification-center{width:auto;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));max-height:min(32dvh,300px)}
- .zentra-notice{grid-template-columns:44px minmax(0,1fr);padding:16px 72px 16px 16px}
- .zentra-notice__content>strong{font-size:19px}.zentra-notice__message{font-size:17px}
+ .zentra-notice{grid-template-columns:36px minmax(0,1fr);padding:12px 72px 12px 12px;gap:10px}.zentra-notice__symbol{width:36px;height:36px;font-size:18px}
+ .zentra-notice__content>strong{font-size:17px}.zentra-notice__message{font-size:15px}
  .zentra-notice__close{width:55px;height:55px;min-width:55px;min-height:55px}
- .zentra-notice__action,.notice-sound-control{min-height:55px;font-size:18px}
+ .zentra-notice__action,.notice-sound-control{min-height:55px;font-size:15px}
 }
 @media(prefers-reduced-motion:reduce){.zentra-notice{transition:none;transform:none}.zentra-notice::after,.zentra-notice__progress{animation:none}.zentra-notice.is-leaving{transform:none}}
 

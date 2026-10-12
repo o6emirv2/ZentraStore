@@ -1,7 +1,7 @@
-import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v72';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v72';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v72';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v72';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v73';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v73';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v73';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v73';
 
 installInteractionGuard();
 installAppUI();

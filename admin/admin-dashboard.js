@@ -1,11 +1,11 @@
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v72';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v72';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v72';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v72';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v72';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v72';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v72';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v72';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v73';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v73';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v73';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v73';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v73';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v73';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v73';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v73';
 
 installInteractionGuard();
 

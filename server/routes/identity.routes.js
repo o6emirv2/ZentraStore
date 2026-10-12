@@ -6,9 +6,10 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { authLoginLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
 const { trustedOrigin } = require('../core/userSessionService');
 const {
-  usernameKeys, usernameRegistryId, validateUsername,
   validatePersonName, validateBirthDate
 } = require('../core/storeProfileService');
+
+const { usernameKeys, usernameRegistryId, validateUsername, findUsernameProfiles } = require('../core/storeUsername');
 
 const router = createRouter();
 
@@ -25,14 +26,12 @@ async function usernameAvailability(value = '') {
   const keys = usernameKeys(username);
   const { db } = initFirebaseAdmin();
   if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
-  for (const key of keys) {
-    const registry = await db.collection('usernameRegistry').doc(usernameRegistryId(key)).get();
-    if (registry.exists) {
-      return { available: false, username, code: 'USERNAME_TAKEN', message: 'Bu kullanıcı adı kullanılıyor.' };
-    }
+  const registry = await Promise.all(keys.map((key) => db.collection('usernameRegistry').doc(usernameRegistryId(key)).get()));
+  if (registry.some((doc) => doc.exists)) {
+    return { available: false, username, code: 'USERNAME_TAKEN', message: 'Bu kullanıcı adı kullanılıyor.' };
   }
-  const snapshot = await db.collection('users').where('usernameLower', keys.length === 1 ? '==' : 'in', keys.length === 1 ? keys[0] : keys).limit(4).get();
-  const taken = !snapshot.empty;
+  const profiles = await findUsernameProfiles(db, username, { includeRegistry: false });
+  const taken = profiles.length > 0;
   return { available: !taken, username, code: taken ? 'USERNAME_TAKEN' : '', message: taken ? 'Bu kullanıcı adı kullanılıyor.' : '' };
 }
 
@@ -45,8 +44,19 @@ function validEmail(value = '') {
   return /^\S+@\S+\.\S+$/.test(email) ? email : '';
 }
 
+async function activeIdentity(auth, uid) {
+  let user;
+  try { user = await auth.getUser(uid); } catch (error) {
+    if (error?.code === 'auth/user-not-found') throw authInvalid();
+    throw serviceError('AUTH_UNAVAILABLE', 503);
+  }
+  if (!user || user.disabled) throw authInvalid();
+  return user;
+}
+
 async function resolvePrivateLogin(identifier = '') {
-  const normalized = text(identifier, 160);
+  const normalized = String(identifier || '').trim();
+  if (normalized.length > 160 || /[<>\u0000-\u001f\u007f]/.test(normalized)) throw authInvalid();
   const { db, auth } = initFirebaseAdmin();
   if (!db || !auth) throw serviceError('AUTH_UNAVAILABLE', 503, 'Hesap hizmetine şu anda ulaşılamıyor. Lütfen kısa süre sonra tekrar dene.');
   if (normalized.includes('@')) {
@@ -56,19 +66,12 @@ async function resolvePrivateLogin(identifier = '') {
   }
   let username;
   try { username = validateUsername(normalized); } catch (_) { throw authInvalid(); }
-  const keys = usernameKeys(username);
-  const snapshot = await db.collection('users').where('usernameLower', keys.length === 1 ? '==' : 'in', keys.length === 1 ? keys[0] : keys).limit(3).get();
-  if (snapshot.size !== 1) throw authInvalid();
-  const doc = snapshot.docs[0];
-  let authUser;
-  try { authUser = await auth.getUser(doc.id); } catch (_) { throw authInvalid(); }
-  if (authUser.disabled) throw authInvalid();
+  const profiles = await findUsernameProfiles(db, username);
+  if (profiles.length !== 1) throw authInvalid();
+  const doc = profiles[0];
+  const authUser = await activeIdentity(auth, doc.id);
   const email = validEmail(authUser.email);
   if (!email) throw authInvalid();
-  const stored = doc.data() || {};
-  if (String(stored.email || '').trim().toLowerCase() !== email) {
-    await doc.ref.set({ email, updatedAt: Date.now() }, { merge: true }).catch(() => null);
-  }
   return { email, expectedUid: doc.id };
 }
 
@@ -96,21 +99,22 @@ async function identityToolkit(action = '', body = {}) {
 router.post('/auth/login', authLoginLimiter, async (req, res, next) => {
   try {
     if (!trustedOrigin(req)) throw serviceError('ORIGIN_NOT_ALLOWED', 403);
-    const identifier = text(req.body?.identifier, 160);
+    const identifier = String(req.body?.identifier || '').trim();
     const password = String(req.body?.password || '');
     if (!identifier || !password || password.length > 4096) throw authInvalid();
     const { email, expectedUid } = await resolvePrivateLogin(identifier);
     const result = await identityToolkit('signInWithPassword', { email, password, returnSecureToken: true });
     const uid = String(result.payload?.localId || '').trim();
+    if (result.status === 429 || result.payload?.error?.message === 'TOO_MANY_ATTEMPTS_TRY_LATER') throw serviceError('TOO_MANY_REQUESTS', 429);
+    if (result.status >= 500) throw serviceError('AUTH_UNAVAILABLE', 503);
     if (!result.ok || !uid || (expectedUid && uid !== expectedUid)) throw authInvalid();
     const { auth } = initFirebaseAdmin();
-    const authUser = await auth.getUser(uid).catch(() => null);
-    if (!authUser || authUser.disabled) throw authInvalid();
+    await activeIdentity(auth, uid);
     const customToken = await auth.createCustomToken(uid, { zentraLogin: true });
     return res.json({ ok: true, customToken });
   } catch (error) {
-    if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED'].includes(String(error?.code || ''))) return next(error);
-    return next(authInvalid());
+    if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED', 'TOO_MANY_REQUESTS'].includes(String(error?.code || ''))) return next(error);
+    return next(serviceError('AUTH_UNAVAILABLE', 503));
   }
 });
 
@@ -166,8 +170,8 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
         || (current.birthDate && current.birthDate !== birthDate)) {
         throw serviceError('PROFILE_INITIALIZATION_LOCKED', 409, 'Hesap bilgilerini yalnızca korumalı hesap ayarlarından değiştirebilirsin.');
       }
-      const legacy = await transaction.get(db.collection('users').where('usernameLower', keys.length === 1 ? '==' : 'in', keys.length === 1 ? keys[0] : keys).limit(4));
-      if (legacy.docs.some((doc) => doc.id !== uid)) throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
+      const legacy = await findUsernameProfiles(db, username, { transaction, includeRegistry: false });
+      if (legacy.some((doc) => doc.id !== uid)) throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       const now = Date.now();
       const patch = {
         email,
