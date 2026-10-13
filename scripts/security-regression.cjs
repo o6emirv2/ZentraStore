@@ -77,6 +77,20 @@ test('brand protocol migration retains decrypt access to historically encrypted 
   const encrypted = encryptWithHistoricalV3('OLD_STOCK_CODE', context);
   assert.equal(vault.decryptSecret(encrypted, context), 'OLD_STOCK_CODE');
 });
+test('historical V1 and V2 vault formats remain decryptable with retained legacy key material', () => {
+  for (const version of [1, 2]) {
+    const id = 'legacy-v1', iv = crypto.randomBytes(12);
+    const key = crypto.createHash('sha256').update(`shelby-ios-key-encryption:v${version}\0`)
+      .update(version === 2 ? `${id}\0` : '').update(legacySecret).digest();
+    const aad = Buffer.from(`shelby-ios-store-inventory:v${version}${version === 2 ? ':' + id : ''}`, 'utf8');
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv); cipher.setAAD(aad);
+    const ciphertext = Buffer.concat([cipher.update('OLD-LEGACY-SECRET-0001', 'utf8'), cipher.final()]);
+    const record = { algorithm: 'A256GCM', version, ...(version === 2 ? { keyId: id } : {}),
+      iv: iv.toString('base64url'), tag: cipher.getAuthTag().toString('base64url'), ciphertext: ciphertext.toString('base64url') };
+    assert.equal(vault.decryptSecret(record), 'OLD-LEGACY-SECRET-0001');
+    assert.throws(() => vault.decryptSecret({ ...record, tag: Buffer.alloc(16).toString('base64url') }), { code: 'STORE_KEY_DECRYPTION_FAILED' });
+  }
+});
 
 test('newly encrypted inventory decrypts with the new active key and context binding', () => {
   const context = { recordType: 'inventory', recordId: 'item-2', sku: 'product:month', productId: 'product', planKey: 'month' };

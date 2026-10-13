@@ -3,7 +3,8 @@
 const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
-const { authLoginLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
+const { readStoredBalance } = require('../core/storeMoney');
+const { authLoginLimiter, authAccountLimiter, resetAccountLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
 const { trustedOrigin } = require('../core/userSessionService');
 const {
   validatePersonName, validateBirthDate
@@ -40,7 +41,7 @@ function authInvalid() {
 }
 
 function validEmail(value = '') {
-  const email = text(value, 160).toLowerCase();
+  const email = text(value, 254).toLowerCase();
   return /^\S+@\S+\.\S+$/.test(email) ? email : '';
 }
 
@@ -56,7 +57,7 @@ async function activeIdentity(auth, uid) {
 
 async function resolvePrivateLogin(identifier = '') {
   const normalized = String(identifier || '').trim();
-  if (normalized.length > 160 || /[<>\u0000-\u001f\u007f]/.test(normalized)) throw authInvalid();
+  if (normalized.length > 254 || /[<>\u0000-\u001f\u007f]/.test(normalized)) throw authInvalid();
   const { db, auth } = initFirebaseAdmin();
   if (!db || !auth) throw serviceError('AUTH_UNAVAILABLE', 503, 'Hesap hizmetine şu anda ulaşılamıyor. Lütfen kısa süre sonra tekrar dene.');
   if (normalized.includes('@')) {
@@ -96,11 +97,13 @@ async function identityToolkit(action = '', body = {}) {
   }
 }
 
-router.post('/auth/login', authLoginLimiter, async (req, res, next) => {
+router.post('/auth/login', authLoginLimiter, authAccountLimiter, async (req, res, next) => {
   try {
     if (!trustedOrigin(req)) throw serviceError('ORIGIN_NOT_ALLOWED', 403);
-    const identifier = String(req.body?.identifier || '').trim();
-    const password = String(req.body?.password || '');
+    if (!req.body || Object.keys(req.body).some((key) => !['identifier', 'password'].includes(key))
+      || typeof req.body.identifier !== 'string' || typeof req.body.password !== 'string') throw authInvalid();
+    const identifier = req.body.identifier.trim();
+    const password = req.body.password;
     if (!identifier || !password || password.length > 4096) throw authInvalid();
     const { email, expectedUid } = await resolvePrivateLogin(identifier);
     const result = await identityToolkit('signInWithPassword', { email, password, returnSecureToken: true });
@@ -118,10 +121,10 @@ router.post('/auth/login', authLoginLimiter, async (req, res, next) => {
   }
 });
 
-router.post('/auth/password-reset', passwordResetLimiter, async (req, res) => {
+router.post('/auth/password-reset', passwordResetLimiter, resetAccountLimiter, async (req, res) => {
   if (!trustedOrigin(req)) return res.status(403).json({ ok: false, error: 'ORIGIN_NOT_ALLOWED' });
   try {
-    const identifier = text(req.body?.identifier, 160);
+    const identifier = text(req.body?.identifier, 254);
     if (identifier) {
       const { email } = await resolvePrivateLogin(identifier);
       await identityToolkit('sendOobCode', { requestType: 'PASSWORD_RESET', email });
@@ -181,7 +184,7 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
         username,
         usernameLower: key,
         birthDate: current.birthDate || birthDate,
-        storeBalanceKurus: Math.max(0, Number(current.storeBalanceKurus || 0) || 0),
+        ...(current.storeBalanceKurus === undefined ? { storeBalanceKurus: readStoredBalance(current) } : {}),
         storeProfile: current.storeProfile || { avatarId: '1' },
         createdAt: Number(current.createdAt || now),
         updatedAt: now

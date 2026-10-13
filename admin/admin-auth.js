@@ -14,6 +14,13 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   let authStateUnsubscribe = null;
   let transportBase = null;
   let serverSession = null;
+  let actionPassword = null;
+  function clearActionPassword() { actionPassword = null; }
+  function consumeActionPassword() {
+    const approval = actionPassword; clearActionPassword();
+    const current = activeSession();
+    return approval && approval.expiresAt > Date.now() && approval.uid === current?.uid && approval.email === current?.email ? approval.value : '';
+  }
 
   function normalizeBase(value = '') {
     return String(value || '').trim().replace(/\/+$/, '').replace(/\/api$/i, '');
@@ -45,11 +52,13 @@ window.ZENTRA_ADMIN_AUTH = (() => {
         const type = String(response.headers.get('content-type') || '');
         const payload = type.includes('application/json') ? await response.json().catch(() => null) : null;
         if (response.ok && payload?.ok === true) {
+          if (payload.version !== 76) throw new Error('CLIENT_VERSION_MISMATCH');
           transportBase = normalizeBase(base);
           runtime = { ...payload, apiBase: normalizeBase(payload.apiBase || base) };
           return runtime;
         }
-      } catch (_) {
+      } catch (error) {
+        if (error?.message === 'CLIENT_VERSION_MISMATCH') throw error;
       } finally {
         clearTimeout(timer);
       }
@@ -59,6 +68,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
 
   function friendly(error) {
     const code = String(error?.code || error?.message || error || '');
+    if (code === 'CLIENT_VERSION_MISMATCH') return 'Mağaza ve sunucu sürümleri eşleşmiyor. Güncel paketin birlikte yayınlandığını kontrol edin.';
     if (/invalid-credential|wrong-password|user-not-found/i.test(code)) return 'Hesap şifresi doğrulanamadı.';
     if (/too-many-requests/i.test(code)) return 'Çok fazla deneme yapıldı. Lütfen kısa bir süre bekleyip yeniden deneyin.';
     if (/network|failed to fetch|load failed/i.test(code)) return 'Güvenli giriş hizmetine ulaşılamadı. Bağlantınızı kontrol edin.';
@@ -151,7 +161,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       auth.useDeviceLanguage();
       await waitForAuthState(auth, (current) => { user = current; }, () => {
         if (!authStateUnsubscribe) {
-          authStateUnsubscribe = sdk.onAuthStateChanged(auth, (current) => { user = current || null; }, () => { user = null; });
+          authStateUnsubscribe = sdk.onAuthStateChanged(auth, (current) => { user = current || null; if (actionPassword && (actionPassword.uid !== user?.uid || actionPassword.email !== String(user?.email || '').trim().toLowerCase())) clearActionPassword(); }, () => { user = null; clearActionPassword(); });
         }
       });
       const restored = await restoreFirstPartySession().catch(() => null);
@@ -176,6 +186,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   }
 
   async function reauthenticate(password = '') {
+    clearActionPassword();
     await init();
     let current = auth?.currentUser || user;
     const expected = activeSession();
@@ -210,6 +221,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       }
       await user.getIdToken(true);
       serverSession = { uid: verifiedUid, email: verifiedEmail };
+      actionPassword = { uid: verifiedUid, email: verifiedEmail, value, expiresAt: Date.now() + 60_000 };
       return { ...serverSession, reauthenticatedAt: Date.now() };
     } catch (error) {
       const output = new Error(friendly(error));
@@ -246,6 +258,8 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   return {
     init,
     reauthenticate,
+    consumeActionPassword,
+    clearActionPassword,
     token,
     appCheckToken,
     apiUrl,

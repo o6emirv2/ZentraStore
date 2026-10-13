@@ -8,6 +8,7 @@ const root = path.join(__dirname, '..');
 const source = (name) => fs.readFileSync(path.join(root, name), 'utf8');
 function functionFrom(file, start, end, context) {
   const text = source(file);
+  if (!context.window) context.window = { ZENTRA_ADMIN_AUTH: { clearActionPassword() {} } };
   return vm.runInNewContext(text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start))) + '\n' + start.match(/function (\w+)/)[1] + ';', context);
 }
 function couponsState() {
@@ -113,4 +114,26 @@ test('stock import locks the form before reauthentication and releases it when c
   assert.equal(state.inventoryImportBusy, true);
   await run({ preventDefault() {} }); assert.equal(authCalls, 1);
   release(false); await first; assert.equal(state.inventoryImportBusy, false);
+});
+
+test('catalog refresh reports fresh, cached and failed reads without inventing success', async () => {
+  for (const outcome of ['fresh', 'cached', 'failed']) {
+    const known = { products: [{ id: 'known-product' }] };
+    const state = { catalog: known, selectedProduct: null, cart: new Map([['known-line', 1]]) };
+    const notices = [];
+    const load = functionFrom('public/js/store/storefront.js', 'async function loadCatalog(', 'export async function bootStorefront()', {
+      state, $: () => null, beginRegion: () => () => {}, storeApi() {},
+      loadStoreCatalog: async () => {
+        if (outcome === 'failed') throw new Error('connection lost');
+        return { products: [], stale: outcome === 'cached' };
+      },
+      renderCatalog() {}, renderCart() {}, renderAccountHeader() {},
+      showNotice: (...args) => notices.push(args), friendlyStoreError: (error) => error.message
+    });
+    assert.equal(await load(true), outcome === 'fresh');
+    assert.equal(state.cart.get('known-line'), 1);
+    if (outcome === 'failed') { assert.equal(state.catalog, known); assert.equal(notices[0][0], 'error'); }
+    if (outcome === 'cached') assert.equal(notices[0][0], 'warning');
+    if (outcome === 'fresh') assert.equal(notices.length, 0);
+  }
 });

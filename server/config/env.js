@@ -246,9 +246,11 @@ function configurationReport() {
     (env.firebase.appCheckMode === 'enforce' ? missing : warnings).push('PUBLIC_FIREBASE_APP_CHECK_SITE_KEY');
   }
   if (env.security.adminTotp.mode === 'required' && !env.security.adminTotp.configured) missing.push('ADMIN_TOTP_SECRET_BASE32');
-  if (env.firebase.appCheckMode !== 'enforce') warnings.push('APP_CHECK_NOT_ENFORCED');
-  if (env.security.rateLimitStore !== 'firestore') warnings.push('RATE_LIMIT_NOT_DISTRIBUTED');
-  if (env.security.adminTotp.mode !== 'required') warnings.push('ADMIN_TOTP_NOT_REQUIRED');
+  const securityIssues = env.nodeEnv === 'production' ? missing : warnings;
+  if (env.firebase.appCheckMode !== 'enforce') securityIssues.push('APP_CHECK_NOT_ENFORCED');
+  if (env.security.rateLimitStore !== 'firestore') securityIssues.push('RATE_LIMIT_NOT_DISTRIBUTED');
+  if (env.security.adminTotp.mode !== 'required') securityIssues.push('ADMIN_TOTP_NOT_REQUIRED');
+  if (!env.security.strictCsp) securityIssues.push('CSP_NOT_ENFORCED');
   return {
     ready: missing.length === 0,
     missing,

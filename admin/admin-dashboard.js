@@ -1,12 +1,12 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v75';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v75';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v75';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v75';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v75';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v75';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v75';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v75';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v75';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v76';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v76';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v76';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v76';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v76';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v76';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v76';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v76';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v76';
 
 installInteractionGuard();
 
@@ -42,6 +42,7 @@ function hasPermission(permission = '') {
 }
 
 function panelAllowed(name = '') {
+  if (name === 'promocodes') return !!state.adminPolicy;
   const permission = PANEL_PERMISSIONS[name];
   if (!permission) return false;
   if (name === 'staff' && state.adminPolicy?.systemOwner !== true) return false;
@@ -647,7 +648,7 @@ function renderInventoryMode({ resetAttempt = true } = {}) {
   $('#inventoryKeys').placeholder = account ? 'oyuncu01 | GuvenliSifre01\noyuncu02 | GuvenliSifre02' : 'ABCD-EFGH-IJKL\nMNOP-QRST-UVWX';
   $('#inventoryFormatHint').innerHTML = account
     ? '<i class="fa-solid fa-shield-halved"></i> Kullanıcı adı ve şifre birlikte şifrelenir; liste ve stok ekranında yalnızca maskeli hesap görünür.'
-    : '<i class="fa-solid fa-shield-halved"></i> Key’ler düz metin saklanmaz; ekranda yalnızca maskeli biçimde görünür.';
+    : '<i class="fa-solid fa-shield-halved"></i> Key’ler şifreli saklanır; biçim, tekrar ve teslimat bütünlüğü kontrol edilir. Sağlayıcı geçerliliği ayrıca doğrulanmış değildir.';
   $('#inventoryImportButton span').textContent = account ? 'Parolayla Hesapları Şifrele ve Ekle' : 'Parolayla Keyleri Şifrele ve Ekle';
   const product = selectedInventoryProduct();
   const sharedPool = !!product?.inventoryPoolId;
@@ -776,9 +777,10 @@ async function importInventory(event) {
     const noun = parsed.inventoryType === 'account' ? 'random hesap' : 'key';
     const reentry = Number(payload.result.duplicateReentries || 0);
     const replaced = Number(payload.result.replacedActiveDuplicates || 0);
-    const detail = reentry
+    let detail = reentry
       ? `${payload.result.imported} ${noun} onaylı olarak yeniden eklendi. ${replaced ? `${replaced} eski aktif kopya güvenli biçimde satıştan kaldırıldı. ` : ''}Kullanılabilir stok: ${payload.result.available}.`
       : `${payload.result.imported} benzersiz ${noun} şifrelenerek kaydedildi. Kullanılabilir stok: ${payload.result.available}.`;
+    if (payload.result.availableVerified === false) detail = `${payload.result.imported} ${noun} şifrelenerek kaydedildi. Güncel stok adedi doğrulanamadı; listeyi yenileyin.`;
     toast('success', payload.result.idempotentReplay ? 'Stok kaydı daha önce tamamlanmış' : reentry ? 'Onaylanan stok güvenle eklendi' : 'Stok güvenli kasaya eklendi', detail);
     state.inventoryImportAttempt = null;
     state.loaded.delete('overview');
@@ -790,6 +792,7 @@ async function importInventory(event) {
     toast('error', 'Stok kaydını tamamlayamadık', `${error.message}${retry}`);
   } finally {
     state.inventoryImportBusy = false;
+    window.ZENTRA_ADMIN_AUTH?.clearActionPassword?.();
     setActionBusy(button, false);
     renderInventoryReadiness();
     renderInventoryParsePreview();
@@ -1922,10 +1925,11 @@ function bindAction(element, type, handler, label = 'İşlem yapılıyor…') {
   });
 }
 
-const promoCodeManager = createPromoCodeManager({ adminFetch, requestAdminReauth, toast, requirePermission, escapeHtml, formatPrice, parseMoneyInput, renderLiveStatus, loadingMarkup, emptyMarkup, failureMarkup, rememberForms, hasUnsavedForms, confirmDiscard });
+const promoCodeManager = createPromoCodeManager({ adminFetch, requestAdminReauth, toast, hasPermission, requirePermission, escapeHtml, formatPrice, parseMoneyInput, renderLiveStatus, loadingMarkup, emptyMarkup, failureMarkup, rememberForms, hasUnsavedForms, confirmDiscard });
 
 function bind() {
   promoCodeManager.bind();
+  $('[data-open-promocodes]')?.addEventListener('click', () => { void switchPanel('promocodes'); });
   let redirecting = false;
   window.addEventListener('zentra:admin-session-invalid', () => {
     if (redirecting) return;

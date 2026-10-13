@@ -2,11 +2,13 @@
 
 const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
-const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, deliveryLimiter, RATE_LIMIT_POLICY } = require('../core/security');
+const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, adminActionLimiter, deliveryLimiter, RATE_LIMIT_POLICY } = require('../core/security');
 const { adminAccessCookiePolicy } = require('../core/adminAccessService');
 const adminAuthRouter = require('./admin-auth.routes');
 const { requireAdminReauth, writeSupplementalAdminAudit } = require('../core/adminReauthService');
 const { redactUserFinance } = require('../core/adminOverviewPolicy');
+const { createAdminAction, requireAdminAction } = require('../core/adminActionService');
+const { connectionReadiness } = require('../core/runtimeHealth');
 const {
   publicCatalog,
   readAccount,
@@ -67,12 +69,18 @@ const { redeemBalanceCode, saveBalanceCode, listBalanceCodes } = require('../cor
 const router = createRouter();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
-const sensitiveAdminChain = (permission) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth];
+const sensitiveAdminChain = (permission, { inspection = false } = {}) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth, ...(inspection ? [] : [requireAdminAction])];
 
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Pragma', 'no-cache');
 }
+
+router.post('/admin/action-proof', ...adminChain, requireAdminReauth, adminActionLimiter, asyncRoute(async (req, res) => {
+  const proof = await createAdminAction(req, req.body);
+  noStore(res);
+  res.json({ ok: true, proof });
+}));
 
 function requireOwner(req, res, next) {
   const uid = String(req.user?.uid || '').trim();
@@ -82,7 +90,7 @@ function requireOwner(req, res, next) {
   return res.status(403).json({ ok: false, error: 'ADMIN_OWNER_REQUIRED' });
 }
 
-function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inventory = {}) {
+function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inventory = {}, connections = {}) {
   const gateChecks = new Map((Array.isArray(gateSecurity.checks) ? gateSecurity.checks : []).map((check) => [check.key, check.ok === true]));
   const cookie = adminAccessCookiePolicy();
   const strictRateLimitReady = Number(RATE_LIMIT_POLICY?.strict?.windowMs || 0) > 0 && Number(RATE_LIMIT_POLICY?.strict?.max || 0) > 0;
@@ -107,7 +115,9 @@ function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inven
     ['key-vault', 'Şifreli stok kasası', configuration.keyVaultReady === true],
     ['encryption-key-id', 'Aktif kasa anahtarı', !!String(configuration.keyVaultActiveKeyId || '').trim()],
     ['inventory', 'Otomatik teslimat', inventory.ready === true],
-    ['render', 'Canlı mağaza ayarları', configuration.ready === true]
+    ['render', 'Canlı mağaza ayarları', configuration.ready === true],
+    ['storage-connection', 'Veritabanı erişim denetimi', connections.storageReady === true],
+    ['identity-connection', 'Kimlik sağlayıcısı erişim denetimi', connections.identityReady === true]
   ].map(([key, label, ok]) => ({ key, label, ok, weight: 1, earned: ok ? 1 : 0 }));
   const readyCount = checks.filter((check) => check.ok).length;
   const score = Math.round((readyCount / checks.length) * 100);
@@ -393,7 +403,7 @@ router.get('/admin/store/inventory-readiness', ...adminChain, requireStorePermis
   res.json({ ok: true, readiness: inventoryReadiness() });
 }));
 
-router.post('/admin/store/inventory/import-check', ...sensitiveAdminChain('store.inventory.write'), asyncRoute(async (req, res) => {
+router.post('/admin/store/inventory/import-check', ...sensitiveAdminChain('store.inventory.write', { inspection: true }), asyncRoute(async (req, res) => {
   const result = await inspectInventoryImport({
     productId: req.body?.productId,
     planKey: req.body?.planKey,
@@ -556,7 +566,8 @@ router.get('/admin/store/security', ...adminChain, requireStorePermission('store
   const configuration = env.configurationReport();
   const gateSecurity = adminAuthRouter.securityPosture();
   const inventory = inventoryReadiness();
-  const security = operationalSecurityPosture(configuration, gateSecurity, inventory);
+  const connections = await connectionReadiness();
+  const security = operationalSecurityPosture(configuration, gateSecurity, inventory, connections);
   noStore(res);
   res.json({
     ok: true,
@@ -567,6 +578,7 @@ router.get('/admin/store/security', ...adminChain, requireStorePermission('store
       appCheckConfigured: configuration.appCheckConfigured === true,
       keyVaultReady: configuration.keyVaultReady === true,
       configurationReady: configuration.ready === true,
+      connections,
       inventory,
       adminAccessMode: String(req.adminAccess?.mode || 'unknown'),
       adminAccessExpiresAt: Math.max(0, Number(req.adminAccess?.expiresAt || 0) || 0),

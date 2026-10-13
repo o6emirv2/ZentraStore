@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v75';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v75';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v75';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v75';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v75';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v75';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v76';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v76';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v76';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v76';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v76';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v76';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v75';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v75';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v75';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v75';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v75';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v75';
+} from './auth.js?v=zentra-ui-v76';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v76';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v76';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v76';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v76';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v76';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,21 +35,21 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v75';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v75';
+} from './customer-app.js?v=zentra-ui-v76';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v76';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v75';
+} from './customer-renderers.js?v=zentra-ui-v76';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v75';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v75';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v75';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v76';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v76';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v76';
 
-const STORE_VERSION = 'storefront-v75';
+const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
 // Read historical keys once so existing customers keep their favorites during brand migration.
 const LEGACY_FAVORITES_STORAGE_KEYS = Object.freeze(['zentra-store-favorites-v66', 'shelby-store-favorites-v66', 'shelby-store-favorites-v65', 'shelby-store-favorites-v64']);
@@ -1101,7 +1101,7 @@ async function submitOrder(lines, paymentMethod, options = {}) {
   const button = options.button || $('#checkoutButton');
   const telegramWindow = paymentMethod === 'telegram' ? reserveTelegramWindow() : null;
   const body = {
-    items: lines.map((line) => ({ productId: line.product.id, planKey: line.plan.key, quantity: line.quantity })),
+    items: lines.map((line) => ({ productId: line.product.id, planKey: line.plan.key, quantity: line.quantity, expectedUnitPriceKurus: line.plan.priceKurus })),
     paymentMethod,
     idempotencyKey: options.idempotencyKey || checkoutIdempotencyKey(paymentMethod, lines),
     ...((options.clearCart || options.applyPromotion) && state.promotion?.code ? { promotionCode: state.promotion.code } : {})
@@ -1180,7 +1180,13 @@ async function submitOrder(lines, paymentMethod, options = {}) {
     } else {
       purchaseTracker.finish(attempt);
       resetCheckoutAttempt();
-      showNotice('error', 'Sipariş tamamlanamadı', friendlyStoreError(error));
+      if (['STORE_PRICE_CHANGED', 'STORE_CATALOG_CHANGED'].includes(error.code)) {
+        const refreshed = await loadCatalog(true).catch(() => false);
+        renderCart();
+        showNotice('warning', refreshed ? 'Satın alma bilgileri güncellendi' : 'Güncel bilgiler yüklenemedi', refreshed
+          ? 'İşlem uygulanmadı. Güncel fiyat ve paketleri kontrol edip siparişinizi yeniden onaylayın.'
+          : 'İşlem uygulanmadı. Mağazayı yenileyip güncel fiyatı görmeden yeni sipariş başlatmayın.');
+      } else showNotice('error', 'Sipariş tamamlanamadı', friendlyStoreError(error));
     }
   } finally {
     state.orderBusy = false;
@@ -2773,12 +2779,14 @@ async function loadCatalog(force = false) {
       }
     }
     if (state.catalog.stale) showNotice('warning', 'Güncel stok doğrulanamadı', 'Son alınan katalog gösteriliyor. Otomatik satın alma, bağlantı yenilenene kadar kapalı.');
+    return state.catalog.stale !== true;
   } catch (error) {
     if ($('#catalogLoading')) {
       $('#catalogLoading').hidden = false;
       $('#catalogLoading').innerHTML = `${iconMarkup('fa-triangle-exclamation')}<strong>Ürünler şu anda yüklenemedi</strong><span>${escapeHtml(friendlyStoreError(error))}</span><button class="button button--glass" type="button" data-catalog-retry>${iconMarkup('fa-rotate')} Yeniden Dene</button>`;
     }
     showNotice('error', 'Ürünleri şu anda gösteremiyoruz', friendlyStoreError(error));
+    return false;
   } finally { finishLoading(); loading?.classList.remove('is-initial-loading'); }
 }
 
