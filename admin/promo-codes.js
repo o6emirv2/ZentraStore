@@ -1,4 +1,4 @@
-import { runAction, setFieldError, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v76';
+import { runAction, setFieldError, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v75';
 
 export function createPromoCodeManager(ui) {
   const $ = (id) => document.getElementById(id);
@@ -16,13 +16,6 @@ export function createPromoCodeManager(ui) {
   }
 
   async function load() {
-    const allowed = ui.hasPermission('store.wallet.write');
-    form.hidden = !allowed;
-    if (!allowed) {
-      $('promoCodeList').innerHTML = ui.emptyMarkup('Mali yetki gerekli', 'Promosyon kodu oluşturma ve kayıtları görme yetkisi bu role atanmadı.', 'fa-lock');
-      ui.renderLiveStatus('#promoCodeMetrics', { icon: 'fa-lock', title: 'Promosyon kodları', detail: 'Bu bölüm doğrudan bakiye ekler. İşlemler mali yetkiyle korunur.', tone: 'warn', meta: 'YETKİ GEREKLİ' });
-      return;
-    }
     $('promoCodeList').innerHTML = ui.loadingMarkup('Promosyon kodları yükleniyor');
     try {
       const response = await ui.adminFetch('/api/admin/store/balance-codes');

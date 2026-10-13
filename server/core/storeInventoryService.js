@@ -8,13 +8,13 @@ const { getEffectiveCatalog } = require('./storeCatalogService');
 const { STORE_CATALOG } = require('./storeCatalog');
 const keyVault = require('./storeKeyVault');
 const { recordMutationAudit } = require('./storeMutationAudit');
-const { enqueueRestockJob, wakeRestockWorker } = require('./storeRestockJobs');
 
 const INVENTORY_STATUSES = Object.freeze(['available', 'reserved', 'released', 'delivered', 'revoked', 'expired']);
 const INVENTORY_TYPES = Object.freeze(['license', 'account']);
 const MAX_IMPORT_KEYS = 200;
 const STOCK_CACHE_TTL_MS = 60_000;
 const RESTOCK_SUBSCRIPTION_TTL_MS = 30 * 86_400_000;
+const RESTOCK_NOTIFICATION_TTL_MS = 7 * 86_400_000;
 const INVENTORY_IMPORT_RECEIPT_TTL_MS = 30 * 86_400_000;
 const STORE_CATALOG_PRODUCTS = STORE_CATALOG.products || [];
 const INVENTORY_PATH_PATTERN = /^storeInventory\/([a-z0-9][a-z0-9-]{1,79}__[a-z0-9][a-z0-9-]{0,39})\/items\/([A-Za-z0-9_-]{8,160})$/;
@@ -108,7 +108,6 @@ function inventoryReadiness() {
     publicFirebaseReady: report.firebasePublicReady === true,
     maxBatchSize: MAX_IMPORT_KEYS,
     supportedTypes: [...INVENTORY_TYPES],
-    verification: { format: true, uniqueness: true, encryptedIntegrity: true, providerValidity: false },
     blockers: [...new Set(blockers)],
     checkedAt: Date.now()
   };
@@ -145,12 +144,9 @@ function importIdempotencyKey(value = '') {
 
 function splitAccountCredential(value = '') {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const username = value.username ?? value.login;
-    if (typeof username !== 'string' || typeof value.password !== 'string') throw serviceError('STORE_INVENTORY_ACCOUNT_FORMAT_INVALID', 400);
-    return { username, password: value.password };
+    return { username: String(value.username || value.login || ''), password: String(value.password || '') };
   }
-  if (typeof value !== 'string') throw serviceError('STORE_INVENTORY_ACCOUNT_FORMAT_INVALID', 400);
-  const source = value.trim();
+  const source = String(value ?? '').normalize('NFKC').trim();
   const separators = ['\t', '|', ';', ',', ':'];
   const positions = separators
     .map((separator) => ({ separator, index: source.indexOf(separator) }))
@@ -160,14 +156,14 @@ function splitAccountCredential(value = '') {
   const { separator, index } = positions[0];
   return {
     username: source.slice(0, index),
-    password: source.slice(index + separator.length).trim()
+    password: source.slice(index + separator.length)
   };
 }
 
 function normalizeAccountCredential(value = '') {
   const source = splitAccountCredential(value);
-  const username = source.username.trim();
-  const password = source.password;
+  const username = String(source.username || '').normalize('NFKC').trim();
+  const password = String(source.password || '').normalize('NFKC').trim();
   if (username.length < 3 || username.length > 160 || password.length < 6 || password.length > 256
     || /[\u0000-\u001f\u007f]/.test(username) || /[\u0000-\u001f\u007f]/.test(password)) {
     throw serviceError('STORE_INVENTORY_ACCOUNT_FORMAT_INVALID', 400);
@@ -393,8 +389,52 @@ async function inspectInventoryImport({ productId = '', planKey = '', keys = [] 
   };
 }
 
+async function queueRestockNotifications({ sourceSkus = [], product, plan }) {
+  const { db, admin } = firebaseStore();
+  const skus = [...new Set((Array.isArray(sourceSkus) ? sourceSkus : []).map((value) => safeText(value, 130)).filter(Boolean))];
+  if (!skus.length) return 0;
+  const docs = new Map();
+  for (const sku of skus) {
+    let cursor = null;
+    for (let page = 0; page < 50; page += 1) {
+      let query = db.collection('storeRestockSubscriptions').where('sku', '==', sku)
+        .orderBy(admin.firestore.FieldPath.documentId()).limit(200);
+      if (cursor) query = query.startAfter(cursor);
+      const snapshot = await query.get();
+      snapshot.docs.forEach((doc) => {
+        if (doc.data()?.active === true) docs.set(doc.ref.path, doc);
+      });
+      if (snapshot.size < 200) break;
+      cursor = snapshot.docs[snapshot.docs.length - 1];
+    }
+  }
+  if (!docs.size) return 0;
+  const now = Date.now();
+  const entries = [...docs.values()];
+  let notified = 0;
+  for (let offset = 0; offset < entries.length; offset += 200) {
+    const batch = db.batch();
+    for (const doc of entries.slice(offset, offset + 200)) {
+      const subscription = doc.data() || {};
+      const uid = safeText(subscription.uid, 160);
+      if (!uid) continue;
+      const notificationRef = db.collection('storeUserNotifications').doc(uid).collection('items').doc();
+      batch.create(notificationRef, {
+        id: notificationRef.id, type: 'restock', title: 'Stok yeniden açıldı',
+        message: `${product.name} · ${plan.label} paketi yeniden stokta.`,
+        productId: product.id, planKey: plan.key, read: false, createdAt: now,
+        expiresAt: new Date(now + RESTOCK_NOTIFICATION_TTL_MS)
+      });
+      batch.delete(doc.ref);
+      notified += 1;
+    }
+    await batch.commit();
+  }
+  return notified;
+}
+
 async function importInventory({ productId = '', planKey = '', keys = [], actor = {}, idempotencyKey = '' } = {}) {
-  const { product, plan, sku, poolId, shared, sourceSkus } = await resolveSku(productId, planKey);
+  const { catalog, product, plan, sku, poolId, shared, sourceSkus } = await resolveSku(productId, planKey);
   assertAutomaticInventoryProduct(product);
   const actorUid = safeText(actor.uid, 160);
   if (!actorUid) throw serviceError('ADMIN_REQUIRED', 403);
@@ -427,7 +467,6 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
   let idempotentReplay = false;
   let duplicateReentries = 0;
   let replacedActiveDuplicates = 0;
-  let notificationsPending = false;
   const now = Date.now();
 
   await db.runTransaction(async (tx) => {
@@ -484,7 +523,7 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
         duplicateReentry: false,
         duplicateReentryReason: '',
         createdAt: now,
-        createdBy: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase() },
+        createdBy: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase() },
         statusHistory: [{ status: 'available', at: now, actorUid }],
         updatedAt: now
       });
@@ -527,14 +566,12 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
       createdAt: now,
       expiresAt: new Date(now + INVENTORY_IMPORT_RECEIPT_TTL_MS)
     });
-    notificationsPending = previousAvailable === 0 && availableAfter > 0;
-    if (notificationsPending) enqueueRestockJob(tx, db, { id: receiptId, sourceSkus, product, plan, now });
     const eventRef = db.collection('storeInventoryEvents').doc();
     tx.create(eventRef, {
       id: eventRef.id, type: 'import', sku, storageSku: sku, inventoryPoolId: poolId,
       productId: product.id, planKey: plan.key, quantity: prepared.length, duplicateReentries, replacedActiveDuplicates,
       reason: '',
-      actor: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase(), source: 'admin' }, createdAt: now
+      actor: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase(), source: 'admin' }, createdAt: now
     });
     tx.create(db.collection('audit').doc(`store_inventory_import_${receiptId}`), {
       uid: actorUid,
@@ -546,32 +583,31 @@ async function importInventory({ productId = '', planKey = '', keys = [], actor 
       duplicateReentries,
       replacedActiveDuplicates,
       reason: '',
-      actor: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase(), source: 'admin' },
+      actor: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase(), source: 'admin' },
       transactionId: receiptId,
       at: now
     });
   });
 
   invalidateStockCache();
-  let unifiedAvailable = availableAfter, availableVerified = false;
-  try {
-    const refs = sourceSkus.map((key) => db.collection('storeInventorySummary').doc(key));
-    const rows = typeof db.getAll === 'function' ? await db.getAll(...refs) : await Promise.all(refs.map((ref) => ref.get()));
-    unifiedAvailable = rows.reduce((total, snap) => {
-      const amount = snap.exists ? snap.data()?.availableCount : 0;
-      if (!Number.isSafeInteger(amount) || amount < 0) throw serviceError('STORE_STOCK_CONFLICT', 409);
-      return total + amount;
-    }, 0);
-    availableVerified = true;
-  } catch (error) { logError(error, { code: 'STOCK_IMPORT_SUMMARY_FAILED', event: 'inventory.import.summary' }); }
-  if (notificationsPending) wakeRestockWorker();
-  const notificationsQueued = 0;
+  const unifiedSummary = await summaryMapForCatalog(catalog, { fresh: true }).catch((error) => {
+    logError(error, { code: 'STOCK_IMPORT_SUMMARY_FAILED', event: 'inventory.import.summary' });
+    return new Map();
+  });
+  const unifiedAvailable = Math.max(0, Number(unifiedSummary.get(sku)?.available ?? availableAfter) || 0);
+  let notificationsQueued = 0;
+  if (!idempotentReplay && duplicateReentries === 0 && unifiedAvailable > 0 && previousAvailable === 0) {
+    notificationsQueued = await queueRestockNotifications({ sourceSkus, product, plan }).catch((error) => {
+      logError(error, { code: 'RESTOCK_NOTIFICATION_FAILED', event: 'restock.notify' });
+      return 0;
+    });
+  }
   return {
     sku, inventoryPoolId: poolId, sharedPool: shared,
     productId: product.id, planKey: plan.key, inventoryType: type,
     imported: prepared.length, available: unifiedAvailable,
     duplicateReentries, replacedActiveDuplicates,
-    committed: true, availableVerified, notificationsPending, notificationsQueued, idempotentReplay
+    notificationsQueued, idempotentReplay
   };
 }
 
@@ -642,23 +678,6 @@ async function allocateInventoryInTransaction({ tx, db, admin, items = [], order
   for (const sourceSku of summaryDeltas.keys()) {
     const snapshot = await tx.get(db.collection('storeInventorySummary').doc(sourceSku));
     summaryStates.set(sourceSku, snapshot.exists ? (snapshot.data() || {}) : {});
-  }
-
-  // Validate every encrypted allocation before the first write or wallet debit.
-  for (const allocation of allocations) {
-    const data = allocation.doc.data() || {};
-    if (data.status !== 'available' || data.sku !== allocation.sourceSku
-      || data.planKey !== allocation.item.planKey || !/^[a-f0-9]{64}$/.test(String(data.fingerprint || ''))
-      || (data.inventoryType !== undefined && !INVENTORY_TYPES.includes(data.inventoryType))
-      || inventoryType(data.inventoryType || allocation.item.inventoryType) !== inventoryType(allocation.item.inventoryType)) throw serviceError('STORE_STOCK_CONFLICT', 409);
-    const type = inventoryType(data.inventoryType || allocation.item.inventoryType);
-    const decoded = decodeInventorySecret({ ...data, inventoryType: type }, { recordType: 'inventory', recordId: allocation.doc.id, sku: allocation.sourceSku });
-    const encoded = type === 'account' ? encodeInventorySecret(decoded.account, type) : decoded.key;
-    if (keyVault.fingerprintSecret(encoded) !== data.fingerprint) throw serviceError('STORE_STOCK_CONFLICT', 409);
-  }
-  for (const [sourceSku, quantity] of summaryDeltas) {
-    const available = summaryStates.get(sourceSku)?.availableCount;
-    if (!Number.isSafeInteger(available) || available < quantity) throw serviceError('STORE_STOCK_CONFLICT', 409);
   }
 
   for (const allocation of allocations) {
@@ -1011,7 +1030,7 @@ async function revealInventorySecret({ productId = '', planKey = '', itemId = ''
     orderId: safeText(item.orderId, 160),
     action: 'inventory-secret-reveal',
     reason: safeReason,
-    actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() },
+    actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() },
     at: now
   });
   const opened = decodeInventorySecret(item, {
@@ -1053,7 +1072,7 @@ async function revokeInventory({ productId = '', planKey = '', itemId = '', stor
       status: 'revoked',
       revokeReason: safeReason,
       revokedAt: now,
-      revokedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() },
+      revokedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() },
       statusHistory: [...(Array.isArray(item.statusHistory) ? item.statusHistory.slice(-18) : []), { status: 'revoked', at: now, reason: safeReason }],
       updatedAt: now
     });
@@ -1070,7 +1089,7 @@ async function revokeInventory({ productId = '', planKey = '', itemId = '', stor
       id: eventRef.id, type: 'revoked', sku, storageSku: located.storageSku,
       inventoryPoolId: poolId, itemId: safeItemId, productId: product.id, planKey: plan.key,
       quantity: -1, reason: safeReason,
-      actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase(), source: 'admin' }, createdAt: now
+      actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase(), source: 'admin' }, createdAt: now
     });
     recordMutationAudit(tx, db, 'store.inventory.revoke', actor, {
       productId: product.id,
@@ -1168,7 +1187,7 @@ async function migrateSharedInventoryPool({ productId = '', planKey = '', actor 
             sourceProductId: safeText(entry.row.sourceProductId || entry.row.productId, 80) || product.id,
             migratedFromPath: entry.sourceSnap.ref.path,
             migratedAt: now,
-            migratedBy: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase() },
+            migratedBy: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase() },
             statusHistory: [...history, { status: 'available', at: now, event: 'shared-pool-migration', fromSku: legacySku }],
             updatedAt: now
           });
@@ -1194,7 +1213,7 @@ async function migrateSharedInventoryPool({ productId = '', planKey = '', actor 
         tx.create(eventRef, {
           id: eventRef.id, type: 'shared-pool-migration', sku, storageSku: sku, fromSku: legacySku,
           inventoryPoolId: poolId, productId: product.id, planKey: plan.key, quantity: movable.length,
-          actor: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase(), source: 'admin' }, createdAt: now
+          actor: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase(), source: 'admin' }, createdAt: now
         });
         recordMutationAudit(tx, db, 'store.inventory.shared-pool-migration', actor, {
           productId: product.id,
@@ -1266,7 +1285,7 @@ async function rotateInventoryEncryption({ productId = '', planKey = '', actor =
       secret: entry.encrypted,
       encryptionKeyId: activeId,
       encryptionRotatedAt: now,
-      encryptionRotatedBy: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase() },
+      encryptionRotatedBy: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase() },
       updatedAt: now
     }));
     const lastId = snapshot.docs[snapshot.docs.length - 1]?.id || '';
@@ -1283,7 +1302,7 @@ async function rotateInventoryEncryption({ productId = '', planKey = '', actor =
       batch.create(eventRef, {
         id: eventRef.id, type: 'encryption-rotation', sku, storageSku, inventoryPoolId: poolId,
         productId: product.id, planKey: plan.key, quantity: prepared.length, activeKeyId: activeId,
-        actor: { uid: actorUid, email: safeText(actor.email, 254).toLowerCase(), source: 'admin' }, createdAt: now
+        actor: { uid: actorUid, email: safeText(actor.email, 160).toLowerCase(), source: 'admin' }, createdAt: now
       });
     }
     recordMutationAudit(batch, db, 'store.inventory.encryption-rotation', actor, {

@@ -25,8 +25,8 @@ export function requestController(timeoutMs, externalSignal) {
 // A missing/unusable response does not prove that a write was rolled back.
 // Keep the SAME idempotency key when retrying an uncertain financial mutation.
 export function isUncertainMutationError(error) {
-  return error?.mutationNotSent !== true && (['NETWORK_ERROR', 'REQUEST_TIMEOUT', 'RESPONSE_INVALID'].includes(String(error?.code || ''))
-    || Number(error?.status) >= 500 || /^HTTP_5\d\d$/.test(String(error?.code || '')));
+  return ['NETWORK_ERROR', 'REQUEST_TIMEOUT', 'RESPONSE_INVALID'].includes(String(error?.code || ''))
+    || Number(error?.status) >= 500 || /^HTTP_5\d\d$/.test(String(error?.code || ''));
 }
 
 export async function readApiJson(response) {

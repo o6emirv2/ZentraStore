@@ -1,7 +1,6 @@
 'use strict';
 
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { FirestoreRateLimitStore } = require('./distributedRateLimitStore');
@@ -16,10 +15,7 @@ const RATE_LIMIT_POLICY = Object.freeze({
   public: Object.freeze({ windowMs: 60_000, max: 600 }),
   api: Object.freeze({ windowMs: 60_000, max: 180 }),
   strict: Object.freeze({ windowMs: 10 * 60_000, max: 40 }),
-  adminAction: Object.freeze({ windowMs: 10 * 60_000, max: 60 }),
   authLogin: Object.freeze({ windowMs: 15 * 60_000, max: 12 }),
-  authAccount: Object.freeze({ windowMs: 15 * 60_000, max: 30 }),
-  resetAccount: Object.freeze({ windowMs: 30 * 60_000, max: 3 }),
   passwordReset: Object.freeze({ windowMs: 30 * 60_000, max: 6 }),
   delivery: Object.freeze({ windowMs: 10 * 60_000, max: 18 }),
   adminAuth: Object.freeze({ windowMs: 15 * 60_000, max: 14 }),
@@ -39,14 +35,7 @@ function protectedLimiter(name, options = {}) {
 }
 
 const strictLimiter = protectedLimiter('strict');
-const adminActionLimiter = protectedLimiter('adminAction');
 const authLoginLimiter = protectedLimiter('authLogin', { skipSuccessfulRequests: true });
-function loginAccountKey(req) {
-  const identifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim().normalize('NFC').toLocaleLowerCase('tr-TR') : '[invalid]';
-  return crypto.createHash('sha256').update(`login-account\0${identifier}`).digest('hex');
-}
-const authAccountLimiter = protectedLimiter('authAccount', { keyGenerator: loginAccountKey, skipSuccessfulRequests: true });
-const resetAccountLimiter = protectedLimiter('resetAccount', { keyGenerator: loginAccountKey });
 const passwordResetLimiter = protectedLimiter('passwordReset');
 const deliveryLimiter = protectedLimiter('delivery');
 const adminAuthLimiter = protectedLimiter('adminAuth', { skipSuccessfulRequests: true });
@@ -79,26 +68,18 @@ async function appCheckGuard(req, res, next) {
 }
 
 async function resolveAuthenticatedUser(req) {
-  const validUid = (uid) => typeof uid === 'string' && uid.length > 0 && uid.length <= 128
-    && uid === uid.trim() && !/[/\\<>\u0000-\u001f\u007f]/.test(uid) && !['.', '..'].includes(uid);
   const { auth } = initFirebaseAdmin();
-  const authorization = req.headers.authorization;
-  if (authorization !== undefined) {
-    const match = typeof authorization === 'string' && authorization.length <= 16384
-      ? authorization.match(/^Bearer ([A-Za-z0-9._-]+)$/i) : null;
-    if (!auth || !match) return null;
-    const bearer = match[1];
+  const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  if (auth && bearer) {
     try {
       const decoded = await auth.verifyIdToken(bearer, true);
-      const uid = decoded.uid || decoded.sub;
-      if (!validUid(uid)) return null;
       req.authSource = 'firebase-bearer';
       req.firebaseIdToken = bearer;
-      return { ...decoded, uid };
-    } catch (_) { return null; }
+      return { ...decoded, uid: decoded.uid || decoded.sub };
+    } catch (_) {}
   }
   const session = await verifyUserSession(req, { checkRevoked: true });
-  if (!validUid(session?.uid)) return null;
+  if (!session?.uid) return null;
   if (!['GET', 'HEAD', 'OPTIONS'].includes(String(req.method || '').toUpperCase()) && !trustedOrigin(req)) return { originBlocked: true };
   req.authSource = 'secure-cookie';
   return session;
@@ -159,10 +140,7 @@ module.exports = {
   publicLimiter,
   apiLimiter,
   strictLimiter,
-  adminActionLimiter,
   authLoginLimiter,
-  authAccountLimiter,
-  resetAccountLimiter,
   passwordResetLimiter,
   deliveryLimiter,
   adminAuthLimiter,

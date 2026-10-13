@@ -1,5 +1,4 @@
 'use strict';
-const { readStoredBalance } = require('./storeMoney');
 
 const crypto = require('crypto');
 const { findUsernameProfiles } = require('./storeUsername');
@@ -71,7 +70,7 @@ function firebaseStore() {
 }
 
 function balance(profile = {}) {
-  return readStoredBalance(profile);
+  return Math.max(0, Math.trunc(Number(profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0) || 0));
 }
 
 function parseDate(value = '') {
@@ -249,7 +248,7 @@ async function updateStoreUser({ uid = '', status = '', adminNote = '', actor = 
       storeAdminNote: safeText(adminNote, 300),
       storeUpdatedAt: now,
       storeModeratedAt: now,
-      storeModeratedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+      storeModeratedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() }
     }, { merge: true });
     recordMutationAudit(batch, db, 'store.user.update', actor, { uid: safeUid, before: previousProfile.storeAccountStatus || 'active', after: safeStatus });
     await batch.commit();
@@ -282,7 +281,7 @@ async function listWalletLedger(uid = '', limit = 100, cursor = '') {
       reason: safeText(row.reason, 200),
       orderId: safeText(row.orderId, 160),
       transactionId: safeText(row.transactionId || row.requestId || doc.id, 180),
-      actor: { uid: safeText(row.actor?.uid, 160), email: safeText(row.actor?.email, 254).toLowerCase(), source: safeText(row.actor?.source, 40) },
+      actor: { uid: safeText(row.actor?.uid, 160), email: safeText(row.actor?.email, 160).toLowerCase(), source: safeText(row.actor?.source, 40) },
       createdAt: Math.max(0, Number(row.createdAt || 0) || 0)
     };
   }).sort((left, right) => right.createdAt - left.createdAt);
@@ -424,7 +423,7 @@ async function computeWalletSummary({ fresh = false } = {}) {
       balanceAfterKurus: Math.max(0, Math.trunc(Number(row.balanceAfterKurus) || 0)),
       reason: safeText(row.reason, 200),
       actorSource: safeText(row.actor?.source || '', 30),
-      actor: { uid: safeText(row.actor?.uid, 160), email: safeText(row.actor?.email, 254).toLowerCase() },
+      actor: { uid: safeText(row.actor?.uid, 160), email: safeText(row.actor?.email, 160).toLowerCase() },
       createdAt
     };
   }).sort((a, b) => b.createdAt - a.createdAt);
@@ -553,7 +552,7 @@ function normalizeAudit(doc, source) {
     action: safeText(row.action || row.type, 160),
     actor: {
       uid: safeText(row.actor?.uid || row.uid, 160),
-      email: safeText(row.actor?.email, 254).toLowerCase(),
+      email: safeText(row.actor?.email, 160).toLowerCase(),
       role: safeText(row.actor?.role, 40)
     },
     targetUid: safeText(details.targetUid || row.uid, 160),
@@ -647,7 +646,7 @@ async function upsertStaff({ uid = '', email = '', role = 'viewer', active = tru
     active: active === true,
     disabled: active !== true,
     updatedAt: now,
-    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() }
   };
   const batch = db.batch();
   batch.set(db.collection('adminUsers').doc(safeUid), row, { merge: true });

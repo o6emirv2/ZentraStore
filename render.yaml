@@ -17,13 +17,7 @@ services:
       - key: PUBLIC_FIREBASE_CONFIG
         sync: false
       - key: APP_CHECK_MODE
-        value: enforce
-      - key: PUBLIC_FIREBASE_APP_CHECK_SITE_KEY
-        sync: false
-      - key: ADMIN_TOTP_MODE
-        value: required
-      - key: RATE_LIMIT_STORE
-        value: firestore
+        value: monitor
       - key: FIREBASE_KEY
         sync: false
       - key: ADMIN_EMAILS

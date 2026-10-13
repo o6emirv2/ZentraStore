@@ -1,5 +1,4 @@
 'use strict';
-const crypto = require('node:crypto');
 
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -11,17 +10,6 @@ const { MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, produc
 
 const CACHE_TTL_MS = 60_000;
 const CATALOG_SCHEMA_VERSION = 1;
-function catalogRevision(settings = {}) {
-  const canonical = (value) => {
-    if (value instanceof Date) return value.toISOString();
-    if (Array.isArray(value)) return value.map(canonical);
-    if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
-    return value;
-  };
-  const pricing = { catalog: settings.catalog || null, maintenance: settings.maintenance === true,
-    services: settings.services || null, categoryVisibility: settings.categoryVisibility || null, support: settings.support || null };
-  return crypto.createHash('sha256').update(JSON.stringify(canonical(pricing))).digest('hex');
-}
 const PRODUCT_TAGS = Object.freeze(['new', 'popular', 'discounted']);
 const ANNOUNCEMENT_TONES = Object.freeze(['info', 'success', 'warning']);
 let cache = null;
@@ -262,8 +250,7 @@ async function readOverrides() {
   return {
     products: new Map(Object.entries(stored?.products || {})),
     customProducts: readCustomProducts(stored?.customProducts),
-    storefront: normalizeStorefront(settings),
-    revision: catalogRevision(settings)
+    storefront: normalizeStorefront(settings)
   };
 }
 
@@ -281,7 +268,6 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
         .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, 'tr'));
       const common = {
         version: STORE_CATALOG.version + 100,
-        revision: overrides.revision,
         currency: STORE_CATALOG.currency,
         telegramUsername: overrides.storefront.support?.telegramUsername || STORE_CATALOG.telegramUsername,
         storefront: overrides.storefront,
@@ -368,7 +354,7 @@ function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt 
       tags: normalizeTags(body.tags),
       plans,
       updatedAt,
-      updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+      updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() }
     }
   };
 }
@@ -426,7 +412,7 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
     action: 'store.product.bulk-update',
     productIds: prepared.map((entry) => entry.id),
     count: prepared.length,
-    actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase(), source: 'admin' },
+    actor: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase(), source: 'admin' },
     requestId: safeText(context.requestId, 180),
     at: now,
     createdAt: now
@@ -518,7 +504,7 @@ async function updateStorefrontSettings(input = {}, actor = {}) {
     transaction.set(reference, {
       ...normalized,
       updatedAt: Date.now(),
-      updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+      updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() }
     }, { merge: true });
     recordMutationAudit(transaction, db, 'store.content.update', actor, { before: normalizeStorefront(effective), after: normalized });
   });
@@ -536,7 +522,7 @@ async function updateStorefrontQuickLinks(input, actor = {}) {
     channelLinksRevision: CHANNEL_LINKS_REVISION,
     quickLinks,
     updatedAt: Date.now(),
-    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 160).toLowerCase() }
   }, { merge: true });
   recordMutationAudit(batch, db, 'store.links.update', actor, { links: quickLinks });
   await batch.commit();
@@ -555,6 +541,5 @@ module.exports = {
   updateStorefrontQuickLinks,
   invalidateCatalogCache,
   normalizeStorefront,
-  catalogRevision,
   serviceError
 };

@@ -22,8 +22,7 @@ function assertConfigured() {
 }
 
 function normalizeSecret(value = '') {
-  if (typeof value !== 'string') throw vaultError('STORE_INVENTORY_KEY_INVALID', 400);
-  const secret = value.trim();
+  const secret = String(value ?? '').normalize('NFKC').trim();
   if (secret.length < 4 || secret.length > MAX_SECRET_LENGTH || /[\u0000-\u001f\u007f]/.test(secret)) {
     throw vaultError('STORE_INVENTORY_KEY_INVALID', 400);
   }
@@ -204,8 +203,7 @@ function fingerprintSecret(value = '') {
   assertConfigured();
   return crypto.createHmac('sha256', env.storeKeys.fingerprintSecret)
     .update(`${LEGACY_CRYPTO_PREFIX}-key-fingerprint:v1\u0000`)
-    // Preserve the historical duplicate registry while retaining exact secret bytes in encryption.
-    .update(normalizeSecret(value).normalize('NFKC'))
+    .update(normalizeSecret(value))
     .digest('hex');
 }
 

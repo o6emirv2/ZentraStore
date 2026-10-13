@@ -27,7 +27,7 @@ const auth = {
 function mock(name, exports) { const filename = require.resolve(name); require.cache[filename] = { id: filename, filename, loaded: true, exports }; }
 mock('../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ db, auth }) });
 mock('../server/config/env', { firebase: { publicConfig: { apiKey: 'test-public-key' } } });
-mock('../server/core/security', Object.fromEntries(['authLoginLimiter', 'authAccountLimiter', 'resetAccountLimiter', 'passwordResetLimiter', 'strictLimiter', 'requireAuth'].map((key) => [key, (_req, _res, next) => next()])));
+mock('../server/core/security', Object.fromEntries(['authLoginLimiter', 'passwordResetLimiter', 'strictLimiter', 'requireAuth'].map((key) => [key, (_req, _res, next) => next()])));
 mock('../server/core/userSessionService', { trustedOrigin: () => true });
 mock('../server/core/storeService', { readAccount: async () => ({}) });
 const router = require('../server/routes/identity.routes');
@@ -92,11 +92,6 @@ test('wrong password, disabled identity and mismatched provider UID cannot issue
 test('email sign-in keeps identity details off public responses', async () => {
   reset(); const result = await login('actual@example.test'); assert.equal(result.status, 200);
   assert.deepEqual(Object.keys(result.body).sort(), ['customToken', 'ok']);
-});
-test('long valid email identifiers are passed to the identity provider without truncation', async () => {
-  reset(); const email = 'x'.repeat(64) + '@' + 'a'.repeat(63) + '.' + 'b'.repeat(63) + '.test';
-  accounts.get('member').email = email;
-  assert.equal((await login(email)).status, 200); assert.equal(calls[0].email, email);
 });
 test('provider throttling and outage report retryable states instead of wrong credentials', async () => {
   reset(); providerStatus = 429; assert.equal((await login('o6emirxl')).status, 429);

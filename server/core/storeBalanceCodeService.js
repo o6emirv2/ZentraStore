@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { normalizeCode, savePromotion, listPromotions } = require('./storePromotionService');
 const { invalidateCreatedAtPageCache } = require('./firestorePagination');
-const { readStoredBalance, MAX_STORE_BALANCE_KURUS: MAX_BALANCE_KURUS } = require('./storeMoney');
+const MAX_BALANCE_KURUS = 1_000_000_000_000;
 const MAX_CREDIT_KURUS = 100_000_000;
 
 function fail(code, statusCode = 409) { throw Object.assign(new Error(code), { code, statusCode }); }
@@ -43,7 +43,7 @@ async function redeemBalanceCode(uid, input = {}, { requestId = '' } = {}) {
     if (!Number.isSafeInteger(amountKurus) || amountKurus < 1 || amountKurus > MAX_CREDIT_KURUS) fail('BALANCE_CODE_CONFIGURATION_INVALID');
     const profile = user.exists ? user.data() || {} : {};
     if (profile.storeAccountStatus === 'suspended') fail('STORE_ACCOUNT_SUSPENDED', 403);
-    const balance = readStoredBalance(profile);
+    const balance = profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0;
     if (!Number.isSafeInteger(balance) || balance < 0 || balance + amountKurus > MAX_BALANCE_KURUS) fail('STORE_BALANCE_LIMIT_EXCEEDED');
     const entry = { uid: safeUid, code, amountKurus, balanceBeforeKurus: balance, balanceAfterKurus: balance + amountKurus, transactionId, requestId: String(requestId).slice(0, 180), createdAt: now };
     tx.set(userRef, { storeBalanceKurus: balance + amountKurus, storeUpdatedAt: now }, { merge: true });

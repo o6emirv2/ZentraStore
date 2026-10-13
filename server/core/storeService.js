@@ -3,10 +3,9 @@
 const { normalizeFeatures } = require('./storeProductSchema');
 const crypto = require('crypto');
 const env = require('../config/env');
-const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { STORE_CATALOG } = require('./storeCatalog');
-const { getEffectiveCatalog, catalogRevision } = require('./storeCatalogService');
+const { getEffectiveCatalog } = require('./storeCatalogService');
 const { createdAtPage, invalidateCreatedAtPageCache } = require('./firestorePagination');
 const { AVATAR_IDS, getAvatarById, publicAvatarCatalog } = require('./storeAvatars');
 const {
@@ -22,6 +21,7 @@ const {
 const MAX_CART_LINES = 20;
 const MAX_LINE_QUANTITY = 5;
 const MAX_ORDER_TOTAL_KURUS = 100_000_000;
+const MAX_STORE_BALANCE_KURUS = 1_000_000_000_000;
 const MAX_ADMIN_ADJUSTMENT_KURUS = 100_000_000;
 const ORDER_STATUSES = Object.freeze([
   'awaiting_payment',
@@ -70,7 +70,8 @@ function maskEmail(value = '') {
 }
 
 function clampBalance(value = 0) {
-  return checkedBalance(value);
+  const amount = Math.trunc(Number(value) || 0);
+  return Math.max(0, Math.min(amount, MAX_STORE_BALANCE_KURUS));
 }
 
 function requireIdempotencyKey(value = '') {
@@ -105,7 +106,7 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
   const lastName = safeText(profile.lastName || '', 50);
   return {
     username,
-    email: safeText(authUser.email || profile.email || '', 254),
+    email: safeText(authUser.email || profile.email || '', 160),
     firstName,
     lastName,
     fullName: safeText(profile.fullName || `${firstName} ${lastName}`.trim(), 110),
@@ -130,8 +131,8 @@ async function readAccount(uid, authUser = {}) {
   const snap = await ref.get();
   const profile = snap.exists ? (snap.data() || {}) : {};
   const account = normalizeStoreProfile(profile, authUser);
-  const authEmail = safeText(authUser.email || '', 254).toLowerCase();
-  const profileEmail = safeText(profile.email || '', 254).toLowerCase();
+  const authEmail = safeText(authUser.email || '', 160).toLowerCase();
+  const profileEmail = safeText(profile.email || '', 160).toLowerCase();
   const profileNeedsSync = !snap.exists
     || !profile.storeProfile
     || profile.storeBalanceKurus === undefined
@@ -142,7 +143,7 @@ async function readAccount(uid, authUser = {}) {
     const latest = current.exists ? current.data() || {} : {};
     const normalized = normalizeStoreProfile(latest, authUser);
     const patch = { storeUpdatedAt: Date.now() };
-    if (authEmail && authEmail !== safeText(latest.email, 254).toLowerCase()) patch.email = authEmail;
+    if (authEmail && authEmail !== safeText(latest.email, 160).toLowerCase()) patch.email = authEmail;
     if (latest.storeBalanceKurus === undefined) patch.storeBalanceKurus = normalized.balanceKurus;
     if (!latest.storeProfile) patch.storeProfile = { avatarId: normalized.avatarId };
     if (!latest.storeAccountStatus) patch.storeAccountStatus = normalized.accountStatus;
@@ -170,38 +171,20 @@ async function updateProfileAvatar(uid, authUser = {}, input = {}) {
   return { ...account, avatarId, avatarUrl: getAvatarById(avatarId)?.image || '' };
 }
 
-function normalizeCartIntent(rawItems = []) {
-  if (!Array.isArray(rawItems) || rawItems.length < 1 || rawItems.length > MAX_CART_LINES) throw serviceError('STORE_CART_INVALID', 400);
-  const combined = new Map();
-  for (const raw of rawItems) {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw serviceError('STORE_CART_INVALID', 400);
-    const productId = safeText(raw.productId, 80).toLowerCase(), planKey = safeText(raw.planKey, 40).toLowerCase();
-    const quantity = raw.quantity === undefined ? 1 : raw.quantity, expected = raw.expectedUnitPriceKurus;
-    if (!productId || !planKey || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_LINE_QUANTITY
-      || (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 1 || expected > MAX_ORDER_TOTAL_KURUS))) throw serviceError('STORE_CART_INVALID', 400);
-    const key = `${productId}:${planKey}`, previous = combined.get(key), totalQuantity = (previous?.quantity || 0) + quantity;
-    if (totalQuantity > MAX_LINE_QUANTITY || (previous && previous.expectedUnitPriceKurus !== expected)) throw serviceError('STORE_CART_INVALID', 400);
-    combined.set(key, { productId, planKey, quantity: totalQuantity, ...(expected !== undefined ? { expectedUnitPriceKurus: expected } : {}) });
-  }
-  return [...combined.values()];
-}
-
 function normalizeCart(rawItems = [], catalog = null) {
   if (!Array.isArray(rawItems) || rawItems.length < 1 || rawItems.length > MAX_CART_LINES) {
     throw serviceError('STORE_CART_INVALID', 400);
   }
   const combined = new Map();
-  for (const raw of normalizeCartIntent(rawItems)) {
+  for (const raw of rawItems) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw serviceError('STORE_CART_INVALID', 400);
     const productId = safeText(raw?.productId, 80).toLowerCase();
     const planKey = safeText(raw?.planKey, 40).toLowerCase();
-    const quantity = raw.quantity === undefined ? 1 : raw.quantity;
+    const quantity = raw.quantity === undefined ? 1 : Number(raw.quantity);
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_LINE_QUANTITY) throw serviceError('STORE_CART_INVALID', 400);
     const product = catalog?.products?.find((item) => item.id === productId && item.active !== false && item.archived !== true);
     const plan = product?.plans?.find((item) => item.key === planKey && item.active !== false);
     if (!product || !plan) throw serviceError('STORE_ITEM_UNAVAILABLE', 409);
-    if (!Number.isSafeInteger(plan.priceKurus) || plan.priceKurus < 1 || plan.priceKurus > MAX_ORDER_TOTAL_KURUS) throw serviceError('STORE_ORDER_TOTAL_INVALID', 409);
-    if (raw.expectedUnitPriceKurus !== undefined && raw.expectedUnitPriceKurus !== plan.priceKurus) throw serviceError('STORE_PRICE_CHANGED', 409);
     const key = `${product.id}:${plan.key}`;
     const previous = combined.get(key);
     const nextQuantity = quantity + Number(previous?.quantity || 0);
@@ -225,7 +208,7 @@ function normalizeCart(rawItems = [], catalog = null) {
   }
   const items = [...combined.values()];
   const totalKurus = items.reduce((total, item) => total + item.lineTotalKurus, 0);
-  if (!Number.isSafeInteger(totalKurus) || totalKurus < 1 || totalKurus > MAX_ORDER_TOTAL_KURUS) throw serviceError('STORE_ORDER_TOTAL_INVALID', 400);
+  if (totalKurus < 1 || totalKurus > MAX_ORDER_TOTAL_KURUS) throw serviceError('STORE_ORDER_TOTAL_INVALID', 400);
   return { items, totalKurus };
 }
 
@@ -398,15 +381,6 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
   if (method !== 'telegram' && method !== 'wallet') throw serviceError('STORE_PAYMENT_METHOD_INVALID', 400);
   const key = requireIdempotencyKey(idempotencyKey);
   const safePromotionCode = safeText(promotionCode, 32).toLocaleUpperCase('en-US');
-  const intent = normalizeCartIntent(rawItems);
-  const { db, admin } = firebaseStore();
-  const userRef = db.collection('users').doc(safeUid);
-  const idempotencyId = hashIdempotency('store-order', safeUid, key);
-  const requestHash = crypto.createHash('sha256').update(JSON.stringify({ paymentMethod: method, promotionCode: safePromotionCode,
-    items: intent.sort((a, b) => `${a.productId}:${a.planKey}`.localeCompare(`${b.productId}:${b.planKey}`)) })).digest('hex');
-  const idempotencyRef = db.collection('storeOrderIdempotency').doc(idempotencyId);
-  const replay = await readIdempotentOrder({ db, uid: safeUid, idempotencyRef, requestHash });
-  if (replay) return orderResponse({ uid: safeUid, authUser, order: replay, catalog: STORE_CATALOG });
   const catalog = await getEffectiveCatalog({ includeInactive: false, fresh: true });
   if (catalog.storefront?.maintenance === true) throw serviceError('STORE_MAINTENANCE_ACTIVE', 503);
   if (method === 'telegram' && catalog.storefront?.services?.telegramSupport === false) throw serviceError('STORE_TELEGRAM_CHANNEL_DISABLED', 409);
@@ -418,6 +392,20 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
   if (method === 'wallet' && cart.items.some((item) => item.automaticEnabled === false)) throw serviceError('STORE_AUTOMATIC_PRODUCT_DISABLED', 409);
   const account = await readAccount(safeUid, authUser);
   if (account.accountStatus !== 'active') throw serviceError('STORE_PURCHASE_BLOCKED', 403);
+  const { db, admin } = firebaseStore();
+  const userRef = db.collection('users').doc(safeUid);
+  const idempotencyId = hashIdempotency('store-order', safeUid, key);
+  const requestHash = crypto.createHash('sha256').update(JSON.stringify({
+    paymentMethod: method,
+    promotionCode: safePromotionCode,
+    items: cart.items.map((item) => ({ productId: item.productId, planKey: item.planKey, quantity: item.quantity }))
+      .sort((a, b) => `${a.productId}:${a.planKey}`.localeCompare(`${b.productId}:${b.planKey}`))
+  })).digest('hex');
+  const idempotencyRef = db.collection('storeOrderIdempotency').doc(idempotencyId);
+
+  const replay = await readIdempotentOrder({ db, uid: safeUid, idempotencyRef, requestHash });
+  if (replay) return orderResponse({ uid: safeUid, authUser, order: replay, catalog });
+
   const orderRef = db.collection('storeOrders').doc();
   let result = null;
   let stockChanged = false;
@@ -433,10 +421,6 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
       if (!existingOrder.exists || existingOrder.data()?.uid !== safeUid) throw serviceError('STORE_ORDER_CONFLICT', 409);
       result = publicOrder(existingOrder.data(), existingOrder.id);
       return;
-    }
-    if (catalog.revision) {
-      const settings = await tx.get(db.collection('storefrontSettings').doc('main'));
-      if (catalogRevision(settings.data() || {}) !== catalog.revision) throw serviceError('STORE_CATALOG_CHANGED', 409);
     }
     const userSnapshot = await tx.get(userRef);
     const userData = userSnapshot.exists ? (userSnapshot.data() || {}) : {};
@@ -662,8 +646,8 @@ async function cancelOrderByUser({ uid = '', orderId = '', reason = '' } = {}) {
 async function adjustStoreBalance({ targetUid = '', amountKurus = 0, type = 'CORRECTION', reason = '', actor = {}, idempotencyKey = '', requestId = '' } = {}) {
   const safeUid = safeText(targetUid, 160);
   const actorUid = safeText(actor.uid, 160);
-  const actorEmail = safeText(actor.email, 254);
-  const numericAmount = amountKurus;
+  const actorEmail = safeText(actor.email, 160);
+  const numericAmount = Number(amountKurus);
   const ledgerType = safeText(type, 30).toUpperCase();
   const safeReason = safeText(reason, 200);
   if (!safeUid) throw serviceError('STORE_TARGET_UID_REQUIRED', 400);
@@ -718,7 +702,7 @@ async function adjustStoreBalance({ targetUid = '', amountKurus = 0, type = 'COR
     const now = Date.now();
     tx.set(userRef, {
       ...(userSnapshot.exists ? {} : {
-        email: safeText(targetAuthUser.email || '', 254).toLowerCase(),
+        email: safeText(targetAuthUser.email || '', 160).toLowerCase(),
         username: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || 'ZENTRA STORE Üyesi', 40),
         usernameLower: safeText(targetAuthUser.displayName || targetAuthUser.email?.split('@')[0] || '', 40).toLocaleLowerCase('tr-TR'),
         storeAccountStatus: 'active',
@@ -777,7 +761,7 @@ async function adjustStoreBalance({ targetUid = '', amountKurus = 0, type = 'COR
 async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {}) {
   const safeOrderId = safeText(orderId, 160);
   const actorUid = safeText(actor.uid, 160);
-  const actorEmail = safeText(actor.email, 254);
+  const actorEmail = safeText(actor.email, 160);
   const requestedStatus = safeText(input.status, 30).toLowerCase();
   const deliveryTitle = safeText(input.deliveryTitle ?? input.delivery?.title, 100);
   const deliveryMessage = safeText(input.deliveryMessage ?? input.delivery?.message, 500);

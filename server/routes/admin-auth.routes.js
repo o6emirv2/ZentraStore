@@ -394,8 +394,7 @@ router.post('/auth/admin/gate/logout', requireGateOrigin, requireAuth, async (re
 async function requireAdminGate(req, res, next) {
   const uid = String(req.user?.uid || '').trim();
   const email = String(req.user?.email || '').trim().toLowerCase();
-  const policyVerified = req.adminPolicy?.uid === uid && req.adminPolicy?.email === email && req.adminPolicy?.active === true;
-  if (!policyVerified && !(await strictAdminPrincipal(uid, email))) return res.status(403).json({ ok: false, error: 'ADMIN_REQUIRED' });
+  if (!(await strictAdminPrincipal(uid, email))) return res.status(403).json({ ok: false, error: 'ADMIN_REQUIRED' });
   try {
     const proof = await resolveAdminAccessProof(req);
     if (!proof) return res.status(401).json({ ok: false, error: 'ADMIN_GATE_REQUIRED' });

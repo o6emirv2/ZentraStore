@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v76';
+import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v75';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -8,12 +8,6 @@ let appCheckTokenProvider = null;
 let runtimePromise = null;
 
 const USER_MESSAGES = Object.freeze({
-  STORE_PRICE_CHANGED: 'Ürünün fiyatı değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
-  STORE_CATALOG_CHANGED: 'Satın alma sırasında ürün bilgileri değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
-  STORE_BALANCE_RECORD_INVALID: 'Bakiyenizi güvenli biçimde doğrulayamadık. İşlem yapılmadı; destek ekibiyle iletişime geçin.',
-  STORE_KEY_DECRYPTION_FAILED: 'Teslimat kaydı güvenli biçimde açılamadı. Yeniden satın almayın; sipariş numaranızla destek alın.',
-  STORE_KEY_CIPHERTEXT_INVALID: 'Teslimat kaydı doğrulanamadı. Sipariş numaranızla destek alın.',
-  STORE_KEY_DECRYPTION_KEY_MISSING: 'Teslimat şu anda açılamıyor. Sipariş numaranızla destek alın.',
   AUTH_REQUIRED: 'Devam etmek için lütfen hesabınıza giriş yapın.',
   AUTH_INVALID: 'Oturumunuzu doğrulayamadık. Lütfen yeniden giriş yapın.',
   AUTH_SESSION_CHANGED: 'Hesap oturumunuz değiştiği için güvenli işlem durduruldu. Lütfen yeniden deneyin.',
@@ -42,6 +36,9 @@ const USER_MESSAGES = Object.freeze({
   STORE_DELIVERY_KEY_NOT_AVAILABLE: 'Bu sipariş için açılabilir teslimat bulunamadı.',
   STORE_DELIVERY_AUDIT_UNAVAILABLE: 'Güvenli teslimat kaydı oluşturulamadığı için bilgiler gösterilmedi.',
   STORE_DELIVERY_INTEGRITY_ERROR: 'Teslimat bilgileri güvenli biçimde doğrulanamadığı için görüntülenmedi.',
+  STORE_KEY_DECRYPTION_KEY_MISSING: 'Bu teslimatın güvenlik anahtarı bulunamadı. Lütfen destek ekibiyle iletişime geçin.',
+  STORE_KEY_DECRYPTION_FAILED: 'Teslimat kaydı güvenli biçimde açılamadı. Lütfen destek ekibiyle iletişime geçin.',
+  STORE_KEY_CIPHERTEXT_INVALID: 'Teslimat kaydı doğrulanamadığı için bilgiler güvenlik amacıyla gösterilmedi.',
   STORE_KEY_CONTEXT_INVALID: 'Teslimat kaydı hesabınla güvenli biçimde eşleştirilemedi.',
   STORE_ACCOUNT_SUSPENDED: 'Bu hesap geçici olarak askıya alınmış. Lütfen destek ekibiyle iletişime geçin.',
   STORE_CATALOG_PERSISTENCE_UNAVAILABLE: 'Güncel ürün fiyatları şu anda doğrulanamıyor. Lütfen kısa süre sonra yeniden deneyin.',
@@ -148,10 +145,8 @@ async function fetchRuntimeCandidate(base = '', timeoutMs = 5000) {
     const contentType = String(response.headers.get('content-type') || '');
     if (!response.ok || !contentType.includes('application/json')) return null;
     const payload = await response.json().catch(() => null);
-    if (payload?.ok === true && payload.version !== 76) throw Object.assign(new Error('Mağaza ve sunucu sürümleri eşleşmiyor. Güncel sürümün yayınlanması gerekiyor.'), { code: 'CLIENT_VERSION_MISMATCH' });
     return payload?.ok === true ? payload : null;
-  } catch (error) {
-    if (error?.code === 'CLIENT_VERSION_MISMATCH') throw error;
+  } catch (_) {
     return null;
   } finally {
     window.clearTimeout(timer);

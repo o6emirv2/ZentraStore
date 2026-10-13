@@ -1,7 +1,6 @@
 'use strict';
 
 const path = require('path');
-const { startRestockWorker, stopRestockWorker } = require('./server/core/storeRestockJobs');
 const express = require('express');
 const compression = require('compression');
 const helmet = require('helmet');
@@ -9,8 +8,6 @@ const cors = require('cors');
 const env = require('./server/config/env');
 const { corsOptions } = require('./server/config/cors');
 const { initFirebaseAdmin } = require('./server/config/firebaseAdmin');
-const { connectionReadiness, sensitiveConfigurationGuard } = require('./server/core/runtimeHealth');
-const { apiBodyContract } = require('./server/core/apiContracts');
 const { publicLimiter, apiLimiter, adminAuthLimiter, appCheckGuard, isAdminPrincipal } = require('./server/core/security');
 const { requestEnvelopeGuard, apiRequestGuard, bodySafetyGuard, configureHttpServer } = require('./server/core/requestSecurity');
 const { trustedOrigin, verifyUserSession, sessionCookieHeader } = require('./server/core/userSessionService');
@@ -73,13 +70,13 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v76" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v75" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v75" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v76"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v75"></script></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -120,16 +117,13 @@ async function requireAdminDashboardEntry(req, res, next) {
 }
 
 app.disable('x-powered-by');
-app.set('trust proxy', env.nodeEnv === 'production' ? 1 : false);
+app.set('trust proxy', 1);
 app.set('query parser', 'simple');
 app.set('etag', false);
 app.set('json escape', true);
 initFirebaseAdmin();
 
 function contentSecurityPolicy() {
-  const domain = String(env.firebase.publicConfig.authDomain || '').toLowerCase();
-  const authOrigin = /^[a-z0-9.-]+$/.test(domain) && (domain.endsWith('.firebaseapp.com') || domain.endsWith('.web.app') || env.allowedOrigins.includes(`https://${domain}`))
-    ? `https://${domain}` : '';
   const connect = [
     "'self'",
     env.serviceOrigin,
@@ -141,9 +135,7 @@ function contentSecurityPolicy() {
     'https://www.googleapis.com',
     'https://www.google.com',
     'https://www.recaptcha.net',
-    'https://firebaseappcheck.googleapis.com',
-    'https://firebaseinstallations.googleapis.com',
-    'https://recaptchaenterprise.googleapis.com'
+    'https://*.googleapis.com'
   ].filter(Boolean);
   return {
     useDefaults: true,
@@ -153,7 +145,7 @@ function contentSecurityPolicy() {
       'object-src': ["'none'"],
       'frame-ancestors': ["'none'"],
       'form-action': ["'self'"],
-      'script-src': ["'self'", 'https://www.gstatic.com/firebasejs/12.17.1/', 'https://www.gstatic.com/recaptcha/', 'https://www.google.com/recaptcha/', 'https://www.recaptcha.net/recaptcha/'],
+      'script-src': ["'self'", 'https://www.gstatic.com', 'https://www.google.com', 'https://www.recaptcha.net'],
       'script-src-attr': ["'none'"],
       'style-src': ["'self'"],
       'style-src-attr': ["'unsafe-inline'"],
@@ -162,7 +154,7 @@ function contentSecurityPolicy() {
       'connect-src': [...new Set(connect)],
       'media-src': ["'self'"],
       'worker-src': ["'self'", 'blob:'],
-      'frame-src': ["'self'", 'https://www.google.com/recaptcha/', 'https://www.recaptcha.net/recaptcha/', ...(authOrigin ? [authOrigin] : [])],
+      'frame-src': ["'self'", 'https://www.google.com', 'https://www.recaptcha.net'],
       'manifest-src': ["'self'"]
     }
   };
@@ -263,21 +255,22 @@ app.use('/api', appCheckGuard);
 app.use('/api/admin/store/products/bulk', express.json({ limit: '1mb', strict: true, inflate: false }));
 app.use('/api', express.json({ limit: '256kb', strict: true, inflate: false }));
 app.use('/api', bodySafetyGuard);
-app.use('/api', apiBodyContract);
-app.use('/api', sensitiveConfigurationGuard);
 
 app.get('/healthz', (_req, res) => {
   res.status(200).json({ ok: true });
 });
-const readinessResponse = async (_req, res, next) => {
-  try {
-    const status = await connectionReadiness();
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(status.ready ? 200 : 503).json({ ok: status.ready });
-  } catch (error) { next(error); }
-};
-app.get('/readyz', readinessResponse);
-app.get('/api/healthz', readinessResponse);
+app.get('/readyz', (_req, res) => {
+  const firebase = initFirebaseAdmin();
+  const configuration = env.configurationReport();
+  const ready = firebase.enabled === true && configuration.ready === true;
+  res.status(ready ? 200 : 503).json({ ok: ready });
+});
+app.get('/api/healthz', (_req, res) => {
+  const firebase = initFirebaseAdmin();
+  const configuration = env.configurationReport();
+  const ready = firebase.enabled && configuration.ready;
+  res.status(ready ? 200 : 503).json({ ok: ready });
+});
 
 app.use('/api', authRouter);
 app.use('/api', identityRouter);
@@ -374,14 +367,12 @@ function startServer() {
     if (!report.ready) logError(null, { event: 'configuration', code: 'CONFIGURATION_INCOMPLETE', missing: report.missing });
   }));
 
-  startRestockWorker();
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
   return server;
 }
 
 function shutdown(signal) {
-  stopRestockWorker();
   if (!server) return;
   server.close(() => process.exit(process.exitCode || 0));
   server.closeIdleConnections?.();

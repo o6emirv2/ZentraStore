@@ -173,7 +173,7 @@ test('promotion routes enforce financial permission, admin gate and reauthentica
   reset();
   const express = require('express');
   const security = require('../server/core/security');
-  mock('../server/core/security', { ...security, strictLimiter: (_req, _res, next) => next(), adminActionLimiter: (_req, _res, next) => next(), requireAuth: (req, res, next) => {
+  mock('../server/core/security', { ...security, strictLimiter: (_req, _res, next) => next(), requireAuth: (req, res, next) => {
     const role = req.get('Authorization');
     if (!role) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
     req.user = { uid: role, email: `${role}@example.test`, email_verified: true };
@@ -183,8 +183,6 @@ test('promotion routes enforce financial permission, admin gate and reauthentica
   mock('../server/routes/admin-auth.routes', { requireAdminGate: (req, res, next) => req.get('X-Test-Gate') === 'valid' ? next() : res.status(403).json({ error: 'ADMIN_GATE_REQUIRED' }) });
   mock('../server/core/adminReauthService', { requireAdminReauth: (req, res, next) => req.get('X-Test-Reauth') === 'valid' ? next() : res.status(401).json({ error: 'ADMIN_REAUTH_REQUIRED' }), writeSupplementalAdminAudit: async () => {}, sanitizeAuditValue: (value) => value });
   mock('../server/core/storeBalanceCodeService', { redeemBalanceCode, saveBalanceCode, listBalanceCodes: async () => [] });
-  // This test isolates the role/gate/reauth chain; action proofs have real transaction tests in admin-action-regression.
-  mock('../server/core/adminActionService', { requireAdminAction: (_req, _res, next) => next(), createAdminAction: () => ({}) });
   const app = express(); app.use(express.json()); app.use('/api', require('../server/routes/store.routes'));
   app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: error.code }));
   const server = app.listen(0, '127.0.0.1'); await new Promise((resolve) => server.on('listening', resolve));

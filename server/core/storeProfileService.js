@@ -146,7 +146,7 @@ async function updateProfileBirthDate(uid = '', authUser = {}, input = {}) {
 
 async function prepareProfileEmailChange(uid = '', authUser = {}, input = {}) {
   if (!exactInput(input, ['email'])) throw profileError('PROFILE_INPUT_INVALID', 400);
-  const email = safeProfileText(input.email, 254).toLowerCase();
+  const email = safeProfileText(input.email, 160).toLowerCase();
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) throw profileError('EMAIL_INVALID', 400);
   const safeUid = safeProfileText(uid, 160);
   const { db, auth } = initFirebaseAdmin();
@@ -158,7 +158,7 @@ async function prepareProfileEmailChange(uid = '', authUser = {}, input = {}) {
   ]);
   requireActiveProfile(snapshot, safeUid);
   if (account.disabled) throw profileError('STORE_ACCOUNT_DISABLED', 403);
-  const previousEmail = safeProfileText(account.email, 254).toLowerCase();
+  const previousEmail = safeProfileText(account.email, 160).toLowerCase();
   if (previousEmail === email) throw profileError('EMAIL_UNCHANGED', 409);
   try {
     const existing = await auth.getUserByEmail(email);

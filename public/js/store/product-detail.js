@@ -1,4 +1,4 @@
-import { escapeViewText as text, viewIcon as icon } from './view-utils.js?v=zentra-ui-v76';
+import { escapeViewText as text, viewIcon as icon } from './view-utils.js?v=zentra-ui-v75';
 
 export function renderProductPlans(plans = [], selectedKey = '', { formatPrice, channelFor } = {}) {
   return plans.map((plan) => {

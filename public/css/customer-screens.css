@@ -45,8 +45,7 @@
 .account-page__identity h2{margin:6px 0;font-size:28px;font-weight:750;line-height:1.25;overflow-wrap:anywhere}
 .account-page__identity p{margin:0 0 8px;font-size:14px;color:#B7C1D8;overflow-wrap:anywhere;line-height:1.5}
 .account-page__avatar{position:relative;flex-shrink:0;padding:0;border:0;border-radius:50%;background:transparent;cursor:pointer}
-.account-page__avatar .avatar-shell{height:80px;width:80px;border:1px solid #8090ED;border-radius:50%;box-shadow:none}
-.account-page__avatar:focus-visible{border-radius:50%}
+.account-page__avatar .avatar-shell{height:80px;width:80px;border:1px solid #8090ED;box-shadow:none}
 .account-page__avatar-edit{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:28px;height:28px;border:3px solid #070B16;border-radius:50%;background:#4356C4;color:#FFF;font-size:11px}
 .account-page__status{display:inline-flex;padding:4px 8px;border:1px solid #2F6857;border-radius:8px;background:#11352C;color:#73E3B7;font-size:12px;font-weight:600}
 .account-page__status.is-warning{border-color:#896638;background:#342817;color:#FFCB66}
