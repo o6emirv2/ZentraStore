@@ -10,7 +10,7 @@ const env = require('./server/config/env');
 const { corsOptions } = require('./server/config/cors');
 const { initFirebaseAdmin } = require('./server/config/firebaseAdmin');
 const { connectionReadiness, sensitiveConfigurationGuard } = require('./server/core/runtimeHealth');
-const { apiBodyContract } = require('./server/core/apiContracts');
+const { apiBodyContract, apiClientGuard } = require('./server/core/apiContracts');
 const { publicLimiter, apiLimiter, adminAuthLimiter, appCheckGuard, isAdminPrincipal } = require('./server/core/security');
 const { requestEnvelopeGuard, apiRequestGuard, bodySafetyGuard, configureHttpServer } = require('./server/core/requestSecurity');
 const { trustedOrigin, verifyUserSession, sessionCookieHeader } = require('./server/core/userSessionService');
@@ -61,7 +61,7 @@ function escapeHtml(value = '') {
 }
 
 function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
-  const destination = success ? '/admin/admin.html' : `${env.canonicalOrigin || env.publicBaseUrl}/admin/index.html`;
+  const destination = success ? '/admin/' : `${env.canonicalOrigin || env.publicBaseUrl}/admin/index.html`;
   const safeMessage = escapeHtml(message || (success
     ? 'Güvenli yönetici oturumu doğrulandı. Yönetim merkezi açılıyor.'
     : 'Güvenli yönetici geçişi tamamlanamadı. Lütfen son doğrulama adımını yeniden deneyin.'));
@@ -71,15 +71,15 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="color-scheme" content="dark" />\n`
     + `<meta name="theme-color" content="#070B16" />\n`
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
-    + (success ? '<meta http-equiv="refresh" content="0;url=/admin/admin.html" />\n' : '')
+    + (success ? '<meta http-equiv="refresh" content="0;url=/admin/" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v76" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v76" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v77" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v77" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v77" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v77" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v76"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v77"></script></body></html>';
 }
 
 function redirectToStorefront(res, { block = false } = {}) {
@@ -105,15 +105,19 @@ async function requireActiveAdminEntry(req, res, next) {
   }
 }
 
-async function requireAdminDashboardEntry(req, res, next) {
-  return requireActiveAdminEntry(req, res, async () => {
+async function hasActiveAdminDashboard(req) {
     const access = readAdminAccess(getRequestAdminAccessToken(req));
     const uid = String(access?.uid || '').trim();
     const email = String(access?.email || '').trim().toLowerCase();
     const activeUid = String(req.activeAdminIdentity?.uid || '').trim();
     const activeEmail = String(req.activeAdminIdentity?.email || '').trim().toLowerCase();
-    if (!uid || !email || uid !== activeUid || email !== activeEmail
-      || !(await isAdminSessionActive({ uid, email, session: access.gateSession }))) return res.redirect(302, '/admin/index.html');
+    return !!uid && !!email && uid === activeUid && email === activeEmail
+      && await isAdminSessionActive({ uid, email, session: access.gateSession });
+}
+
+async function requireAdminDashboardEntry(req, res, next) {
+  return requireActiveAdminEntry(req, res, async () => {
+    if (!(await hasActiveAdminDashboard(req))) return res.redirect(302, '/admin/index.html');
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     return next();
   });
@@ -263,6 +267,7 @@ app.use('/api', appCheckGuard);
 app.use('/api/admin/store/products/bulk', express.json({ limit: '1mb', strict: true, inflate: false }));
 app.use('/api', express.json({ limit: '256kb', strict: true, inflate: false }));
 app.use('/api', bodySafetyGuard);
+app.use('/api', apiClientGuard);
 app.use('/api', apiBodyContract);
 app.use('/api', sensitiveConfigurationGuard);
 
@@ -309,7 +314,23 @@ function sendVersionedFile(req, res, filename) {
 }
 
 app.use('/public', cacheVersionedAsset, express.static(path.join(root, 'public'), staticOptions));
-app.get(['/admin', '/admin/', '/admin/index.html'], requireActiveAdminEntry, (_req, res) => res.sendFile(path.join(root, 'admin', 'index.html')));
+app.get(['/admin', '/admin/', '/admin/index.html', '/admin/admin.html'], (req, res, next) => {
+  if (env.nodeEnv !== 'production') return next();
+  const canonical = env.canonicalOrigin || env.publicBaseUrl;
+  const canonicalHost = canonical && new URL(canonical).host.toLowerCase();
+  const currentHost = String(req.headers.host || '').toLowerCase();
+  if (canonicalHost && (currentHost !== canonicalHost || req.path === '/admin/admin.html' || req.path === '/admin')) {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    return res.redirect(302, `${canonical}${req.path === '/admin/index.html' ? '/admin/index.html' : '/admin/'}`);
+  }
+  next();
+});
+app.get('/admin', (req, res, next) => req.path === '/admin' ? res.redirect(302, '/admin/') : next());
+app.get('/admin/', requireActiveAdminEntry, async (req, res, next) => {
+  try { return res.sendFile(path.join(root, 'admin', await hasActiveAdminDashboard(req) ? 'admin.html' : 'index.html')); }
+  catch (error) { return next(error); }
+});
+app.get('/admin/index.html', requireActiveAdminEntry, (_req, res) => res.sendFile(path.join(root, 'admin', 'index.html')));
 app.get('/admin/admin.html', requireAdminDashboardEntry, (_req, res) => res.sendFile(path.join(root, 'admin', 'admin.html')));
 const adminAssetAllowlist = new Set([
   'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js', 'promo-codes.js',

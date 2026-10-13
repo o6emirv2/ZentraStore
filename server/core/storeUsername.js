@@ -5,7 +5,8 @@ const RESERVED_USERNAMES = new Set(['admin', 'administrator', 'support', 'modera
 
 function usernameKeys(value = '') {
   const raw = String(value || '').trim().replace(/[<>\u0000-\u001f\u007f\s]/g, '').slice(0, 20);
-  return [...new Set([raw.toLocaleLowerCase('tr-TR'), raw.toLowerCase()].filter(Boolean))];
+  const canonical = raw.normalize('NFC');
+  return [...new Set([canonical.toLocaleLowerCase('tr-TR'), canonical.toLowerCase(), raw.toLocaleLowerCase('tr-TR'), raw.toLowerCase()].filter(Boolean))];
 }
 
 function usernameRegistryId(key = '') {
@@ -35,6 +36,7 @@ async function findUsernameProfiles(db, value, { transaction = null, includeRegi
     read(query('username', variants)),
     ...(includeRegistry ? keys.map((key) => read(db.collection('usernameRegistry').doc(usernameRegistryId(key)))) : [])
   ]);
+  if (lower.size >= 4 || legacy.size >= 4) throw Object.assign(new Error('USERNAME_AMBIGUOUS'), { code: 'USERNAME_AMBIGUOUS', statusCode: 409 });
   const documents = new Map([...lower.docs, ...legacy.docs].map((doc) => [doc.id, doc]));
   const registeredUids = [...new Set(registry.filter((doc) => doc.exists).map((doc) => String(doc.data()?.uid || '')).filter((uid) => uid && !uid.includes('/')))];
   await Promise.all(registeredUids.map(async (uid) => {

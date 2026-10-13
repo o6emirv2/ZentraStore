@@ -12,12 +12,13 @@ const price = (amount) => `${Number(amount) / 100} TL`;
 
 test('account view keeps unknown funds and edit limits unknown until the server account arrives', async () => {
   const { accountViewModel } = await load('account-view.js');
-  const model = accountViewModel({ user: { uid: 'a', email: 'a@example.test' }, account: null });
+  const model = accountViewModel({ user: { uid: 'a', email: 'a@example.test' }, account: null, loading: true });
   assert.equal(model.loaded, false);
   assert.equal(model.canEdit, false);
   assert.equal(model.remaining.username, null);
   assert.equal(model.status, 'Hesap yükleniyor…');
   assert.equal(model.emailStatus, 'Kayıtlı e-posta');
+  assert.equal(accountViewModel({ user: { uid: 'a' }, account: null, error: 'NETWORK_ERROR' }).status, 'Hesap bilgileri yüklenemedi');
 });
 
 test('account view preserves full email, server edit limits and restricted account state', async () => {

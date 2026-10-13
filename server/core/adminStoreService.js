@@ -40,6 +40,7 @@ const ROLE_PERMISSIONS = Object.freeze({
 const USER_SUMMARY_TTL_MS = 45_000;
 const WALLET_SUMMARY_TTL_MS = 45_000;
 const PROFILE_SUMMARY_TTL_MS = 45_000;
+const PROFILE_SUMMARY_LIMIT = 1000;
 const OVERVIEW_ORDER_LIMIT = 500;
 const WALLET_SUMMARY_LEDGER_LIMIT = 500;
 let userSummaryCache = null;
@@ -289,7 +290,7 @@ async function listWalletLedger(uid = '', limit = 100, cursor = '') {
   return { ledger, nextCursor: page.nextCursor, hasMore: page.hasMore };
 }
 
-async function collectFirebaseUsers(auth, maxPages = 5) {
+async function collectFirebaseUsers(auth, maxPages = 1) {
   const users = [];
   let pageToken;
   let pages = 0;
@@ -309,11 +310,13 @@ async function getProfileSummarySnapshot(db, { fresh = false } = {}) {
   }
   if (!profileSummaryLoad) {
     const generation = adminCacheGeneration;
-    const pending = db.collection('users').get().then((snapshot) => {
+    const pending = db.collection('users').select('storeBalanceKurus', 'storeWallet.balanceKurus', 'storeAccountStatus').limit(PROFILE_SUMMARY_LIMIT + 1).get().then(result => {
+      const snapshot = { docs: result.docs.slice(0, PROFILE_SUMMARY_LIMIT), size: Math.min(result.size, PROFILE_SUMMARY_LIMIT), complete: result.size <= PROFILE_SUMMARY_LIMIT };
       if (generation === adminCacheGeneration) profileSummaryCache = { at: Date.now(), snapshot };
       return snapshot;
     });
-    profileSummaryLoad = pending.finally(() => { profileSummaryLoad = null; });
+    const tracked = pending.finally(() => { if (profileSummaryLoad === tracked) profileSummaryLoad = null; });
+    profileSummaryLoad = tracked;
   }
   return profileSummaryLoad;
 }
@@ -336,11 +339,14 @@ async function computeUserDirectorySummary({ fresh = false } = {}) {
     purchaseBlocked: 0,
     suspended: 0,
     profileDocuments: profilesSnapshot.size,
+    profileComplete: profilesSnapshot.complete,
+    unclassified: 0,
     walletLiabilityKurus: 0,
     fundedAccounts: 0,
     generatedAt: now
   };
   for (const user of users) {
+    if (!profiles.has(user.uid) && !profilesSnapshot.complete) { summary.unclassified++; continue; }
     const profile = profiles.get(user.uid) || {};
     const status = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
     if (user.disabled !== true && status === 'active') summary.active += 1;
@@ -434,7 +440,8 @@ async function computeWalletSummary({ fresh = false } = {}) {
     averageBalanceKurus: profilesSnapshot.size ? Math.round(liabilityKurus / profilesSnapshot.size) : 0,
     highestBalanceKurus,
     profileDocuments: profilesSnapshot.size,
-    adjustmentCount: Math.max(0, Number(adjustmentsCount?.data()?.count || 0) || 0),
+    profileComplete: profilesSnapshot.complete,
+    adjustmentCount: adjustmentsCount ? Math.max(0, Number(adjustmentsCount.data()?.count || 0)) : null,
     totalCreditKurus: Math.max(0, totals.CREDIT),
     totalDebitKurus: Math.abs(Math.min(0, totals.DEBIT)),
     totalRefundKurus: Math.max(0, totals.REFUND),
@@ -505,6 +512,7 @@ async function getAdminOverview(policy = null) {
       deliveredRevenueKurus,
       refundedKurus,
       walletLiabilityKurus: walletSummary.liabilityKurus,
+      walletProfilesComplete: walletSummary.profileComplete,
       users: usersSummary.authUsers,
       activeUsers: usersSummary.active,
       purchaseBlockedUsers: usersSummary.purchaseBlocked,
@@ -667,7 +675,8 @@ let adminCacheGeneration = 0;
 async function getUserDirectorySummary(options = {}) {
   if (!userSummaryLoad) {
     const pending = computeUserDirectorySummary(options);
-    userSummaryLoad = pending.finally(() => { userSummaryLoad = null; });
+    const tracked = pending.finally(() => { if (userSummaryLoad === tracked) userSummaryLoad = null; });
+    userSummaryLoad = tracked;
   }
   return userSummaryLoad;
 }
@@ -675,7 +684,8 @@ async function getUserDirectorySummary(options = {}) {
 async function getWalletSummary(options = {}) {
   if (!walletSummaryLoad) {
     const pending = computeWalletSummary(options);
-    walletSummaryLoad = pending.finally(() => { walletSummaryLoad = null; });
+    const tracked = pending.finally(() => { if (walletSummaryLoad === tracked) walletSummaryLoad = null; });
+    walletSummaryLoad = tracked;
   }
   return walletSummaryLoad;
 }
@@ -685,6 +695,9 @@ function invalidateAdminStoreCaches() {
   userSummaryCache = null;
   walletSummaryCache = null;
   profileSummaryCache = null;
+  profileSummaryLoad = null;
+  userSummaryLoad = null;
+  walletSummaryLoad = null;
 }
 
 module.exports = {

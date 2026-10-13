@@ -1,12 +1,12 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v76';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v76';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v76';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v76';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v76';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v76';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v76';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v76';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v76';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v77';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v77';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v77';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v77';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v77';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v77';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v77';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v77';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v77';
 
 installInteractionGuard();
 
@@ -513,13 +513,14 @@ async function loadOverview() {
   const partialOrders = m.ordersComplete === false;
   $('#overviewMetrics').innerHTML = specs.filter(([key]) => Object.hasOwn(m, key)).map(([key, label, icon, tone]) => {
     const sampled = partialOrders && !['orders', 'walletLiabilityKurus', 'users', 'activeUsers', 'purchaseBlockedUsers', 'suspendedUsers', 'disabledUsers', 'availableStock', 'lowStockSkus', 'activeProducts', 'inactiveProducts', 'archivedProducts'].includes(key);
-    return metricCard(icon, sampled ? label + ' · SON ' + m.ordersAnalyzed : label, key.endsWith('Kurus') ? formatPrice(m[key]) : m[key] || 0, tone);
+    const title = key === 'walletLiabilityKurus' && m.walletProfilesComplete === false ? 'İNCELENEN BAKİYE · KISMİ' : sampled ? label + ' · SON ' + m.ordersAnalyzed : label;
+    return metricCard(icon, title, key.endsWith('Kurus') ? formatPrice(m[key]) : m[key] || 0, tone);
   }).join('');
   $('#overviewFinanceChart').innerHTML = overviewBarChart([
     ['Brüt satış', m.grossRevenueKurus, '#ff6573'],
     ['Net satış', m.netRevenueKurus, '#70efb5'],
     ['İade tutarı', m.refundedKurus, '#ffd36e'],
-    ['Bakiye yükümlülüğü', m.walletLiabilityKurus, '#72caff']
+    [m.walletProfilesComplete === false ? 'İncelenen bakiye · Kısmi' : 'Bakiye yükümlülüğü', m.walletLiabilityKurus, '#72caff']
   ].filter((row) => Number.isFinite(row[1])), { currency: true, title: partialOrders ? 'Son yüklenen siparişlerin finansal özeti' : 'Satış ve bakiye özeti' });
   $('#overviewOperationsChart').innerHTML = overviewBarChart([
     ['Ödeme bekliyor', m.awaitingPayment, '#ffd36e'],
@@ -1405,13 +1406,13 @@ async function loadWalletSummary() {
   const w = state.walletSummary;
   renderLiveStatus('#walletMetrics', {
     icon: 'fa-wallet',
-    title: `Toplam bakiye yükümlülüğü ${formatPrice(w.liabilityKurus || 0)}`,
-    detail: `${w.fundedAccounts || 0} bakiyeli hesap · ${w.adjustmentCount || 0} yönetici bakiye işlemi · ${w.profileDocuments || 0} mağaza profili${w.ledgerComplete === false ? ` · Son ${w.ledgerAnalyzed || 0} hareket` : ''}`,
+    title: `${w.profileComplete === false ? 'İncelenen hesap bakiyesi' : 'Toplam bakiye yükümlülüğü'} ${formatPrice(w.liabilityKurus || 0)}`,
+    detail: `${w.fundedAccounts || 0} bakiyeli hesap · ${w.adjustmentCount ?? '—'} yönetici bakiye işlemi · ${w.profileDocuments || 0} incelenen profil${w.profileComplete === false ? ' · Kısmi profil sayımı' : ''}${w.ledgerComplete === false ? ` · Son ${w.ledgerAnalyzed || 0} hareket` : ''}`,
     tone: w.ledgerComplete === false ? 'warning' : 'ok',
-    meta: w.ledgerComplete === false ? 'KISMİ KAYIT' : 'TAM KAYIT'
+    meta: w.ledgerComplete === false || w.profileComplete === false ? 'KISMİ KAYIT' : 'TAM KAYIT'
   });
   $('#walletSummaryGrid').innerHTML = [
-    metricCard('fa-wallet', 'TOPLAM BAKİYE', formatPrice(w.liabilityKurus || 0), 'cyan'),
+    metricCard('fa-wallet', w.profileComplete === false ? 'İNCELENEN BAKİYE' : 'TOPLAM BAKİYE', formatPrice(w.liabilityKurus || 0), 'cyan'),
     metricCard('fa-users', 'BAKİYELİ HESAP', w.fundedAccounts || 0),
     metricCard('fa-scale-balanced', 'ORTALAMA BAKİYE', formatPrice(w.averageBalanceKurus || 0)),
     metricCard('fa-arrow-up-right-dots', 'EN YÜKSEK BAKİYE', formatPrice(w.highestBalanceKurus || 0)),
@@ -1934,6 +1935,9 @@ function bind() {
   window.addEventListener('zentra:admin-session-invalid', () => {
     if (redirecting) return;
     redirecting = true;
+    window.ZENTRA_ADMIN_AUTH?.clearActionPassword?.();
+    state.loaded.clear();
+    $$('.admin-panel, .admin-sidebar, .admin-topbar').forEach(element => { element.inert = true; element.hidden = true; });
     toast('warning', 'Yönetici oturumunuz sona erdi', 'Güvenliğiniz için giriş sayfasına yönlendiriliyorsunuz.');
     setTimeout(() => location.replace('/admin/index.html'), 350);
   });

@@ -1,4 +1,4 @@
-export function accountViewModel({ user = null, account = null, busy = false, pendingEmail = '' } = {}) {
+export function accountViewModel({ user = null, account = null, busy = false, pendingEmail = '', error = '', loading = false } = {}) {
   const loaded = !!user && !!account;
   const email = user ? String(account?.email || user.email || '—') : '—';
   const changes = account?.profileChanges || {};
@@ -13,8 +13,8 @@ export function accountViewModel({ user = null, account = null, busy = false, pe
     fullName: loaded ? String(account.fullName || [account.firstName, account.lastName].filter(Boolean).join(' ') || 'Henüz eklenmedi') : '—',
     birthDate: loaded ? (/^\d{4}-\d{2}-\d{2}$/.test(birth) ? birth.split('-').reverse().join('.') : 'Henüz eklenmedi') : '—',
     emailStatus: user?.emailVerified === true ? 'Doğrulanmış e-posta' : user ? 'Kayıtlı e-posta' : 'Oturum gerekli',
-    status: !loaded ? 'Hesap yükleniyor…' : account.accountStatus === 'suspended' ? 'Hesap askıya alındı' : account.accountStatus === 'purchase_blocked' ? 'Satın alma kısıtlı' : 'Etkin hesap',
-    warning: loaded && !!account.accountStatus && account.accountStatus !== 'active',
+    status: !loaded ? error ? 'Hesap bilgileri yüklenemedi' : loading ? 'Hesap yükleniyor…' : 'Hesap bilgilerini yenileyin' : account.accountStatus === 'suspended' ? 'Hesap askıya alındı' : account.accountStatus === 'purchase_blocked' ? 'Satın alma kısıtlı' : 'Etkin hesap',
+    warning: !!error || (loaded && !!account.accountStatus && account.accountStatus !== 'active'),
     canEdit: loaded && !busy,
     remaining: { username: remaining('username'), fullName: remaining('fullName'), birthDate: remaining('birthDate') }
   };
@@ -30,7 +30,7 @@ export function updateAccountView(root, options = {}) {
   write('accountStatusLabel', model.status);
   root.querySelector('#accountStatusLabel')?.classList.toggle('is-warning', model.warning);
   write('accountBalance', model.loaded ? options.formatBalance?.(options.account.balanceKurus) || '—' : '—');
-  write('accountBalanceDescription', model.loaded ? 'Alışverişlerinizde kullanabileceğiniz bakiye' : 'Bakiyeniz yükleniyor…');
+  write('accountBalanceDescription', options.stale ? 'Son doğrulanan bakiye · İşlem öncesinde hesap bilgilerinizi yenileyin.' : model.loaded ? 'Alışverişlerinizde kullanabileceğiniz bakiye' : options.loading ? 'Bakiyeniz yükleniyor…' : 'Bakiyenizi görmek için hesabınızı yenileyin.');
   write('accountEmailSecurityDetail', model.email);
   const currentEmail = root.querySelector('#accountCurrentEmail');
   if (currentEmail) currentEmail.value = model.email;

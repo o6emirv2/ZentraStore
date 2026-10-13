@@ -167,16 +167,17 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
       if (registrySnapshots.some((snapshot) => snapshot.exists && String(snapshot.data()?.uid || '') !== uid)) {
         throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       }
-      if ((current.username && current.username !== username)
+      if (current.profileInitializationPending !== true && ((current.username && current.username !== username)
         || (current.firstName && current.firstName !== firstName)
         || (current.lastName && current.lastName !== lastName)
-        || (current.birthDate && current.birthDate !== birthDate)) {
+        || (current.birthDate && current.birthDate !== birthDate))) {
         throw serviceError('PROFILE_INITIALIZATION_LOCKED', 409, 'Hesap bilgilerini yalnızca korumalı hesap ayarlarından değiştirebilirsin.');
       }
       const legacy = await findUsernameProfiles(db, username, { transaction, includeRegistry: false });
       if (legacy.some((doc) => doc.id !== uid)) throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
       const now = Date.now();
       const patch = {
+        profileInitializationPending: false,
         email,
         firstName: current.firstName || firstName,
         lastName: current.lastName || lastName,

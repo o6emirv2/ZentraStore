@@ -186,6 +186,7 @@ router.post('/store/orders', requireAuth, strictLimiter, asyncRoute(async (req, 
     idempotencyKey: req.body?.idempotencyKey || req.headers['x-idempotency-key'],
     promotionCode: req.body?.promotionCode
   });
+  invalidateAdminStoreCaches();
   noStore(res);
   res.status(201).json({ ok: true, ...result });
 }));
@@ -204,6 +205,7 @@ router.post('/store/order-attempt/cancel', requireAuth, strictLimiter, asyncRout
 
 router.post('/store/orders/:orderId/cancel', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
   const result = await cancelOrderByUser({ uid: req.user.uid, orderId: req.params.orderId, reason: req.body?.reason });
+  invalidateAdminStoreCaches();
   noStore(res);
   res.json({ ok: true, ...result });
 }));

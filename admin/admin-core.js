@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v76';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v77';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -212,13 +212,16 @@ export async function adminFetch(path, options = {}) {
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('X-Zentra-Store-Client', 'secure-admin-v76');
+    headers.set('X-Zentra-Store-Client', 'secure-admin-v77');
     const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
+    const destination = new URL(url, window.location.href), base = new URL(window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/') || window.location.origin, window.location.href);
+    if (destination.origin !== base.origin || destination.username || destination.password || !['https:', 'http:'].includes(destination.protocol)) throw Object.assign(new Error('Yönetim isteğinin adresi doğrulanamadı.'), { code: 'API_ORIGIN_INVALID', mutationNotSent: true });
+    if (window.__ZENTRA_RUNTIME__ && !['GET', 'HEAD', 'OPTIONS'].includes(method) && destination.pathname.startsWith('/api/admin/store/') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error('Güncel mağaza ve sunucu birlikte yayınlanmalıdır.'), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
     let sameOrigin = false;
     try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin; } catch (_) {}
-    if (!sameOrigin || method !== 'GET') {
-      const token = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.token?.()).catch(() => ''), controller.signal);
+    if (!sameOrigin || method !== 'GET' || window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid) {
+      const token = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.token?.()), controller.signal);
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
     const appCheckToken = await waitForSignal(Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.appCheckToken?.()).catch(() => ''), controller.signal);
@@ -250,7 +253,7 @@ export async function adminFetch(path, options = {}) {
     const currentUid = () => String(window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid || window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid || '');
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. İşlem durduruldu.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method) && target !== '/api/admin/store/inventory/import-check';
-    const response = await fetch(url, { ...options, method, headers, body, credentials: 'include', cache: 'no-store', signal: controller.signal });
+    const response = await fetch(url, { ...options, method, headers, body, credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal });
     const payload = await readApiJson(response);
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. Yanıt işlenmedi.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     if (!response.ok || payload.ok === false) {

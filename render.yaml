@@ -10,6 +10,10 @@ services:
         value: production
       - key: PUBLIC_BASE_URL
         value: https://zentrastore.com.tr
+      - key: CANONICAL_ORIGIN
+        value: https://zentrastore.com.tr
+      - key: PUBLIC_API_BASE
+        value: https://zentrastore.com.tr
       - key: PUBLIC_BACKEND_ORIGIN
         value: https://emirhan-siye.onrender.com
       - key: ALLOWED_ORIGINS
@@ -17,13 +21,7 @@ services:
       - key: PUBLIC_FIREBASE_CONFIG
         sync: false
       - key: APP_CHECK_MODE
-        value: enforce
-      - key: PUBLIC_FIREBASE_APP_CHECK_SITE_KEY
-        sync: false
-      - key: ADMIN_TOTP_MODE
-        value: required
-      - key: RATE_LIMIT_STORE
-        value: firestore
+        value: monitor
       - key: FIREBASE_KEY
         sync: false
       - key: ADMIN_EMAILS

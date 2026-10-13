@@ -1,3 +1,7 @@
+export const CLIENT_RELEASE = 77;
+export const compatibleStoreWrites = runtime => Number(runtime?.version) === CLIENT_RELEASE || runtime?.clientCompatibility?.storeWrite === 2;
+export const compatiblePrivateReads = runtime => Number(runtime?.version) === CLIENT_RELEASE || runtime?.clientCompatibility?.storeRead === 2;
+
 export function waitForSignal(promise, signal) {
   const pending = Promise.resolve(promise);
   return new Promise((resolve, reject) => {

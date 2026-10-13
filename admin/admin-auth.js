@@ -15,6 +15,18 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   let transportBase = null;
   let serverSession = null;
   let actionPassword = null;
+  let boundIdentity = null;
+  let sessionInvalid = false;
+  function invalidateSession() {
+    sessionInvalid = true; clearActionPassword();
+    window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' } }));
+  }
+  function observeIdentity(current) {
+    const previousUid = String(user?.uid || '');
+    user = current || null;
+    if (actionPassword && (actionPassword.uid !== user?.uid || actionPassword.email !== user?.email)) clearActionPassword();
+    if (boundIdentity && ((user?.uid && (user.uid !== boundIdentity.uid || String(user.email || '').trim().toLowerCase() !== boundIdentity.email)) || (!user && previousUid))) invalidateSession();
+  }
   function clearActionPassword() { actionPassword = null; }
   function consumeActionPassword() {
     const approval = actionPassword; clearActionPassword();
@@ -40,21 +52,22 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   async function loadRuntime() {
     if (runtime?.firebaseReady) return runtime;
     const preferred = fallbackBase();
-    const bases = [...new Set(preferred && preferred !== normalizeBase(window.location.origin) ? [preferred, ''] : ['', preferred])];
+    const bases = [...new Set(['', preferred].filter((base, index) => index === 0 || base))];
     for (const base of bases) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), base ? 6500 : 3200);
       try {
         const response = await fetch(`${base}/api/public/runtime-config`, {
-          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v67' },
+          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v77' },
           credentials: 'include', cache: 'no-store', signal: controller.signal
         });
         const type = String(response.headers.get('content-type') || '');
         const payload = type.includes('application/json') ? await response.json().catch(() => null) : null;
         if (response.ok && payload?.ok === true) {
-          if (payload.version !== 76) throw new Error('CLIENT_VERSION_MISMATCH');
+          if (payload.version !== 77 && payload.clientCompatibility?.adminAction !== 1) throw new Error('CLIENT_VERSION_MISMATCH');
           transportBase = normalizeBase(base);
-          runtime = { ...payload, apiBase: normalizeBase(payload.apiBase || base) };
+          runtime = { ...payload, apiBase: normalizeBase(base || window.location.origin) };
+          window.__ZENTRA_RUNTIME__ = runtime;
           return runtime;
         }
       } catch (error) {
@@ -139,29 +152,32 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       if (!resolvedRuntime.firebaseReady) throw new Error('FIREBASE_CONFIGURATION_MISSING');
       const modules = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`),
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`),
-        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`)
+        import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`)
       ]);
-      [appSdk, sdk, appCheckSdk] = modules;
+      [appSdk, sdk] = modules;
 
       const storefrontApp = resolveApp(resolvedRuntime.firebase, STOREFRONT_APP_NAME);
       const siteKey = String(resolvedRuntime?.appCheck?.siteKey || '').trim();
       if (siteKey) {
         try {
+          appCheckSdk = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`);
           appCheck = appCheckSdk.initializeAppCheck(storefrontApp, {
             provider: new appCheckSdk.ReCaptchaEnterpriseProvider(siteKey),
             isTokenAutoRefreshEnabled: true
           });
-        } catch (_) {
+        } catch (error) {
           appCheck = null;
+          if (resolvedRuntime.appCheck?.mode === 'enforce') throw error;
         }
+      } else if (resolvedRuntime.appCheck?.mode === 'enforce') {
+        throw new Error('APP_CHECK_UNAVAILABLE');
       }
 
       auth = sdk.getAuth(storefrontApp);
       auth.useDeviceLanguage();
       await waitForAuthState(auth, (current) => { user = current; }, () => {
         if (!authStateUnsubscribe) {
-          authStateUnsubscribe = sdk.onAuthStateChanged(auth, (current) => { user = current || null; if (actionPassword && (actionPassword.uid !== user?.uid || actionPassword.email !== String(user?.email || '').trim().toLowerCase())) clearActionPassword(); }, () => { user = null; clearActionPassword(); });
+          authStateUnsubscribe = sdk.onAuthStateChanged(auth, observeIdentity, () => { user = null; invalidateSession(); });
         }
       });
       const restored = await restoreFirstPartySession().catch(() => null);
@@ -174,7 +190,8 @@ window.ZENTRA_ADMIN_AUTH = (() => {
           user = null;
         }
       }
-      return { auth, user, session: activeSession() };
+      boundIdentity = activeSession();
+      return { auth, user, session: boundIdentity };
     })();
     initialization = pending;
     try {
@@ -232,6 +249,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
 
   async function token(force = false) {
     await init();
+    if (sessionInvalid) throw Object.assign(new Error('Yönetici oturumu değişti.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     if (user?.getIdToken) return user.getIdToken(force);
     return '';
   }
@@ -243,6 +261,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   }
 
   function activeSession() {
+    if (sessionInvalid) return null;
     const current = user?.uid ? user : serverSession;
     if (!current?.uid) return null;
     return {

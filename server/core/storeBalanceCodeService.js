@@ -35,8 +35,11 @@ async function redeemBalanceCode(uid, input = {}, { requestId = '' } = {}) {
     if (row.type !== 'balance') fail('BALANCE_CODE_NOT_FOUND', 404);
     if (row.active !== true) fail('BALANCE_CODE_INACTIVE');
     const now = Date.now();
-    if (Number(row.startsAt || 0) > now) fail('BALANCE_CODE_NOT_STARTED');
-    if (Number(row.endsAt || 0) && Number(row.endsAt) <= now) fail('BALANCE_CODE_EXPIRED');
+    const startsAt = row.startsAt ?? 0, endsAt = row.endsAt ?? 0;
+    if ([startsAt, endsAt].some(value => !Number.isSafeInteger(value) || value < 0 || value > 8640000000000000)
+      || (startsAt && endsAt && endsAt <= startsAt)) fail('BALANCE_CODE_CONFIGURATION_INVALID');
+    if (startsAt > now) fail('BALANCE_CODE_NOT_STARTED');
+    if (endsAt && endsAt <= now) fail('BALANCE_CODE_EXPIRED');
     if (!Number.isSafeInteger(row.usageLimit) || row.usageLimit < 1 || !Number.isSafeInteger(row.usedCount) || row.usedCount < 0) fail('BALANCE_CODE_CONFIGURATION_INVALID');
     if (row.usedCount >= row.usageLimit) fail('BALANCE_CODE_LIMIT_REACHED');
     const amountKurus = row.value;

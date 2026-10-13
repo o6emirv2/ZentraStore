@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../request-utils.js?v=zentra-ui-v76';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v77';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -59,6 +59,8 @@ const USER_MESSAGES = Object.freeze({
   BALANCE_CODE_USE_ACCOUNT: 'Promosyon kodunu Hesabım → Kuponlarım alanında kullanın.',
   STORE_PROMOTION_CODE_INVALID: 'İndirim kodu geçersiz. Kodu kontrol edip yeniden deneyin.',
   CLIENT_UPDATE_REQUIRED: 'Mağaza sürümü yenilendi. Devam etmek için sayfayı yenileyin.',
+  CLIENT_ACCOUNT_UPDATE_REQUIRED: 'Hesap bilgilerini güvenli yüklemek için sunucu da güncel proje ile yayınlanmalıdır.',
+  AUTH_INITIALIZATION_TIMEOUT: 'Hesap bağlantısı zamanında kurulamadı. Yeniden deneyin.',
   STORE_PROMOTION_NOT_FOUND: 'Bu indirim kodu bulunamadı veya artık aktif değil.',
   STORE_PROMOTION_EXPIRED: 'Bu kampanyanın kullanım süresi dolmuş veya henüz başlamamış.',
   STORE_PROMOTION_LIMIT_REACHED: 'Bu kampanyanın toplam kullanım limiti dolmuş.',
@@ -112,6 +114,10 @@ const USER_MESSAGES = Object.freeze({
   REQUEST_TIMEOUT: 'İşlem beklenenden uzun sürdü. Lütfen yeniden deneyin.',
   NETWORK_ERROR: 'Bağlantı kurulamadı. Lütfen internet bağlantınızı kontrol edip yeniden deneyin.',
   CURRENT_PASSWORD_INVALID: 'Mevcut şifre doğrulanamadı.',
+  AUTH_OPERATION_PENDING: 'Hesap işlemi devam ediyor. Tamamlanmasını bekleyin.',
+  REGISTER_PENDING: 'Başlayan kaydı aynı e-posta ile Kayıt Ol alanından tamamlayın.',
+  AUTH_ACCOUNT_MISMATCH: 'Hesap bilgisi oturumunuzla eşleşmedi. Yeniden giriş yapın.',
+  PASSWORD_CHANGE_UNCERTAIN: 'Şifre değişiminin sonucu doğrulanamadı. Yeni şifrenizle girişinizi kontrol edin; aynı işlemi tekrar göndermeyin.',
   INVALID_JSON: 'Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip yeniden deneyin.',
   REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
 });
@@ -128,10 +134,8 @@ export function getStoreApiBase() {
 function runtimeCandidates() {
   const metaBase = normalizeBase(document.querySelector('meta[name="zentra-api-origin"]')?.content || '');
   const configured = normalizeBase(window.__ZENTRA_RUNTIME__?.apiBase || '');
-  // On a static custom domain, contact the advertised API first, not the static site's nonexistent /api route.
-  const local = normalizeBase(window.location.origin);
-  const values = configured ? [configured, metaBase, '', DEFAULT_API_BASE]
-    : (metaBase && metaBase !== local ? [metaBase, '', DEFAULT_API_BASE] : ['', metaBase, DEFAULT_API_BASE]);
+  // Prefer the first-party API. A separate static host can still use the configured backend fallback.
+  const values = configured ? [configured, '', metaBase, DEFAULT_API_BASE] : ['', metaBase, DEFAULT_API_BASE];
   return [...new Set(values.map(normalizeBase))];
 }
 
@@ -148,7 +152,7 @@ async function fetchRuntimeCandidate(base = '', timeoutMs = 5000) {
     const contentType = String(response.headers.get('content-type') || '');
     if (!response.ok || !contentType.includes('application/json')) return null;
     const payload = await response.json().catch(() => null);
-    if (payload?.ok === true && payload.version !== 76) throw Object.assign(new Error('Mağaza ve sunucu sürümleri eşleşmiyor. Güncel sürümün yayınlanması gerekiyor.'), { code: 'CLIENT_VERSION_MISMATCH' });
+    if (payload?.ok === true && (!Number.isSafeInteger(payload.version) || payload.version < 1)) throw Object.assign(new Error('Sunucu sürümü doğrulanamadı.'), { code: 'CLIENT_VERSION_MISMATCH' });
     return payload?.ok === true ? payload : null;
   } catch (error) {
     if (error?.code === 'CLIENT_VERSION_MISMATCH') throw error;
@@ -165,7 +169,7 @@ export async function loadStoreRuntimeConfig({ force = false } = {}) {
     for (const base of runtimeCandidates()) {
       const payload = await fetchRuntimeCandidate(base, base ? 6500 : 3200);
       if (!payload) continue;
-      const apiBase = base === '' ? normalizeBase(window.location.origin) : normalizeBase(payload.apiBase || base);
+      const apiBase = base === '' ? normalizeBase(window.location.origin) : normalizeBase(base);
       window.__ZENTRA_RUNTIME__ = Object.assign({}, window.__ZENTRA_RUNTIME__ || {}, payload, { apiBase });
       window.dispatchEvent(new CustomEvent('zentra:runtime-updated'));
       return window.__ZENTRA_RUNTIME__;
@@ -223,6 +227,7 @@ export function friendlyStoreError(value, fallback = 'İşlem şu anda tamamlana
 }
 
 export async function storeApi(path, options = {}) {
+  let mutationSent = false;
   const requestTokenProvider = tokenProvider;
   const timeoutMs = Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || DEFAULT_TIMEOUT_MS));
   const request = requestController(timeoutMs, options.signal);
@@ -230,15 +235,26 @@ export async function storeApi(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set('Accept', 'application/json');
   headers.set('X-Request-Id', headers.get('X-Request-Id') || createRequestId());
-  headers.set('X-Zentra-Store-Client', 'premium-store-v67');
+  headers.set('X-Zentra-Store-Client', 'premium-store-v77');
   if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   const rawPath = String(path || '');
   const url = /^https?:\/\//i.test(rawPath) ? rawPath : `${getStoreApiBase()}${rawPath.startsWith('/') ? rawPath : `/${rawPath}`}`;
-  const protectedStore = options.auth !== false && new URL(url, window.location.href).pathname.startsWith('/api/store/') && !/^\/api\/store\/catalog(?:[/?]|$)/.test(rawPath);
   try {
+    const destination = new URL(url, window.location.href), base = new URL(getStoreApiBase() || window.location.origin, window.location.href);
+    if (destination.origin !== base.origin || destination.username || destination.password || !['https:', 'http:'].includes(destination.protocol)) throw Object.assign(new Error('İstek adresi mağazayla eşleşmedi.'), { code: 'API_ORIGIN_INVALID', mutationNotSent: true });
+    const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
+    const protectedStore = options.auth !== false && destination.pathname.startsWith('/api/store/') && destination.pathname !== '/api/store/catalog';
+    if (protectedStore && ['GET', 'HEAD'].includes(method) && !compatiblePrivateReads(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_ACCOUNT_UPDATE_REQUIRED), { code: 'CLIENT_ACCOUNT_UPDATE_REQUIRED', mutationNotSent: true });
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && (destination.pathname.startsWith('/api/store/') || destination.pathname === '/api/profile/update') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_UPDATE_REQUIRED), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
     if (options.auth !== false && requestTokenProvider) {
-      const token = await waitForSignal(Promise.resolve().then(() => requestTokenProvider()).catch(() => ''), controller.signal);
+      let token;
+      try { token = await waitForSignal(Promise.resolve().then(() => requestTokenProvider()), controller.signal); }
+      catch (error) {
+        if (/auth\/(?:user-token-expired|invalid-user-token|user-disabled|user-not-found)/i.test(String(error?.code || ''))) throw Object.assign(new Error(USER_MESSAGES.AUTH_INVALID), { code: 'AUTH_INVALID', mutationNotSent: true });
+        if (controller.signal.aborted) throw error;
+        throw Object.assign(new Error(USER_MESSAGES.NETWORK_ERROR), { code: 'NETWORK_ERROR', mutationNotSent: true });
+      }
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
     if (appCheckTokenProvider) {
@@ -256,12 +272,14 @@ export async function storeApi(path, options = {}) {
       error.code = 'AUTH_FRESH_TOKEN_REQUIRED';
       throw error;
     }
+    mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method);
     const response = await fetch(url, {
       method: options.method || (options.body !== undefined ? 'POST' : 'GET'),
       headers,
       credentials: 'include',
       cache: 'no-store',
       signal: controller.signal,
+      redirect: 'error',
       body: options.body === undefined || options.body === null
         ? undefined
         : (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
@@ -281,13 +299,16 @@ export async function storeApi(path, options = {}) {
       if (!request.timedOut) throw new DOMException('Request cancelled', 'AbortError');
       const timeoutError = new Error(USER_MESSAGES.REQUEST_TIMEOUT);
       timeoutError.code = 'REQUEST_TIMEOUT';
+      timeoutError.mutationNotSent = !mutationSent;
       throw timeoutError;
     }
     if (error instanceof TypeError) {
       const networkError = new Error(USER_MESSAGES.NETWORK_ERROR);
       networkError.code = 'NETWORK_ERROR';
+      networkError.mutationNotSent = !mutationSent;
       throw networkError;
     }
+    if (!mutationSent) error.mutationNotSent = true;
     throw error;
   } finally {
     request.cleanup();

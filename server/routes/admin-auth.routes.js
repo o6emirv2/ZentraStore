@@ -336,7 +336,8 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
     }
     const cookieAccess = issueAdminAccess({ uid: payload.uid, email: payload.email, gateSession: factorProof.gateSession });
     const sourceOrigin = env.normalizeOrigin(req.headers?.origin || '');
-    const needsFirstPartyHandoff = !!sourceOrigin && sourceOrigin !== env.serviceOrigin;
+    const adminOrigin = env.canonicalOrigin || env.publicBaseUrl;
+    const needsFirstPartyHandoff = !!sourceOrigin && (sourceOrigin !== env.serviceOrigin || sourceOrigin !== adminOrigin);
     let firstPartySession = null;
     if (needsFirstPartyHandoff) {
       firstPartySession = await createUserSession(req.firebaseIdToken, false);
@@ -368,7 +369,7 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       : [adminAccessCookie(cookieAccess.accessToken), clearAdminGateFactorCookie()]);
     return res.json({
       ok: true,
-      redirectTo: '/admin/admin.html',
+      redirectTo: '/admin/',
       gateExpiresAt: cookieAccess.expiresAt,
       ...(handoff ? { handoff } : {}),
       admin: await adminContext(payload.uid, payload.email),

@@ -1,7 +1,7 @@
-import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v76';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v76';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v76';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v76';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v77';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v77';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v77';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v77';
 
 installInteractionGuard();
 installAppUI();
@@ -19,7 +19,7 @@ function googleAuthenticatorCode(value = '') {
 
 function prepareFirstPartyHandoff(handoff = {}) {
   const action = new URL(String(handoff?.action || ''), window.location.href);
-  const service = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href);
+  const service = new URL(window.ZENTRA_ADMIN_AUTH.canonicalOrigin(), window.location.href);
   const code = String(handoff?.code || '').trim();
   const expiresAt = Math.max(0, Number(handoff?.expiresAt || 0) || 0);
   if (handoff?.required !== true || handoff?.mode !== 'single-use-first-party-post'
@@ -273,7 +273,7 @@ async function submitFifthFactor(event) {
       method: 'POST',
       body: { ticket: state.ticket, password, totpCode }
     });
-    if (response.ok !== true || response.redirectTo !== '/admin/admin.html') {
+    if (response.ok !== true || response.redirectTo !== '/admin/') {
       const invalid = new Error('Yönetim merkezi için güvenli yönlendirme hazırlanamadı.');
       invalid.code = 'ADMIN_GATE_ACCESS_INVALID';
       throw invalid;
@@ -290,7 +290,7 @@ async function submitFifthFactor(event) {
       return;
     }
     state.ticket = '';
-      setTimeout(() => window.location.replace('/admin/admin.html'), 120);
+    window.location.replace(new URL('/admin/', window.ZENTRA_ADMIN_AUTH.canonicalOrigin()).href);
   } catch (error) {
     $('#fifthFactor').value = '';
     if (state.step === 6) activateStep(5);
@@ -350,7 +350,7 @@ async function boot() {
     const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
     if (status.authenticated && window.ZENTRA_ADMIN_AUTH.activeSession() && apiOrigin === window.location.origin) {
           activateStep(6);
-      return setTimeout(() => location.replace('/admin/admin.html'), 420);
+      return location.replace(new URL('/admin/', window.ZENTRA_ADMIN_AUTH.canonicalOrigin()).href);
     }
   } catch (error) {
     securityView(error?.payload?.security || { score: 0, minimum: 90, ready: false });

@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 function memoryFirestore(initial = []) {
   const records = new Map(initial), stats = { reads: 0, queries: 0, commits: 0, writes: 0 };
   let tail = Promise.resolve(), failCommit = false, queryHook = null;
-  const snapshot = (ref) => ({ id: ref.id, ref, exists: records.has(ref.path), data: () => structuredClone(records.get(ref.path)) });
+  const snapshot = (ref) => { const exists = records.has(ref.path), value = structuredClone(records.get(ref.path)); return { id: ref.id, ref, exists, data: () => structuredClone(value) }; };
   function reference(path) {
     return { path, id: path.split('/').at(-1), collection: (name) => collection(`${path}/${name}`),
       get: async () => { stats.reads++; return snapshot(reference(path)); },
@@ -20,6 +20,8 @@ function memoryFirestore(initial = []) {
       orderBy: (field, direction = 'asc') => collection(path, filters, [...orders, [field, direction]], take, cursor),
       limit: (count) => collection(path, filters, orders, count, cursor),
       select: () => query, startAfter: (after) => collection(path, filters, orders, take, after),
+      add: async data => { const ref = reference(`${path}/${crypto.randomUUID()}`); await ref.set(data); return ref; },
+      count: () => ({ get: async () => { const result = await query.get(); return { data: () => ({ count: result.size }) }; } }),
       get: async () => {
         stats.queries++; if (queryHook) await queryHook(path);
         let rows = [...records].filter(([key, row]) => key.startsWith(path + '/') && !key.slice(path.length + 1).includes('/')

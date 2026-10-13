@@ -453,6 +453,7 @@ img {
 .dashboard-columns {
   margin-top:10px;
   display:grid;
+  align-items:start;
   gap:10px
 }
 .summary-grid,.wallet-summary-grid {
@@ -890,6 +891,18 @@ img {
   flex-wrap:wrap;
   gap:6px
 }
+.inventory-readiness {display:flex;align-items:center;gap:10px}
+.inventory-readiness>i {flex-shrink:0;font-size:1rem}
+.inventory-readiness>span {display:grid;gap:4px;min-width:0;flex:1;line-height:1.5}
+.inventory-readiness>span>small {font-size:0.75rem;line-height:1.5}
+.inventory-readiness>b {font-size:0.75rem;flex-shrink:0}
+#inventorySummary {max-height:min(65vh,680px);overflow:auto;scrollbar-width:thin;overscroll-behavior:contain}
+#inventorySummary>button {width:100%;min-width:0;min-height:55px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;background:#0B1222;color:var(--soft);font:inherit;text-align:left;cursor:pointer}
+#inventorySummary>button:hover {border-color:#6379C0;background:#17223A}
+#inventorySummary>button>span {display:grid;gap:4px;min-width:0;flex:1;overflow-wrap:anywhere}
+#inventorySummary strong {font-size:0.875rem;line-height:1.4}
+#inventorySummary small,#inventorySummary em {color:var(--dim);font-size:0.75rem;line-height:1.5;font-style:normal}
+#inventorySummary .stock-count {flex-shrink:0}
 .wallet-form {
   display:grid;
   gap:9px

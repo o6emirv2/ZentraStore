@@ -136,7 +136,7 @@ async function issueAdminHandoff({ uid = '', email = '', gateSession = '', sourc
   return {
     required: true,
     mode: 'single-use-first-party-post',
-    action: `${env.serviceOrigin}/admin/session/handoff`,
+    action: `${env.canonicalOrigin || env.publicBaseUrl}/admin/session/handoff`,
     code,
     expiresAt
   };

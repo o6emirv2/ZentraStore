@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v76';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v76';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v76';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v76';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v76';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v76';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v77';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v77';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v77';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v77';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v77';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v77';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v76';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v76';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v76';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v76';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v76';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v76';
+} from './auth.js?v=zentra-ui-v77';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v77';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v77';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v77';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v77';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v77';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,19 +35,19 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v76';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v76';
+} from './customer-app.js?v=zentra-ui-v77';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v77';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v76';
+} from './customer-renderers.js?v=zentra-ui-v77';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v76';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v76';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v76';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v77';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v77';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v77';
 
 const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
@@ -1181,7 +1181,8 @@ async function submitOrder(lines, paymentMethod, options = {}) {
       purchaseTracker.finish(attempt);
       resetCheckoutAttempt();
       if (['STORE_PRICE_CHANGED', 'STORE_CATALOG_CHANGED'].includes(error.code)) {
-        const refreshed = await loadCatalog(true).catch(() => false);
+        let refreshed = true;
+        await loadCatalog(true).catch(() => { refreshed = false; });
         renderCart();
         showNotice('warning', refreshed ? 'Satın alma bilgileri güncellendi' : 'Güncel bilgiler yüklenemedi', refreshed
           ? 'İşlem uygulanmadı. Güncel fiyat ve paketleri kontrol edip siparişinizi yeniden onaylayın.'
@@ -1725,6 +1726,9 @@ function renderAccountSecurity() {
     account: state.auth.account,
     busy: !!state.accountSecurityBusy,
     pendingEmail: state.auth.pendingEmail,
+    loading: state.auth.accountLoading,
+    stale: state.auth.accountStale,
+    error: state.auth.error,
     formatBalance: formatTopbarBalance
   });
 }
@@ -1937,13 +1941,13 @@ async function handleLogin(event) {
   state.authOperation = 'login';
   setButtonBusy(submit, true, 'Giriş yapılıyor...');
   try {
-    await signInStore({
+    const result = await signInStore({
       identifier: $('#loginIdentifier')?.value,
       password: $('#loginPassword')?.value,
       remember: !!$('#loginRemember')?.checked
     });
     closeActiveLayer({ restoreFocus: false });
-    showNotice('success', 'Giriş tamamlandı', 'ZENTRA STORE’a hoş geldiniz.');
+    showNotice(result.warning ? 'warning' : 'success', 'Giriş tamamlandı', result.warning || 'ZENTRA STORE’a hoş geldiniz.');
     const pending = state.pendingLayer;
     state.pendingLayer = '';
     if (pending === 'cart') openCustomer('cart');
@@ -1966,7 +1970,7 @@ async function handleRegister(event) {
   state.authOperation = 'register';
   setButtonBusy(submit, true, 'Hesabın oluşturuluyor...');
   try {
-    await registerStore({
+    const result = await registerStore({
       firstName: $('#registerFirstName')?.value,
       lastName: $('#registerLastName')?.value,
       username: $('#registerUsername')?.value,
@@ -1978,7 +1982,7 @@ async function handleRegister(event) {
     });
     closeActiveLayer({ restoreFocus: false });
     form.reset();
-    showNotice('success', 'Hesabınız hazır', 'Kaydınız tamamlandı. Beklemeden ürünlerinizi inceleyebilir ve güvenle sipariş verebilirsiniz.');
+    showNotice(result.warning ? 'warning' : 'success', 'Hesabınız oluşturuldu', result.warning || 'Kaydınız tamamlandı.');
     const pending = state.pendingLayer;
     state.pendingLayer = '';
     if (pending === 'cart') openCustomer('cart');
@@ -2158,13 +2162,14 @@ async function handleAccountPasswordChange(event) {
   state.accountSecurityBusy = 'password';
   setButtonBusy(button, true, 'Şifre güncelleniyor...');
   try {
-    await changeStorePassword({ currentPassword, newPassword, newPasswordRepeat });
+    const result = await changeStorePassword({ currentPassword, newPassword, newPasswordRepeat });
     if (String(state.auth.user?.uid || '') !== requestedUserId) return;
     customerAppController?.closeAction({ force: true });
-    showNotice('success', 'Şifreniz güncellendi', 'Hesap şifreniz güvenle değiştirildi ve oturumunuz yenilendi.');
+    showNotice(result.warning ? 'warning' : 'success', 'Şifreniz güncellendi', result.warning || 'Hesap şifreniz değiştirildi.', { operation: 'GÜVENLİK' });
   } catch (error) {
     if (String(state.auth.user?.uid || '') === requestedUserId) {
       const code = String(error.code || '');
+      if (code === 'PASSWORD_CHANGE_UNCERTAIN') { ['#accountPasswordCurrent', '#accountPasswordNew', '#accountPasswordRepeat'].forEach(id => { if ($(id)) $(id).value = ''; }); showNotice('warning', 'Şifre değişiminin sonucu belirsiz', friendlyStoreError(error), { operation: 'GÜVENLİK' }); return; }
       const field = /CURRENT_PASSWORD|invalid-credential|wrong-password/i.test(code) ? $('#accountPasswordCurrent')
         : /weak-password|password-does-not-meet-requirements/i.test(code) ? $('#accountPasswordNew') : null;
       if (field) setFieldError(field, friendlyStoreError(error));
@@ -2214,9 +2219,9 @@ async function handleAccountLogout() {
   state.accountLogoutBusy = true;
   setButtonBusy(button, true, 'Oturum kapatılıyor...');
   try {
-    await logoutStore();
+    const result = await logoutStore();
     closeActiveLayer({ restoreFocus: false });
-    showNotice('success', 'Güvenle çıkış yaptınız', 'Hesap oturumunuz güvenli biçimde kapatıldı.');
+    showNotice(result.warning ? 'warning' : 'success', result.warning ? 'Çıkış kontrol edilmeli' : 'Çıkış yaptınız', result.warning || 'Hesap oturumunuz kapatıldı.');
   } catch (error) {
     showNotice('error', 'Çıkış işleminizi tamamlayamadık', friendlyStoreError(error));
   } finally {
@@ -2779,14 +2784,12 @@ async function loadCatalog(force = false) {
       }
     }
     if (state.catalog.stale) showNotice('warning', 'Güncel stok doğrulanamadı', 'Son alınan katalog gösteriliyor. Otomatik satın alma, bağlantı yenilenene kadar kapalı.');
-    return state.catalog.stale !== true;
   } catch (error) {
     if ($('#catalogLoading')) {
       $('#catalogLoading').hidden = false;
       $('#catalogLoading').innerHTML = `${iconMarkup('fa-triangle-exclamation')}<strong>Ürünler şu anda yüklenemedi</strong><span>${escapeHtml(friendlyStoreError(error))}</span><button class="button button--glass" type="button" data-catalog-retry>${iconMarkup('fa-rotate')} Yeniden Dene</button>`;
     }
     showNotice('error', 'Ürünleri şu anda gösteremiyoruz', friendlyStoreError(error));
-    return false;
   } finally { finishLoading(); loading?.classList.remove('is-initial-loading'); }
 }
 

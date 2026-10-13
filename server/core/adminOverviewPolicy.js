@@ -2,7 +2,7 @@
 
 const METRIC_PERMISSIONS = Object.freeze({
   'store.orders.read': ['orders', 'ordersAnalyzed', 'ordersComplete', 'todayOrders', 'awaitingPayment', 'processing', 'delivered', 'cancelled', 'refunded', 'paymentRejected', 'deliveryFailures', 'telegramOrders', 'automaticOrders'],
-  'store.wallet.read': ['confirmedRevenueKurus', 'grossRevenueKurus', 'netRevenueKurus', 'deliveredRevenueKurus', 'refundedKurus', 'walletLiabilityKurus', 'fundedAccounts'],
+  'store.wallet.read': ['confirmedRevenueKurus', 'grossRevenueKurus', 'netRevenueKurus', 'deliveredRevenueKurus', 'refundedKurus', 'walletLiabilityKurus', 'fundedAccounts', 'walletProfilesComplete'],
   'store.users.read': ['users', 'activeUsers', 'purchaseBlockedUsers', 'suspendedUsers', 'disabledUsers'],
   'store.inventory.read': ['availableStock', 'lowStockSkus'],
   'store.catalog.read': ['activeProducts', 'inactiveProducts', 'archivedProducts', 'totalProducts', 'activePlans']

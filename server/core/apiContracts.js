@@ -7,7 +7,7 @@ const object = (fields) => (value) => !!value && typeof value === 'object' && !A
   && Object.entries(value).every(([key, item]) => Object.hasOwn(fields, key) && fields[key](item));
 const list = (check, max) => (value) => Array.isArray(value) && value.length <= max && value.every(check);
 const date = (value) => value === null || integer(0, 8640000000000000)(value) || text(40)(value);
-const features = (value) => text(12000)(value) || list(text(120), 80)(value);
+const features = (value) => text(6500)(value) || list(text(160), 40)(value);
 const cartLine = object({ productId: text(80), planKey: text(40), quantity: integer(1, 5), expectedUnitPriceKurus: integer(1, 100000000) });
 const cart = list(cartLine, 20);
 const planFields = { key: text(40), label: text(50), duration: text(50), priceKurus: integer(1, 100000000), active: boolean };
@@ -31,6 +31,7 @@ const content = object({ maintenance: boolean,
   categoryVisibility: object({ android: boolean, ios: boolean, 'pubg-android': boolean, 'pubg-ios': boolean,
     'oxide-android': boolean, 'oxide-ios': boolean, 'random-account': boolean, gbox: boolean }), quickLinks: list(link, 16) });
 const CONTRACTS = [
+  ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
   ['POST', /^\/api\/auth\/password-reset$/, object({ identifier: text(254) })],
   ['POST', /^\/api\/auth\/session$/, object({ idToken: text(16384), remember: boolean })],
@@ -76,4 +77,11 @@ function apiBodyContract(req, res, next) {
   }
   return next();
 }
-module.exports = { apiBodyContract, validateApiBody, CONTRACTS };
+function apiClientGuard(req, res, next) {
+  const match = /^(?:premium-store|secure-admin)-v(\d+)$/.exec(String(req.headers['x-zentra-store-client'] || ''));
+  const path = String(req.originalUrl || '').split('?')[0];
+  const businessWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (path.startsWith('/api/store/') || path.startsWith('/api/admin/store/') || path === '/api/profile/update');
+  if (businessWrite && match && Number(match[1]) < 77) return res.status(409).json({ ok: false, error: 'CLIENT_UPDATE_REQUIRED', message: 'Mağaza güncellendi. İşlemi sürdürmek için sayfayı yenileyin.', requestId: req.requestId });
+  return next();
+}
+module.exports = { apiBodyContract, apiClientGuard, validateApiBody, CONTRACTS };

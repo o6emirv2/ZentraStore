@@ -4,9 +4,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const url = (source) => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const utils = url(fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js'), 'utf8'));
-const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-ui-v76'", JSON.stringify(utils));
+const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-ui-v77'", JSON.stringify(utils));
 const modulePromise = import(url(source));
-async function scenario(callback) {
+async function scenario(callback, request = ['/api/admin/store/wallet/adjust', { method: 'POST', body: { uid: 'customer', amountKurus: 20000 } }]) {
   const original = { fetch: global.fetch, window: global.window }; let uid = 'admin-a'; const calls = [], events = [];
   global.window = { location: { href: 'https://store.example.test/admin/admin.html', origin: 'https://store.example.test' },
     dispatchEvent: (event) => events.push(event.type), setTimeout, clearTimeout,
@@ -15,7 +15,7 @@ async function scenario(callback) {
   global.fetch = async (target, options) => {
     calls.push({ target, options }); return callback({ target, options, calls, changeIdentity: () => { uid = 'admin-b'; } });
   };
-  try { return await (await modulePromise).adminFetch('/api/admin/store/wallet/adjust', { method: 'POST', body: { uid: 'customer', amountKurus: 20000 } }); }
+  try { return await (await modulePromise).adminFetch(...request); }
   finally { global.fetch = original.fetch; global.window = original.window; scenario.last = { calls, events }; }
 }
 const json = (payload, status = 200) => new Response(JSON.stringify(payload), { status, headers: { 'Content-Type': 'application/json' } });
@@ -56,4 +56,20 @@ test('a failed proof request is not reported as an uncertain financial write', a
   try { await scenario(() => { throw new TypeError('controlled approval network error'); }); } catch (error) { failure = error; }
   assert.equal(failure.code, 'NETWORK_ERROR'); assert.equal(failure.mutationNotSent, true); assert.equal(isUncertainMutationError(failure), false);
   assert.equal(scenario.last.calls.length, 1);
+});
+test('same-origin private reads carry the current SDK identity instead of relying on a different cookie', async () => {
+  await scenario(({ options }) => {
+    assert.equal(options.headers.get('Authorization'), 'Bearer verified-token');
+    assert.equal(options.redirect, 'error'); return json({ ok: true });
+  }, ['/api/admin/store/balance-codes', {}]);
+  assert.equal(scenario.last.calls.length, 1);
+});
+test('token failures stop same-origin reads before any cookie-authorized request is sent', async () => {
+  const previous = global.window, fetch = global.fetch; let calls = 0;
+  global.window = { location: { href: 'https://store.example.test/admin/', origin: 'https://store.example.test' },
+    ZENTRA_ADMIN_AUTH: { currentUser: () => ({ uid: 'sdk-user' }), apiUrl: path => 'https://store.example.test' + path,
+      token: async () => { throw Object.assign(new Error('provider rejected identity'), { code: 'AUTH_INVALID' }); } } };
+  global.fetch = async () => { calls++; return json({ ok: true }); };
+  try { await assert.rejects((await modulePromise).adminFetch('/api/admin/store/balance-codes'), { code: 'AUTH_INVALID', mutationNotSent: true }); assert.equal(calls, 0); }
+  finally { global.window = previous; global.fetch = fetch; }
 });

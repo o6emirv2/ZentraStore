@@ -195,6 +195,7 @@ function publicRuntimeConfig() {
     firebaseConfigSource: env.firebase.publicConfigSource,
     brand: 'ZENTRA STORE',
     version: integer(String(packageVersion || '').split('.')[0], 1, 1, 10_000),
+    clientCompatibility: { authentication: 1, storeRead: 2, storeWrite: 2, adminAction: 1 },
     minimumPasswordLength: 8
   };
 }
@@ -246,15 +247,20 @@ function configurationReport() {
     (env.firebase.appCheckMode === 'enforce' ? missing : warnings).push('PUBLIC_FIREBASE_APP_CHECK_SITE_KEY');
   }
   if (env.security.adminTotp.mode === 'required' && !env.security.adminTotp.configured) missing.push('ADMIN_TOTP_SECRET_BASE32');
-  const securityIssues = env.nodeEnv === 'production' ? missing : warnings;
+  const securityIssues = warnings;
   if (env.firebase.appCheckMode !== 'enforce') securityIssues.push('APP_CHECK_NOT_ENFORCED');
   if (env.security.rateLimitStore !== 'firestore') securityIssues.push('RATE_LIMIT_NOT_DISTRIBUTED');
   if (env.security.adminTotp.mode !== 'required') securityIssues.push('ADMIN_TOTP_NOT_REQUIRED');
   if (!env.security.strictCsp) securityIssues.push('CSP_NOT_ENFORCED');
+  const identityMissing = missing.filter(key => /^(?:FIREBASE_|PUBLIC_FIREBASE_)/.test(key));
+  const identityReady = identityMissing.length === 0;
+  const adminReady = identityReady && !missing.some(key => key.startsWith('ADMIN_'));
+  const vaultReady = identityReady && env.storeKeys.configured && !missing.some(key => key.startsWith('STORE_KEY_') || key === 'ADMIN_GATE_SIGNING_SECRET');
   return {
     ready: missing.length === 0,
     missing,
     warnings,
+    capabilities: { identity: identityReady, vault: vaultReady, admin: adminReady },
     nodeEnv: env.nodeEnv,
     serviceOrigin: env.serviceOrigin,
     publicBaseUrl: env.publicBaseUrl,

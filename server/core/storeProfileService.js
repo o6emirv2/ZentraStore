@@ -2,7 +2,7 @@
 
 const { usernameKeys, usernameRegistryId, validateUsername, findUsernameProfiles } = require('./storeUsername');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
-const { readAccount } = require('./storeService');
+const { normalizeStoreProfile } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
 
@@ -16,6 +16,7 @@ function safeProfileText(value = '', max = 200) {
 }
 
 function validatePersonName(value = '', label = 'İsim') {
+  if (typeof value !== 'string' || value.length > 50 || /[<>\u0000-\u001f\u007f]/.test(value)) throw profileError('INVALID_PERSON_NAME', 400);
   const name = safeProfileText(value, 50).replace(/\s+/g, ' ');
   if (name.length < 2 || !/^[\p{L}]+(?:[ .'’-][\p{L}]+)*$/u.test(name)) {
     throw profileError('INVALID_PERSON_NAME', 400, `${label} en az 2 karakter olmalı; harf, boşluk, kesme işareti ve tire kullanılabilir.`);
@@ -59,6 +60,7 @@ async function updateProfileUsername(uid = '', authUser = {}, input = {}) {
   const { db } = initFirebaseAdmin();
   if (!db) throw profileError('STORE_STORAGE_UNAVAILABLE', 503);
   const userRef = db.collection('users').doc(safeUid);
+  let committed;
   await db.runTransaction(async (transaction) => {
     const profileSnapshot = await transaction.get(userRef);
     const profile = requireActiveProfile(profileSnapshot, safeUid);
@@ -88,15 +90,17 @@ async function updateProfileUsername(uid = '', authUser = {}, input = {}) {
         transaction.delete(entry.ref);
       }
     }
-    transaction.set(userRef, {
+    const patch = {
       username,
       usernameLower: newKeys[0],
       profileChangeCounts: { ...(profile.profileChangeCounts || {}), username: used + 1 },
       storeUpdatedAt: now,
       updatedAt: now
-    }, { merge: true });
+    };
+    transaction.set(userRef, patch, { merge: true });
+    committed = normalizeStoreProfile({ ...profile, ...patch }, { ...authUser, uid: safeUid });
   });
-  return readAccount(safeUid, authUser);
+  return committed;
 }
 
 async function updateProfileFullName(uid = '', authUser = {}, input = {}) {
@@ -107,19 +111,22 @@ async function updateProfileFullName(uid = '', authUser = {}, input = {}) {
   const { db } = initFirebaseAdmin();
   if (!db) throw profileError('STORE_STORAGE_UNAVAILABLE', 503);
   const userRef = db.collection('users').doc(safeUid);
+  let committed;
   await db.runTransaction(async (transaction) => {
     const profile = requireActiveProfile(await transaction.get(userRef), safeUid);
     if (profile.firstName === firstName && profile.lastName === lastName) throw profileError('FULL_NAME_UNCHANGED', 409);
     const used = usedProfileChanges(profile, 'fullName');
     if (used >= PROFILE_CHANGE_LIMITS.fullName) throw profileError('FULL_NAME_CHANGE_LIMIT_REACHED', 409);
     const now = Date.now();
-    transaction.set(userRef, {
+    const patch = {
       firstName, lastName, fullName: `${firstName} ${lastName}`,
       profileChangeCounts: { ...(profile.profileChangeCounts || {}), fullName: used + 1 },
       storeUpdatedAt: now, updatedAt: now
-    }, { merge: true });
+    };
+    transaction.set(userRef, patch, { merge: true });
+    committed = normalizeStoreProfile({ ...profile, ...patch }, { ...authUser, uid: safeUid });
   });
-  return readAccount(safeUid, authUser);
+  return committed;
 }
 
 async function updateProfileBirthDate(uid = '', authUser = {}, input = {}) {
@@ -129,23 +136,27 @@ async function updateProfileBirthDate(uid = '', authUser = {}, input = {}) {
   const { db } = initFirebaseAdmin();
   if (!db) throw profileError('STORE_STORAGE_UNAVAILABLE', 503);
   const userRef = db.collection('users').doc(safeUid);
+  let committed;
   await db.runTransaction(async (transaction) => {
     const profile = requireActiveProfile(await transaction.get(userRef), safeUid);
     if (profile.birthDate === birthDate) throw profileError('BIRTH_DATE_UNCHANGED', 409);
     const used = usedProfileChanges(profile, 'birthDate');
     if (used >= PROFILE_CHANGE_LIMITS.birthDate) throw profileError('BIRTH_DATE_CHANGE_LIMIT_REACHED', 409);
     const now = Date.now();
-    transaction.set(userRef, {
+    const patch = {
       birthDate,
       profileChangeCounts: { ...(profile.profileChangeCounts || {}), birthDate: used + 1 },
       storeUpdatedAt: now, updatedAt: now
-    }, { merge: true });
+    };
+    transaction.set(userRef, patch, { merge: true });
+    committed = normalizeStoreProfile({ ...profile, ...patch }, { ...authUser, uid: safeUid });
   });
-  return readAccount(safeUid, authUser);
+  return committed;
 }
 
 async function prepareProfileEmailChange(uid = '', authUser = {}, input = {}) {
   if (!exactInput(input, ['email'])) throw profileError('PROFILE_INPUT_INVALID', 400);
+  if (typeof input.email !== 'string' || input.email.length > 254) throw profileError('EMAIL_INVALID', 400);
   const email = safeProfileText(input.email, 254).toLowerCase();
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) throw profileError('EMAIL_INVALID', 400);
   const safeUid = safeProfileText(uid, 160);

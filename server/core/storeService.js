@@ -104,6 +104,8 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
   const firstName = safeText(profile.firstName || '', 50);
   const lastName = safeText(profile.lastName || '', 50);
   return {
+    uid: safeText(authUser.uid || '', 160),
+    profileInitializationPending: profile.profileInitializationPending === true,
     username,
     email: safeText(authUser.email || profile.email || '', 254),
     firstName,
@@ -125,6 +127,7 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
 async function readAccount(uid, authUser = {}) {
   const safeUid = safeText(uid, 160);
   if (!safeUid) throw serviceError('AUTH_REQUIRED', 401);
+  authUser = { ...authUser, uid: safeUid };
   const { db } = firebaseStore();
   const ref = db.collection('users').doc(safeUid);
   const snap = await ref.get();
@@ -140,8 +143,9 @@ async function readAccount(uid, authUser = {}) {
   return db.runTransaction(async (transaction) => {
     const current = await transaction.get(ref);
     const latest = current.exists ? current.data() || {} : {};
-    const normalized = normalizeStoreProfile(latest, authUser);
+    const normalized = normalizeStoreProfile({ ...latest, ...(!current.exists ? { profileInitializationPending: true } : {}) }, authUser);
     const patch = { storeUpdatedAt: Date.now() };
+    if (!current.exists) patch.profileInitializationPending = true;
     if (authEmail && authEmail !== safeText(latest.email, 254).toLowerCase()) patch.email = authEmail;
     if (latest.storeBalanceKurus === undefined) patch.storeBalanceKurus = normalized.balanceKurus;
     if (!latest.storeProfile) patch.storeProfile = { avatarId: normalized.avatarId };
@@ -491,7 +495,7 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
     tx.create(orderRef, rawOrder);
     tx.create(idempotencyRef, {
       uid: safeUid, orderId: orderRef.id, keyHash: idempotencyId, requestHash,
-      createdAt: now, expiresAt: new Date(now + 30 * 86_400_000)
+      createdAt: now
     });
     tx.create(db.collection('audit').doc(`store_order_${orderRef.id}`), {
       uid: safeUid, type: 'store-order', orderId: orderRef.id, orderNumber: rawOrder.orderNumber, paymentMethod: method,
@@ -1043,6 +1047,7 @@ async function publicCatalog() {
 }
 
 module.exports = {
+  normalizeStoreProfile,
   publicCatalog,
   readAccount,
   updateProfileAvatar,
