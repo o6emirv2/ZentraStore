@@ -1,4 +1,4 @@
-import { escapeViewText as text, viewIcon as icon, safeExternalLink } from './view-utils.js?v=zentra-ui-v75';
+import { escapeViewText as text, viewIcon as icon, safeExternalLink } from './view-utils.js?v=zentra-ui-v76';
 
 export function renderOrderCardView(order = {}, context = {}) {
   const items = Array.isArray(order.items) ? order.items : [];

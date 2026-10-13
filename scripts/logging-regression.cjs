@@ -11,6 +11,7 @@ test('Express async failures reach the error handler and error-only logs exclude
   app.use((req, res, next) => { req.requestId = 'qa-request'; next(); });
   const router = createRouter();
   router.get('/normal', (_req, res) => res.json({ ok: true }));
+  router.get('/nested', (_req, res) => res.status(409).json({ ok: false, error: { code: 'TEST_NESTED', message: 'private-delivery-token' } }));
   router.get('/failure', async () => {
     const error = new Error('private-password-and-token');
     error.code = 'TEST_FAILURE';
@@ -41,6 +42,10 @@ test('Express async failures reach the error handler and error-only logs exclude
     assert.equal(row.route, '/failure');
     assert.ok(row.frames.length > 0);
     assert.equal(output[0].includes('private-password-and-token'), false);
+    assert(Number.isSafeInteger(row.durationMs));
+    assert.equal((await fetch(origin + '/nested')).status, 409);
+    assert.equal(JSON.parse(output[1]).code, 'TEST_NESTED');
+    assert.equal(output[1].includes('private-delivery-token'), false);
   } finally {
     process.stderr.write = original;
     await new Promise((resolve) => server.close(resolve));

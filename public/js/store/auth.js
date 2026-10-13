@@ -1,4 +1,4 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v75';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v76';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
@@ -378,7 +378,7 @@ export async function registerStore(input = {}) {
     setStoreTokenProvider(() => credential.user.getIdToken());
     await state.sdk.updateProfile(credential.user, { displayName: username });
     await syncServerSession(credential.user, remember);
-    const profileBody = { firstName, lastName, fullName: `${firstName} ${lastName}`, username, birthDate, avatar: '' };
+    const profileBody = { firstName, lastName, username, birthDate };
     try {
       await storeApi('/api/profile/update', { method: 'POST', body: profileBody });
     } catch (error) {

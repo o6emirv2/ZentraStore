@@ -1,4 +1,4 @@
-import { getProductMedia, PRODUCT_MEDIA_SOURCE_PATTERN } from './product-media.js?v=zentra-ui-v75';
+import { getProductMedia, PRODUCT_MEDIA_SOURCE_PATTERN } from './product-media.js?v=zentra-ui-v76';
 
 const SWIPE_THRESHOLD_PX = 38;
 const instances = new WeakMap();

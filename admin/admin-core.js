@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v75';
+import { readApiJson, waitForSignal, requestController } from '../public/js/request-utils.js?v=zentra-ui-v76';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -8,73 +8,37 @@ export function startAmbientCanvas(canvas) {
   if (!canvas) return;
   const context = canvas.getContext('2d', { alpha: true });
   if (!context) return;
-  const reduced = matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  let width = 0;
-  let height = 0;
-  let points = [];
-  let animation = 0;
-  let previous = 0;
-  let stopped = false;
-  const resize = () => {
+  let stopped = false, frame = 0;
+  const draw = () => {
+    frame = 0;
+    if (stopped || document.hidden) return;
     const ratio = Math.min(devicePixelRatio || 1, 1.25);
-    width = canvas.width = Math.round(innerWidth * ratio);
-    height = canvas.height = Math.round(innerHeight * ratio);
-    canvas.style.width = `${innerWidth}px`;
-    canvas.style.height = `${innerHeight}px`;
-    points = Array.from({ length: Math.min(36, Math.max(16, Math.round(innerWidth / 36))) }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: 1 + Math.random() * 2.2,
-      speed: .12 + Math.random() * .36,
-      alpha: .14 + Math.random() * .5
-    }));
-  };
-  const draw = (time = 0) => {
-    animation = 0;
-    if (stopped || document.hidden || document.documentElement.classList.contains('app-dialog-open')) return;
-    if (!reduced) animation = requestAnimationFrame(draw);
-    if (time && time - previous < 40) return;
-    previous = time;
+    const width = canvas.width = Math.round(innerWidth * ratio);
+    const height = canvas.height = Math.round(innerHeight * ratio);
+    canvas.style.width = `${innerWidth}px`; canvas.style.height = `${innerHeight}px`;
     context.clearRect(0, 0, width, height);
-    points.forEach((point) => {
-      point.y -= point.speed;
-      if (point.y < -10) { point.y = height + 10; point.x = Math.random() * width; }
-      context.beginPath();
-      context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
-      context.fillStyle = `rgba(76,151,255,${point.alpha})`;
-      context.shadowBlur = 6;
-      context.shadowColor = '#538cff';
-      context.fill();
-    });
-    context.shadowBlur = 0;
-  };
-  const visibility = () => {
-    if (document.hidden) {
-      cancelAnimationFrame(animation);
-      animation = 0;
-    } else if (!animation && !stopped) {
-      previous = 0;
-      draw();
+    const count = Math.min(26, Math.max(12, Math.round(innerWidth / 48)));
+    for (let i = 0; i < count; i += 1) {
+      context.beginPath(); context.arc((i * 97.13 % width), (i * 131.77 % height), 1.4, 0, Math.PI * 2);
+      context.fillStyle = 'rgba(76,151,255,.24)'; context.fill();
     }
   };
-  const modalObserver = new MutationObserver(visibility);
-  modalObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-  resize();
-  draw();
-  addEventListener('resize', resize, { passive: true });
-  document.addEventListener('visibilitychange', visibility);
-  return () => {
-    stopped = true;
-    modalObserver.disconnect();
-    cancelAnimationFrame(animation);
-    removeEventListener('resize', resize);
-    document.removeEventListener('visibilitychange', visibility);
-  };
+  const schedule = () => { if (!frame && !stopped && !document.hidden) frame = requestAnimationFrame(draw); };
+  draw(); window.addEventListener('resize', schedule, { passive: true });
+  document.addEventListener('visibilitychange', schedule);
+  return () => { stopped = true; cancelAnimationFrame(frame); window.removeEventListener('resize', schedule); document.removeEventListener('visibilitychange', schedule); };
 }
 
 function errorMessage(payload = {}, status = 0) {
-  const code = String(payload.error || payload.code || '');
+  const code = String((typeof payload.error === 'object' ? payload.error?.code : payload.error) || payload.code || '');
   const messages = {
+    ADMIN_ACTION_REQUIRED: 'İşlem doğrulaması eksik. Sayfayı yenileyip parolanızla tekrar doğrulayın.',
+    ADMIN_ACTION_INVALID: 'İşlem onayı doğrulanamadı. Parolanızla yeniden doğrulayın.',
+    ADMIN_ACTION_MISMATCH: 'Onaylanan işlem bilgileri değişti. Güncel bilgileri kontrol edip yeniden onaylayın.',
+    ADMIN_ACTION_EXPIRED: 'İşlem onayının süresi doldu. Yeniden doğrulayın.',
+    ADMIN_ACTION_ALREADY_USED: 'Bu işlem onayı kullanıldı. Güncel kaydı kontrol ederek yeniden onaylayın.',
+    ADMIN_ACTION_UNAVAILABLE: 'Güvenli işlem doğrulaması şu anda kullanılamıyor.',
+    STORE_BALANCE_RECORD_INVALID: 'Kayıtlı bakiye doğrulanamadı. Mali kaydı kontrol edin; tutar değiştirilmedi.',
     ADMIN_REQUIRED: 'Bu hesap yönetici izin listesinde bulunmuyor.',
     ADMIN_VERIFIED_EMAIL_REQUIRED: 'Yönetici hesabının e-posta adresi Firebase üzerinden doğrulanmalıdır.',
     ADMIN_PERMISSION_REQUIRED: 'Bu işlem mevcut personel rolünün yetki kapsamı dışında.',
@@ -221,18 +185,34 @@ function errorMessage(payload = {}, status = 0) {
     SESSION_REVOCATION_FAILED: 'Yönetici oturumu güvenli biçimde sonlandırılamadı.',
     ADMIN_SESSION_REVOCATION_FAILED: 'Yönetici erişim oturumu güvenli biçimde iptal edilemedi.',
     INVALID_JSON: 'Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip yeniden deneyin.',
-    REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.'
+    REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.',
+    API_BODY_INVALID: 'Alanların biçimini ve desteklenen değerleri kontrol edin. Bilgileriniz korunmuştur.',
+    SERVICE_NOT_READY: 'Mağazanın güvenli işlem bağlantısı hazır değil. İşlem uygulanmadı.'
   };
   return messages[code] || (status >= 500 ? 'İşlem şu anda tamamlanamadı. Lütfen yeniden deneyin.' : 'İşlem doğrulanamadı.');
 }
 
+function apiFailure(payload, response) {
+  const code = typeof payload.error === 'object' ? payload.error?.code : payload.error;
+  const error = Object.assign(new Error(errorMessage(payload, response.status)), {
+    code: code || payload.code || `HTTP_${response.status}`, status: response.status, payload,
+    requestId: String(payload.requestId || response.headers.get('x-request-id') || '')
+  });
+  if ([401, 403].includes(response.status) && ['AUTH_REQUIRED', 'AUTH_INVALID', 'ADMIN_REQUIRED', 'ADMIN_GATE_REQUIRED', 'ADMIN_GATE_ACCESS_INVALID', 'ADMIN_ACTIVE_SESSION_MISMATCH'].includes(String(error.code))) {
+    window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: error.code } }));
+  }
+  return error;
+}
+
 export async function adminFetch(path, options = {}) {
+  let mutationSent = false;
+  const initialUid = String(window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid || window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid || '');
   const request = requestController(Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || 20_000)), options.signal);
   const { controller } = request;
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('X-Zentra-Store-Client', 'secure-admin-v67');
+    headers.set('X-Zentra-Store-Client', 'secure-admin-v76');
     const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
     let sameOrigin = false;
@@ -249,19 +229,32 @@ export async function adminFetch(path, options = {}) {
       body = JSON.stringify(body);
     } else if (typeof body === 'string') {
       headers.set('Content-Type', 'application/json');
+      body = JSON.stringify(JSON.parse(body));
     }
+    const target = new URL(url, window.location.href).pathname;
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && target.startsWith('/api/admin/store/') && target !== '/api/admin/store/inventory/import-check') {
+      if (!crypto?.subtle) throw Object.assign(new Error('Güvenli işlem doğrulaması kullanılamıyor. HTTPS bağlantısını kontrol edin.'), { code: 'ADMIN_ACTION_UNAVAILABLE' });
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body || '{}'));
+      const bodyHash = [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, '0')).join('');
+      const password = window.ZENTRA_ADMIN_AUTH?.consumeActionPassword?.() || '';
+      if (!password) throw Object.assign(new Error('Bu işlem için hesap şifrenizi yeniden doğrulayın.'), { code: 'ADMIN_REAUTH_REQUIRED' });
+      const proofResponse = await fetch(window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/api/admin/action-proof') || '/api/admin/action-proof', {
+        method: 'POST', headers, body: JSON.stringify({ method, path: target, bodyHash, password }), credentials: 'include', cache: 'no-store', signal: controller.signal
+      });
+      const proofPayload = await readApiJson(proofResponse);
+      if (!proofResponse.ok || proofPayload.ok !== true || typeof proofPayload.proof?.token !== 'string') {
+        throw apiFailure(proofPayload, proofResponse);
+      }
+      headers.set('X-Admin-Action', proofPayload.proof.token);
+    }
+    const currentUid = () => String(window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid || window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid || '');
+    if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. İşlem durduruldu.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
+    mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method) && target !== '/api/admin/store/inventory/import-check';
     const response = await fetch(url, { ...options, method, headers, body, credentials: 'include', cache: 'no-store', signal: controller.signal });
     const payload = await readApiJson(response);
+    if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. Yanıt işlenmedi.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     if (!response.ok || payload.ok === false) {
-      const error = new Error(errorMessage(payload, response.status));
-      error.code = payload.error || payload.code || `HTTP_${response.status}`;
-      error.status = response.status;
-      error.payload = payload;
-      error.requestId = String(payload.requestId || response.headers.get('x-request-id') || '');
-      if ([401, 403].includes(response.status) && ['AUTH_REQUIRED', 'AUTH_INVALID', 'ADMIN_REQUIRED', 'ADMIN_GATE_REQUIRED', 'ADMIN_GATE_ACCESS_INVALID', 'ADMIN_ACTIVE_SESSION_MISMATCH'].includes(String(error.code))) {
-        window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: error.code } }));
-      }
-      throw error;
+      throw apiFailure(payload, response);
     }
     return payload;
   } catch (error) {
@@ -269,13 +262,16 @@ export async function adminFetch(path, options = {}) {
       if (!request.timedOut) throw new DOMException('Request cancelled', 'AbortError');
       const timeout = new Error('Yanıt zamanında alınamadı. Tekrar işlem yapmadan önce güncel kaydı kontrol edin.');
       timeout.code = 'REQUEST_TIMEOUT';
+      timeout.mutationNotSent = !mutationSent;
       throw timeout;
     }
     if (error instanceof TypeError) {
       const network = new Error('Yönetim ekranına ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.');
       network.code = 'NETWORK_ERROR';
+      network.mutationNotSent = !mutationSent;
       throw network;
     }
+    if (!mutationSent) error.mutationNotSent = true;
     throw error;
   } finally {
     request.cleanup();

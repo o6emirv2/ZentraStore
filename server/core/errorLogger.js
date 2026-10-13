@@ -32,7 +32,7 @@ function logError(error, context = {}) {
   for (const name of ['event', 'requestId', 'method', 'route', 'source', 'providerCode']) {
     if (context[name]) row[name] = safeCode(context[name], 'unknown');
   }
-  for (const name of ['status', 'line', 'column']) {
+  for (const name of ['status', 'line', 'column', 'durationMs']) {
     if (Number.isSafeInteger(context[name])) row[name] = context[name];
   }
   if (Array.isArray(context.missing)) row.missing = context.missing.map((value) => safeCode(value));
@@ -40,10 +40,11 @@ function logError(error, context = {}) {
 }
 
 function requestErrorObserver(req, res, next) {
+  const startedAt = process.hrtime.bigint();
   const json = res.json;
   res.json = function observedJson(body) {
     if (body?.ok === false || body?.error) {
-      res.locals.errorCode = safeCode(body.code || body.error, 'REQUEST_REJECTED');
+      res.locals.errorCode = safeCode(body.code || (typeof body.error === 'object' ? body.error?.code : body.error), 'REQUEST_REJECTED');
       if (body && typeof body === 'object' && !body.requestId) body.requestId = req.requestId;
     }
     return json.call(this, body);
@@ -58,6 +59,7 @@ function requestErrorObserver(req, res, next) {
       method: req.method,
       route: req.route?.path ? `${req.baseUrl || ''}${req.route.path}` : '[unmatched]',
       status: res.statusCode,
+      durationMs: Number((process.hrtime.bigint() - startedAt) / 1_000_000n),
       requestId: req.requestId
     });
   });

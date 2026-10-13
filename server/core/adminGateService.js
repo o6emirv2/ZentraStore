@@ -153,7 +153,7 @@ async function resolveAutomaticAdminIdentity() {
 
 async function verifyFirebasePassword(identity = {}, password = '') {
   const value = String(password || '');
-  if (value.length < 6 || value.length > FACTOR_MAX_LENGTH) throw gateError('ADMIN_FIREBASE_PASSWORD_INVALID', 403);
+  if (value.length < 6 || value.length > 4096) throw gateError('ADMIN_FIREBASE_PASSWORD_INVALID', 403);
   const apiKey = String(env.firebase.publicConfig.apiKey || '').trim();
   if (!apiKey) throw gateError('AUTH_UNAVAILABLE', 503);
 

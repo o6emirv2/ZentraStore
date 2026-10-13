@@ -7,7 +7,8 @@ function validAttempt(value, uid) {
     && Array.isArray(value.body.items) && value.body.items.length > 0 && value.body.items.length <= 20
     && value.body.items.every((item) => typeof item.productId === 'string' && item.productId.length <= 80
       && typeof item.planKey === 'string' && item.planKey.length <= 40
-      && Number.isSafeInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 5);
+      && Number.isSafeInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 5
+      && (item.expectedUnitPriceKurus === undefined || (Number.isSafeInteger(item.expectedUnitPriceKurus) && item.expectedUnitPriceKurus > 0 && item.expectedUnitPriceKurus <= 100000000)));
 }
 
 export function createPurchaseTracker({ api, userId, storage } = {}) {
@@ -31,7 +32,8 @@ export function createPurchaseTracker({ api, userId, storage } = {}) {
   function start(body, options = {}) {
     const attempt = {
       uid: String(userId() || ''),
-      body: { items: body.items.map(({ productId, planKey, quantity }) => ({ productId, planKey, quantity })),
+      body: { items: body.items.map(({ productId, planKey, quantity, expectedUnitPriceKurus }) => ({ productId, planKey, quantity,
+        ...(expectedUnitPriceKurus !== undefined ? { expectedUnitPriceKurus } : {}) })),
         paymentMethod: body.paymentMethod, idempotencyKey: body.idempotencyKey,
         ...(body.promotionCode ? { promotionCode: body.promotionCode } : {}) },
       clearCart: options.clearCart === true,
