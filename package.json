@@ -1,6 +1,6 @@
 {
   "name": "zentra-store-production",
-  "version": "77.0.0",
+  "version": "78.0.0",
   "private": true,
   "type": "commonjs",
   "description": "ZENTRA STORE digital storefront with protected sessions, transaction-safe wallet and encrypted digital-delivery vault",
@@ -18,7 +18,8 @@
     "check:source": "node scripts/verify-source.cjs",
     "check:security": "node --test scripts/*-regression.cjs",
     "security:generate": "node scripts/generate-render-secrets.cjs",
-    "security:audit": "npm audit --omit=dev --audit-level=moderate"
+    "security:audit": "npm audit --omit=dev --audit-level=moderate",
+    "build:pages": "npm run build && node scripts/build-pages.cjs"
   },
   "dependencies": {
     "compression": "^1.8.2",

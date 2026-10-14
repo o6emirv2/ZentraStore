@@ -19,6 +19,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
   let sessionInvalid = false;
   function invalidateSession() {
     sessionInvalid = true; clearActionPassword();
+    void window.ZENTRA_ADMIN_BROWSER?.clear();
     window.dispatchEvent(new CustomEvent('zentra:admin-session-invalid', { detail: { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' } }));
   }
   function observeIdentity(current) {
@@ -58,13 +59,13 @@ window.ZENTRA_ADMIN_AUTH = (() => {
       const timer = setTimeout(() => controller.abort(), base ? 6500 : 3200);
       try {
         const response = await fetch(`${base}/api/public/runtime-config`, {
-          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v77' },
+          headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v78' },
           credentials: 'include', cache: 'no-store', signal: controller.signal
         });
         const type = String(response.headers.get('content-type') || '');
         const payload = type.includes('application/json') ? await response.json().catch(() => null) : null;
         if (response.ok && payload?.ok === true) {
-          if (payload.version !== 77 && payload.clientCompatibility?.adminAction !== 1) throw new Error('CLIENT_VERSION_MISMATCH');
+          if (payload.version !== 78 && payload.clientCompatibility?.adminAction !== 1) throw new Error('CLIENT_VERSION_MISMATCH');
           transportBase = normalizeBase(base);
           runtime = { ...payload, apiBase: normalizeBase(base || window.location.origin) };
           window.__ZENTRA_RUNTIME__ = runtime;
@@ -191,6 +192,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
         }
       }
       boundIdentity = activeSession();
+      if (boundIdentity?.uid) await window.ZENTRA_ADMIN_BROWSER?.restore(boundIdentity.uid);
       return { auth, user, session: boundIdentity };
     })();
     initialization = pending;
@@ -279,6 +281,15 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     reauthenticate,
     consumeActionPassword,
     clearActionPassword,
+    async prepareBrowserKey() {
+      await init();
+      const active = activeSession();
+      if (!active?.uid || runtime?.clientCompatibility?.adminBrowserSession !== 1) throw Object.assign(new Error('Yönetim bağlantısı için V78 sunucu dosyalarını da Render üzerinde yayınlayın.'), { code: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED' });
+      return window.ZENTRA_ADMIN_BROWSER.prepare(active.uid);
+    },
+    acceptBrowserSession: result => window.ZENTRA_ADMIN_BROWSER.accept(result),
+    browserProof: (url, method, body) => window.ZENTRA_ADMIN_BROWSER?.proof(url, method, body, activeSession()?.uid) || '',
+    clearBrowserSession: () => window.ZENTRA_ADMIN_BROWSER?.clear(),
     token,
     appCheckToken,
     apiUrl,

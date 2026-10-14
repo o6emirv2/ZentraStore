@@ -3,7 +3,7 @@ const http = require('node:http'), crypto = require('node:crypto');
 const { memoryFirestore, mockModule, admin } = require('./memory-firestore.cjs');
 
 // Only the external Firebase/provider boundaries are adapted. Express routes and business services are real.
-async function applicationFixture() {
+async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '' } = {}) {
   const server = http.createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`, password = 'Fixture Password 2026!';
   const four = 'Fixture factor four!', five = 'Fixture factor five!', secret = crypto.randomBytes(20), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -12,7 +12,7 @@ async function applicationFixture() {
   const totp = () => { const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000))); const h = crypto.createHmac('sha1', secret).update(counter).digest(), offset = h.at(-1) & 15; return String((h.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0'); };
   const saltFour = crypto.randomBytes(32), saltFive = crypto.randomBytes(32), pair = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   Object.assign(process.env, {
-    NODE_ENV: 'development', PUBLIC_BASE_URL: origin, PUBLIC_BACKEND_ORIGIN: origin, ALLOWED_ORIGINS: origin,
+    NODE_ENV: 'development', PUBLIC_BASE_URL: origin, PUBLIC_BACKEND_ORIGIN: origin, CANONICAL_ORIGIN: canonicalOrigin || origin, ALLOWED_ORIGINS: [origin, ...additionalOrigins].join(','),
     APP_CHECK_MODE: 'enforce', PUBLIC_FIREBASE_APP_CHECK_SITE_KEY: 'integration-site-key', ADMIN_TOTP_MODE: 'required', RATE_LIMIT_STORE: 'firestore',
     PUBLIC_FIREBASE_CONFIG: JSON.stringify({ apiKey: crypto.randomBytes(25).toString('base64url'), authDomain: 'zentra-integration.firebaseapp.com', projectId: 'zentra-integration', appId: '1:100:web:integration' }),
     FIREBASE_KEY: JSON.stringify({ type: 'service_account', project_id: 'zentra-integration', client_email: 'svc@zentra-integration.iam.gserviceaccount.com', private_key: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }) }),
@@ -57,7 +57,7 @@ async function applicationFixture() {
   };
   const { app } = require('../../server.js'); server.on('request', app);
   const requests = [];
-  async function request(path, { uid, token, cookie = '', method = 'GET', body, client = 'secure-admin-v77', headers = {} } = {}) {
+  async function request(path, { uid, token, cookie = '', method = 'GET', body, client = 'secure-admin-v78', headers = {} } = {}) {
     const bearer = token || (uid ? idToken(uid) : '');
     const response = await originalFetch(origin + path, { method, headers: { origin, 'x-zentra-store-client': client, 'x-firebase-appcheck': 'fixture-appcheck', ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), ...(cookie ? { cookie } : {}), ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
     const payload = await response.json(); requests.push({ path, method, status: response.status }); return { status: response.status, body: payload, headers: response.headers };
@@ -77,7 +77,7 @@ async function applicationFixture() {
     if (proof.status !== 200) return proof;
     return request(path, { ...session, method, body, headers: { 'x-admin-action': proof.body.proof.token } });
   }
-  return { app, origin, db, auth, users, password, idToken, request, requests, openAdmin, adminWrite,
+  return { app, origin, db, auth, users, password, four, five, totp, idToken, request, requests, openAdmin, adminWrite,
     exchangeCustomToken: token => { const uid = customTokens.get(token); if (!uid) throw notFound(); return { ...publicUser(uid), idToken: idToken(uid) }; },
     close: async () => { await new Promise(resolve => server.close(resolve)); global.fetch = originalFetch; } };
 }

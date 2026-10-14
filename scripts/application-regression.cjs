@@ -13,11 +13,11 @@ test('real username login, supplementary cookie and account routes agree on the 
   assert.equal((await fixture.request('/api/auth/session', { method: 'POST', body: { idToken: user.idToken, remember: true } })).status, 200);
   assert.equal((await fixture.request('/api/auth/login', { method: 'POST', body: { identifier: 'EmirHan', password: 'incorrect' } })).status, 401);
 });
-test('canonical admin entry serves the dashboard only after both identity and gate cookies are verified', async () => {
+test('public admin shell carries no private data and protected API still requires matching identity and gate', async () => {
   const identity = await fixture.request('/api/auth/session', { method: 'POST', body: { idToken: owner.token, remember: false } });
   const cookie = [owner.cookie, ...identity.headers.getSetCookie().map(value => value.split(';')[0])].join('; ');
   const result = await fetch(fixture.origin + '/admin/', { headers: { cookie }, redirect: 'manual' });
-  assert.equal(result.status, 200); assert((await result.text()).includes('id="adminLoader"')); assert(result.headers.get('cache-control').includes('no-store'));
+  assert.equal(result.status, 200); assert((await result.text()).includes('admin-entry.js')); assert(result.headers.get('cache-control').includes('no-store'));
   const identityOnly = identity.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
   const gate = await fetch(fixture.origin + '/admin/', { headers: { cookie: identityOnly }, redirect: 'manual' });
   assert.equal(gate.status, 200); assert((await gate.text()).includes('id="fifthFactor"'));

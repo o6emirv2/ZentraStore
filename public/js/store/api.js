@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v77';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v78';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -235,7 +235,7 @@ export async function storeApi(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set('Accept', 'application/json');
   headers.set('X-Request-Id', headers.get('X-Request-Id') || createRequestId());
-  headers.set('X-Zentra-Store-Client', 'premium-store-v77');
+  headers.set('X-Zentra-Store-Client', 'premium-store-v78');
   if (options.body !== undefined && options.body !== null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   const rawPath = String(path || '');

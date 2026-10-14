@@ -4,7 +4,7 @@ const { browserModule } = require('./helpers/browser-module.cjs');
 async function scenario(provider, fetcher, check) {
   const prior = { window: global.window, document: global.document, fetch: global.fetch }; let calls = 0;
   global.window = { location: { href: 'https://store.zentra.invalid/', origin: 'https://store.zentra.invalid' }, setTimeout, clearTimeout,
-    __ZENTRA_RUNTIME__: { version: 77, apiBase: 'https://store.zentra.invalid' } };
+    __ZENTRA_RUNTIME__: { version: 78, apiBase: 'https://store.zentra.invalid' } };
   global.document = { querySelector: () => null };
   global.fetch = async (...args) => { calls++; return fetcher(...args); };
   try { const module = await browserModule('public/js/store/api.js'); module.setStoreTokenProvider(provider); await check(module, () => calls); }

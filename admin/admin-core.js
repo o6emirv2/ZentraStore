@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v77';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v78';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -187,7 +187,10 @@ function errorMessage(payload = {}, status = 0) {
     INVALID_JSON: 'Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip yeniden deneyin.',
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.',
     API_BODY_INVALID: 'Alanların biçimini ve desteklenen değerleri kontrol edin. Bilgileriniz korunmuştur.',
-    SERVICE_NOT_READY: 'Mağazanın güvenli işlem bağlantısı hazır değil. İşlem uygulanmadı.'
+    SERVICE_NOT_READY: 'Mağazanın güvenli işlem bağlantısı hazır değil. İşlem uygulanmadı.',
+    ADMIN_BROWSER_SERVER_UPDATE_REQUIRED: 'Mağaza ve Render sunucusu V78 dosyalarıyla birlikte güncellenmelidir.',
+    ADMIN_BROWSER_UNAVAILABLE: 'Güvenli yönetici oturumu hazırlanamadı. HTTPS bağlantısını ve tarayıcı ayarlarınızı kontrol edin.',
+    ADMIN_SESSION_UNAVAILABLE: 'Güvenli yönetim bağlantısı geçici olarak kullanılamıyor. Bilgileriniz korunmuştur; yeniden deneyin.'
   };
   return messages[code] || (status >= 500 ? 'İşlem şu anda tamamlanamadı. Lütfen yeniden deneyin.' : 'İşlem doğrulanamadı.');
 }
@@ -204,6 +207,14 @@ function apiFailure(payload, response) {
   return error;
 }
 
+async function browserHeaders(headers, url, method, body) {
+  const result = new Headers(headers);
+  result.delete('X-Zentra-Admin-Proof');
+  const proof = await window.ZENTRA_ADMIN_AUTH?.browserProof?.(url, method, body);
+  if (proof) result.set('X-Zentra-Admin-Proof', proof);
+  return result;
+}
+
 export async function adminFetch(path, options = {}) {
   let mutationSent = false;
   const initialUid = String(window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid || window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid || '');
@@ -212,7 +223,7 @@ export async function adminFetch(path, options = {}) {
   try {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
-    headers.set('X-Zentra-Store-Client', 'secure-admin-v77');
+    headers.set('X-Zentra-Store-Client', 'secure-admin-v78');
     const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
     const destination = new URL(url, window.location.href), base = new URL(window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/') || window.location.origin, window.location.href);
@@ -242,7 +253,8 @@ export async function adminFetch(path, options = {}) {
       const password = window.ZENTRA_ADMIN_AUTH?.consumeActionPassword?.() || '';
       if (!password) throw Object.assign(new Error('Bu işlem için hesap şifrenizi yeniden doğrulayın.'), { code: 'ADMIN_REAUTH_REQUIRED' });
       const proofResponse = await fetch(window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/api/admin/action-proof') || '/api/admin/action-proof', {
-        method: 'POST', headers, body: JSON.stringify({ method, path: target, bodyHash, password }), credentials: 'include', cache: 'no-store', signal: controller.signal
+        method: 'POST', headers: await browserHeaders(headers, window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/api/admin/action-proof') || '/api/admin/action-proof', 'POST', JSON.stringify({ method, path: target, bodyHash, password })),
+        body: JSON.stringify({ method, path: target, bodyHash, password }), credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal
       });
       const proofPayload = await readApiJson(proofResponse);
       if (!proofResponse.ok || proofPayload.ok !== true || typeof proofPayload.proof?.token !== 'string') {
@@ -252,8 +264,10 @@ export async function adminFetch(path, options = {}) {
     }
     const currentUid = () => String(window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid || window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid || '');
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. İşlem durduruldu.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
+    const signedHeaders = await waitForSignal(browserHeaders(headers, url, method, body), controller.signal);
+    if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method) && target !== '/api/admin/store/inventory/import-check';
-    const response = await fetch(url, { ...options, method, headers, body, credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal });
+    const response = await fetch(url, { ...options, method, headers: signedHeaders, body, credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal });
     const payload = await readApiJson(response);
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. Yanıt işlenmedi.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     if (!response.ok || payload.ok === false) {

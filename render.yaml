@@ -13,7 +13,7 @@ services:
       - key: CANONICAL_ORIGIN
         value: https://zentrastore.com.tr
       - key: PUBLIC_API_BASE
-        value: https://zentrastore.com.tr
+        value: https://emirhan-siye.onrender.com
       - key: PUBLIC_BACKEND_ORIGIN
         value: https://emirhan-siye.onrender.com
       - key: ALLOWED_ORIGINS

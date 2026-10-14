@@ -4,13 +4,13 @@ const crypto = require('crypto');
 const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { requireAuth, requireAdmin, adminAuthLimiter, adminBootstrapLimiter } = require('../core/security');
-const { trustedOrigin, createUserSession } = require('../core/userSessionService');
+const { trustedOrigin } = require('../core/userSessionService');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { resolveStaffPolicy } = require('../core/adminStoreService');
 const { writeAdminAudit } = require('../core/adminReauthService');
 const { verifyAdminTotp } = require('../core/adminTotpService');
 const { registerAdminSession, isAdminSessionActive, revokeAdminSession } = require('../core/adminSessionRegistry');
-const { issueAdminHandoff } = require('../core/adminHandoffService');
+const { verifyBrowserRegistration, verifyBrowserStep, resolveBrowserAccess } = require('../core/adminBrowserSessionService');
 const {
   signingSecret,
   sealAdminStep,
@@ -60,6 +60,7 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
     stage: Number(stage),
     uid: String(identity.uid || '').trim(),
     email: String(identity.email || '').trim().toLowerCase(),
+    ...(identity.browserKey ? { browserKey: identity.browserKey } : {}),
     gateSession: String(gateSession || '').trim().slice(0, 80),
     issuedAt,
     expiresAt,
@@ -67,9 +68,10 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
   });
 }
 
-function readStepTicket(raw = '', stage = 0) {
+async function readStepTicket(raw = '', stage = 0, req) {
   const payload = readAdminStep(raw);
   if (!payload || Number(payload.stage) !== Number(stage)) return null;
+  if (payload.browserKey) await verifyBrowserStep(req, payload.browserKey);
   return payload;
 }
 
@@ -170,6 +172,7 @@ async function resolveAdminAccessProof(req) {
   const uid = String(req.user?.uid || '').trim();
   const email = String(req.user?.email || '').trim().toLowerCase();
   if (!uid || !email) return null;
+  if (req.headers?.['x-zentra-admin-proof']) return resolveBrowserAccess(req);
 
   const cookieAccess = readAdminAccess(getRequestAdminAccessToken(req));
   if (cookieAccess && cookieAccess.uid === uid && cookieAccess.email === email
@@ -210,6 +213,7 @@ router.get('/auth/admin/gate/identity', requireAuth, async (req, res) => {
 router.post('/auth/admin/gate/step-email', requireGateOrigin, adminBootstrapLimiter, requireAuth, async (req, res) => {
   try {
     const identity = await activeAdminIdentity(req);
+    if (req.body?.browserKey) identity.browserKey = await verifyBrowserRegistration(req);
     return res.json({
       ok: true,
       ticket: createStepTicket(identity, 2),
@@ -223,9 +227,10 @@ router.post('/auth/admin/gate/step-email', requireGateOrigin, adminBootstrapLimi
 
 router.post('/auth/admin/gate/step-uid', requireGateOrigin, adminBootstrapLimiter, requireAuth, async (req, res) => {
   try {
-    const payload = readStepTicket(req.body?.ticket, 2);
+    const payload = await readStepTicket(req.body?.ticket, 2, req);
     if (!payload) return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security: securityPosture() });
     const identity = await activeAdminIdentity(req);
+    if (payload.browserKey) identity.browserKey = payload.browserKey;
     if (identity.uid !== payload.uid || identity.email !== payload.email) {
       return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security: securityPosture() });
     }
@@ -242,9 +247,10 @@ router.post('/auth/admin/gate/step-uid', requireGateOrigin, adminBootstrapLimite
 
 router.post('/auth/admin/gate/step-firebase-password', requireGateOrigin, adminAuthLimiter, requireAuth, async (req, res) => {
   try {
-    const payload = readStepTicket(req.body?.ticket, 3);
+    const payload = await readStepTicket(req.body?.ticket, 3, req);
     if (!payload) return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security: securityPosture() });
     const identity = await activeAdminIdentity(req);
+    if (payload.browserKey) identity.browserKey = payload.browserKey;
     if (!principalMatches(req, payload) || identity.uid !== payload.uid || identity.email !== payload.email) {
       return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security: securityPosture() });
     }
@@ -273,7 +279,7 @@ router.post('/auth/admin/gate/step-firebase-password', requireGateOrigin, adminA
 
 router.post('/auth/admin/gate/step-four', requireGateOrigin, adminAuthLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
-    const payload = readStepTicket(req.body?.ticket, 4);
+    const payload = await readStepTicket(req.body?.ticket, 4, req);
     if (!payload || !principalMatches(req, payload) || !(await strictAdminPrincipal(payload.uid, payload.email))) {
       return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security: securityPosture() });
     }
@@ -304,7 +310,7 @@ router.post('/auth/admin/gate/step-four', requireGateOrigin, adminAuthLimiter, r
 router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
     const security = securityPosture();
-    const payload = readStepTicket(req.body?.ticket, 5);
+    const payload = await readStepTicket(req.body?.ticket, 5, req);
     if (!payload || !principalMatches(req, payload) || !(await strictAdminPrincipal(payload.uid, payload.email))) {
       return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security });
     }
@@ -322,6 +328,10 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       return res.status(409).json({ ok: false, error: 'ADMIN_SECURITY_CONFIGURATION_INCOMPLETE', message: `Güvenlik skoru ${security.minimum}/100 eşiğinin altında.`, security });
     }
 
+    const sourceOrigin = env.normalizeOrigin(req.headers?.origin || '');
+    if (!payload.browserKey && sourceOrigin !== env.serviceOrigin) {
+      return res.status(409).json({ ok: false, error: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED', message: 'Güncel V78 yönetim dosyalarını mağaza alanında yayınlayıp sayfayı yenileyin.' });
+    }
     const totp = await verifyAdminTotp({
       uid: payload.uid,
       code: req.body?.totpCode,
@@ -335,43 +345,21 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       throw Object.assign(new Error('ADMIN_TOTP_REPLAY'), { code: 'ADMIN_TOTP_REPLAY', statusCode: 401 });
     }
     const cookieAccess = issueAdminAccess({ uid: payload.uid, email: payload.email, gateSession: factorProof.gateSession });
-    const sourceOrigin = env.normalizeOrigin(req.headers?.origin || '');
-    const adminOrigin = env.canonicalOrigin || env.publicBaseUrl;
-    const needsFirstPartyHandoff = !!sourceOrigin && (sourceOrigin !== env.serviceOrigin || sourceOrigin !== adminOrigin);
-    let firstPartySession = null;
-    if (needsFirstPartyHandoff) {
-      firstPartySession = await createUserSession(req.firebaseIdToken, false);
-      const sessionUid = String(firstPartySession.decoded?.uid || firstPartySession.decoded?.sub || '').trim();
-      const sessionEmail = String(firstPartySession.decoded?.email || '').trim().toLowerCase();
-      if (sessionUid !== payload.uid || sessionEmail !== payload.email) {
-        throw Object.assign(new Error('ADMIN_ACTIVE_SESSION_MISMATCH'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH', statusCode: 403 });
-      }
-    }
-    await registerAdminSession({ uid: payload.uid, email: payload.email, session: cookieAccess.gateSession, expiresAt: cookieAccess.expiresAt });
-    const handoff = needsFirstPartyHandoff ? await issueAdminHandoff({
-      uid: payload.uid,
-      email: payload.email,
-      gateSession: cookieAccess.gateSession,
-      sourceOrigin,
-      sessionCookie: firstPartySession.sessionCookie,
-      accessToken: cookieAccess.accessToken
-    }) : null;
+    await registerAdminSession({ uid: payload.uid, email: payload.email, session: cookieAccess.gateSession, expiresAt: cookieAccess.expiresAt, browserKey: payload.browserKey || null });
     await writeAdminAudit(req, 'admin.gate.login.success', {
-      stage: 'complete', accessModes: ['httpOnly-cookie'],
+      stage: 'complete', accessModes: [payload.browserKey ? 'browser-key' : 'httpOnly-cookie'],
       possessionFactor: totp.verified === true ? 'totp' : 'not-configured',
       factorTransport: factorProof.mode,
-      sessionTransport: needsFirstPartyHandoff ? 'single-use-first-party-post' : 'same-origin-cookie',
+      sessionTransport: payload.browserKey ? 'origin-bound-browser-key' : 'same-origin-cookie',
       resumedCompletion: totp.replayed === true,
       expiresAt: cookieAccess.expiresAt
     });
-    res.setHeader('Set-Cookie', needsFirstPartyHandoff
-      ? clearAdminGateFactorCookie()
-      : [adminAccessCookie(cookieAccess.accessToken), clearAdminGateFactorCookie()]);
+    res.setHeader('Set-Cookie', [adminAccessCookie(cookieAccess.accessToken), clearAdminGateFactorCookie()]);
     return res.json({
       ok: true,
       redirectTo: '/admin/',
       gateExpiresAt: cookieAccess.expiresAt,
-      ...(handoff ? { handoff } : {}),
+      ...(payload.browserKey ? { browserSession: { keyId: payload.browserKey.keyId, session: cookieAccess.gateSession, expiresAt: cookieAccess.expiresAt } } : {}),
       admin: await adminContext(payload.uid, payload.email),
       security
     });
@@ -402,7 +390,8 @@ async function requireAdminGate(req, res, next) {
     if (!proof) return res.status(401).json({ ok: false, error: 'ADMIN_GATE_REQUIRED' });
     req.adminAccess = proof;
     return next();
-  } catch (_) {
+  } catch (error) {
+    if (Number(error?.statusCode) === 503) return res.status(503).json({ ok: false, error: 'ADMIN_SESSION_UNAVAILABLE' });
     return res.status(401).json({ ok: false, error: 'ADMIN_GATE_ACCESS_INVALID' });
   }
 }

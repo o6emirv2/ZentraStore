@@ -92,10 +92,10 @@ test('external abort and request timeout remain distinct and listeners are clean
 
 test('store writes bind the initial identity and do not fall back to another account cookie', async () => {
   const utils = 'data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js')).toString('base64');
-  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v77'", JSON.stringify(utils));
+  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v78'", JSON.stringify(utils));
   const previous = { window: global.window, document: global.document, fetch: global.fetch };
   let fetches = 0;
-  global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 77 } };
+  global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 78 } };
   global.document = { querySelector: () => null };
   global.fetch = async (_url, options) => { fetches++; assert.equal(options.headers.get('Authorization'), 'Bearer initial-user'); return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } }); };
   try {
@@ -147,7 +147,7 @@ test('forced catalog refresh after a mutation waits for an old read and then loa
   let source = fs.readFileSync(root + 'products.js', 'utf8');
   for (const file of ['product-fields.js', 'social-links.js']) {
     const url = 'data:text/javascript;base64,' + fs.readFileSync(root + file).toString('base64');
-    source = source.replace(`'./${file}?v=zentra-ui-v77'`, JSON.stringify(url));
+    source = source.replace(`'./${file}?v=zentra-ui-v78'`, JSON.stringify(url));
   }
   const { loadStoreCatalog } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
   const makeCatalog = (price) => ({ products: [{ id: 'demo-product', name: 'Demo', platform: 'android', image: '/public/assets/products/gbox.jpeg', plans: [{ key: 'm', label: 'Aylık', duration: '30 gün', priceKurus: price }] }] });

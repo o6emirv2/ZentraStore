@@ -1,12 +1,12 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v77';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v77';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v77';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v77';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v77';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v77';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v77';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v77';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v77';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v78';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v78';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v78';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v78';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v78';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v78';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v78';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v78';
 
 installInteractionGuard();
 
@@ -1914,8 +1914,10 @@ function switchPanel(name = 'overview', { record = true } = {}) {
 }
 
 async function logout() {
-  await adminFetch('/api/auth/admin/gate/logout', { method: 'POST', body: {} }).catch(() => null);
-  location.replace('/admin/index.html');
+  try { await adminFetch('/api/auth/admin/gate/logout', { method: 'POST', body: {} }); }
+  catch (error) { toast('error', 'Yönetici çıkışı tamamlanamadı', error.message); return; }
+  await window.ZENTRA_ADMIN_AUTH.clearBrowserSession();
+  location.replace('/admin/');
 }
 
 function bindAction(element, type, handler, label = 'İşlem yapılıyor…') {
@@ -2081,12 +2083,6 @@ async function boot() {
   installAppUI(); lockAdminInteractions(); startAmbientCanvas($('#ambientCanvas')); installAdminChromeStability();
   try {
     await window.ZENTRA_ADMIN_AUTH.init();
-    const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
-    if (apiOrigin !== window.location.origin) {
-      throw Object.assign(new Error('Yönetim merkezi güvenli sunucu alanında açılmalıdır. Yönetici girişinden devam edin.'), {
-        code: 'ADMIN_HANDOFF_REQUIRED'
-      });
-    }
     const status = await confirmedAdminStatus();
     bind();
     state.adminPolicy = status.admin;

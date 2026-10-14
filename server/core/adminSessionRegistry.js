@@ -22,7 +22,7 @@ function sessionReference(value) {
   return db.collection('storeAdminSessions').doc(sessionId(value));
 }
 
-async function registerAdminSession({ uid = '', email = '', session = '', expiresAt = 0 } = {}) {
+async function registerAdminSession({ uid = '', email = '', session = '', expiresAt = 0, browserKey = null } = {}) {
   const now = Date.now();
   const expiry = Math.max(0, Number(expiresAt || 0));
   if (expiry <= now) throw sessionError('ADMIN_GATE_ACCESS_INVALID', 401);
@@ -33,11 +33,17 @@ async function registerAdminSession({ uid = '', email = '', session = '', expire
     expiresAt: expiry,
     purgeAfter: new Date(expiry + 86_400_000),
     revokedAt: 0,
-    createdAt: now
+    createdAt: now,
+    ...(browserKey ? { browserKey } : {})
   };
   await reference.set(row, { merge: false });
   cache.set(reference.id, { value: row, until: now + CACHE_TTL_MS });
   return row;
+}
+
+async function readAdminSession(session) {
+  const snapshot = await sessionReference(session).get();
+  return snapshot.exists ? snapshot.data() : null;
 }
 
 async function isAdminSessionActive({ uid = '', email = '', session = '' } = {}) {
@@ -78,4 +84,4 @@ async function revokeAdminSessionsForUser(uid = '') {
   return snapshot.size;
 }
 
-module.exports = { registerAdminSession, isAdminSessionActive, revokeAdminSession, revokeAdminSessionsForUser };
+module.exports = { registerAdminSession, readAdminSession, isAdminSessionActive, revokeAdminSession, revokeAdminSessionsForUser };

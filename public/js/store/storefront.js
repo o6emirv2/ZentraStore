@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v77';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v77';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v77';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v77';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v77';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v77';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v78';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v78';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v78';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v78';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v78';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v78';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,12 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v77';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v77';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v77';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v77';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v77';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v77';
+} from './auth.js?v=zentra-ui-v78';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v78';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v78';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v78';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v78';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v78';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,19 +35,19 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v77';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v77';
+} from './customer-app.js?v=zentra-ui-v78';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v78';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v77';
+} from './customer-renderers.js?v=zentra-ui-v78';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v77';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v77';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v77';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v78';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v78';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v78';
 
 const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';

@@ -2,21 +2,24 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
+  <meta name="zentra-admin-release" content="78" />
   <meta name="viewport" content="width=device-width, initial-scale=0.80, minimum-scale=0.80, maximum-scale=0.80, user-scalable=no, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="theme-color" content="#070B16" />
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Güvenli Yönetici Girişi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v77" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-gate.css?v=zentra-ui-v77" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v77" />
-  <script src="./admin-auth.js?v=zentra-ui-v77"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v77" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v77" />
+  <link rel="stylesheet" href="./admin-gate.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v78" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v78"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v78"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v78" />
 </head>
 <body>
+  <div id="adminGateRoot">
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
   <main class="gate-stage">
     <section class="gate-shell" aria-labelledby="gateTitle">
@@ -101,6 +104,7 @@
       <footer><i class="fa-solid fa-circle-info" aria-hidden="true"></i> E-posta ve UID, ana sayfadaki aktif hesaptan okunur ve yetki listesiyle eşleştirilir; gizli yönetici değerleri sayfa koduna eklenmez.</footer>
     </section>
   </main>
-  <script type="module" src="./admin-gate.js?v=zentra-ui-v77"></script>
+  </div>
+  <script type="module" src="./admin-entry.js?v=zentra-ui-v78"></script>
 </body>
 </html>

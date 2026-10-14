@@ -195,7 +195,7 @@ function publicRuntimeConfig() {
     firebaseConfigSource: env.firebase.publicConfigSource,
     brand: 'ZENTRA STORE',
     version: integer(String(packageVersion || '').split('.')[0], 1, 1, 10_000),
-    clientCompatibility: { authentication: 1, storeRead: 2, storeWrite: 2, adminAction: 1 },
+    clientCompatibility: { authentication: 1, storeRead: 2, storeWrite: 2, adminAction: 1, adminBrowserSession: 1 },
     minimumPasswordLength: 8
   };
 }

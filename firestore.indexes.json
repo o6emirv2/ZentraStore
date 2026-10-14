@@ -87,6 +87,12 @@
       "fieldPath": "expiresAt",
       "ttl": true,
       "indexes": []
+    },
+    {
+      "collectionGroup": "storeAdminBrowserNonces",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

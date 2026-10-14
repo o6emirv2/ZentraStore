@@ -16,7 +16,7 @@ function corsOptions(req, callback) {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type', 'Authorization', 'X-Request-Id', 'X-Idempotency-Key',
-      'X-Zentra-Store-Client', 'X-Admin-Reauth', 'X-Admin-Action', 'X-Firebase-AppCheck'
+      'X-Zentra-Store-Client', 'X-Admin-Reauth', 'X-Admin-Action', 'X-Firebase-AppCheck', 'X-Zentra-Admin-Proof'
     ],
     exposedHeaders: ['X-Request-Id'],
     maxAge: 86400

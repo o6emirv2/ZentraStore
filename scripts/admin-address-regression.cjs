@@ -30,7 +30,7 @@ test('legacy canonical paths normalize without exposing a protected dashboard', 
   for (const path of ['/admin', '/admin/admin.html']) {
     const result = await request(path, 'zentrastore.com.tr'); assert.equal(result.status, 302); assert.equal(result.headers.get('location'), 'https://zentrastore.com.tr/admin/');
   }
-  const guest = await request('/admin/', 'zentrastore.com.tr'); assert.equal(guest.status, 302); assert.equal(guest.headers.get('location'), 'https://zentrastore.com.tr/');
+  const guest = await request('/admin/', 'zentrastore.com.tr'); assert.equal(guest.status, 200); assert.equal(guest.headers.get('location'), null);
 });
 test('an unapproved Host cannot choose a redirect destination or receive admin content', async () => {
   const result = await request('/admin/', 'attacker.invalid'); assert.equal(result.status, 421); assert.equal(result.headers.get('location'), null); assert.equal((await result.json()).error, 'HOST_NOT_ALLOWED');

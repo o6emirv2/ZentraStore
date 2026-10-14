@@ -1,7 +1,7 @@
-import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v77';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v77';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v77';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v77';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v78';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v78';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v78';
 
 installInteractionGuard();
 installAppUI();
@@ -15,35 +15,6 @@ const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, mil
 
 function googleAuthenticatorCode(value = '') {
   return String(value || '').normalize('NFKC').replace(/\D/g, '').slice(0, 6);
-}
-
-function prepareFirstPartyHandoff(handoff = {}) {
-  const action = new URL(String(handoff?.action || ''), window.location.href);
-  const service = new URL(window.ZENTRA_ADMIN_AUTH.canonicalOrigin(), window.location.href);
-  const code = String(handoff?.code || '').trim();
-  const expiresAt = Math.max(0, Number(handoff?.expiresAt || 0) || 0);
-  if (handoff?.required !== true || handoff?.mode !== 'single-use-first-party-post'
-    || action.origin !== service.origin || action.pathname !== '/admin/session/handoff'
-    || action.search || action.hash || !/^https:$/.test(action.protocol)
-    || !/^[A-Za-z0-9_-]{43}$/.test(code) || expiresAt <= Date.now()) {
-    const error = new Error('Güvenli yönetici geçişi doğrulanamadı. Lütfen son adımı yeniden deneyin.');
-    error.code = 'ADMIN_HANDOFF_INVALID';
-    throw error;
-  }
-  const form = document.createElement('form');
-  form.method = 'post';
-  form.action = action.href;
-  form.enctype = 'application/x-www-form-urlencoded';
-  form.target = '_self';
-  form.hidden = true;
-  form.setAttribute('aria-hidden', 'true');
-  const field = document.createElement('input');
-  field.type = 'hidden';
-  field.name = 'handoffCode';
-  field.value = code;
-  form.appendChild(field);
-  document.body.appendChild(form);
-  return form;
 }
 
 async function verifyCompletedAdminAccess() {
@@ -164,7 +135,8 @@ async function runAutomaticVerification() {
     verificationView(1, false, `Aktif oturum okunuyor: ${active.email}`);
     setStatus('#emailStatus', `Ana sayfa oturumu algılandı: ${active.email}`);
 
-    const emailResult = await adminFetch('/api/auth/admin/gate/step-email', { method: 'POST', body: {} });
+    const browserKey = await window.ZENTRA_ADMIN_AUTH.prepareBrowserKey();
+    const emailResult = await adminFetch('/api/auth/admin/gate/step-email', { method: 'POST', body: { browserKey } });
     securityView(emailResult.security);
     state.ticket = emailResult.ticket || '';
     if (!state.ticket) throw new Error('Yetkili e-posta eşleşme oturumu oluşturulamadı.');
@@ -278,19 +250,16 @@ async function submitFifthFactor(event) {
       invalid.code = 'ADMIN_GATE_ACCESS_INVALID';
       throw invalid;
     }
-    const handoffForm = response.handoff?.required ? prepareFirstPartyHandoff(response.handoff) : null;
-    if (!handoffForm) await verifyCompletedAdminAccess();
+    if (!response.browserSession) throw Object.assign(new Error('Sunucunun V78 yönetim oturumunu desteklediğini kontrol edin.'), { code: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED' });
+    await window.ZENTRA_ADMIN_AUTH.acceptBrowserSession(response.browserSession);
+    await verifyCompletedAdminAccess();
     $('#fifthFactor').value = '';
     $('#adminTotpCode').value = '';
     securityView(response.security);
     activateStep(6);
     setStatus('#fifthStatus', 'Tüm güvenlik katmanları doğrulandı. Güvenli yönetim merkezi açılıyor.', 'success');
-    if (handoffForm) {
-      handoffForm.submit();
-      return;
-    }
     state.ticket = '';
-    window.location.replace(new URL('/admin/', window.ZENTRA_ADMIN_AUTH.canonicalOrigin()).href);
+    window.dispatchEvent(new CustomEvent('zentra:admin-unlocked'));
   } catch (error) {
     $('#fifthFactor').value = '';
     if (state.step === 6) activateStep(5);
@@ -326,7 +295,8 @@ function togglePassword(button) {
 
 async function boot() {
   lockAdminInteractions();
-  startAmbientCanvas($('#ambientCanvas'));
+  const stopCanvas = startAmbientCanvas($('#ambientCanvas'));
+  window.addEventListener('zentra:admin-mounted', () => stopCanvas?.(), { once: true });
 
   if (clearExpiredBlock() > Date.now()) {
     redirectToStorefront();
@@ -347,16 +317,16 @@ async function boot() {
     await window.ZENTRA_ADMIN_AUTH.init();
     const status = await adminFetch('/api/auth/admin/gate/status');
     securityView(status.security);
-    const apiOrigin = new URL(window.ZENTRA_ADMIN_AUTH.apiUrl('/api/public/runtime-config'), window.location.href).origin;
-    if (status.authenticated && window.ZENTRA_ADMIN_AUTH.activeSession() && apiOrigin === window.location.origin) {
+    if (status.authenticated && window.ZENTRA_ADMIN_AUTH.activeSession()) {
           activateStep(6);
-      return location.replace(new URL('/admin/', window.ZENTRA_ADMIN_AUTH.canonicalOrigin()).href);
+      window.dispatchEvent(new CustomEvent('zentra:admin-unlocked')); return;
     }
   } catch (error) {
     securityView(error?.payload?.security || { score: 0, minimum: 90, ready: false });
   }
 
   await adminFetch('/api/auth/admin/gate/logout', { method: 'POST', body: {} }).catch(() => null);
+  await window.ZENTRA_ADMIN_AUTH.clearBrowserSession();
   await runAutomaticVerification();
 }
 

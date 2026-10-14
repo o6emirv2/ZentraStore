@@ -1,5 +1,5 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v77';
-import { createAccountReader } from './account-state.js?v=zentra-ui-v77';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v78';
+import { createAccountReader } from './account-state.js?v=zentra-ui-v78';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;

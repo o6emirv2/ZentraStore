@@ -7,7 +7,7 @@ const failures = [];
 const files = [];
 function walk(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    if (['node_modules', '.git'].includes(entry.name)) continue;
+    if (['node_modules', '.git', 'dist-pages'].includes(entry.name)) continue;
     const filename = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(filename);
     else files.push(filename);
@@ -84,12 +84,11 @@ for (const filename of files) {
 if (!fs.readFileSync(path.join(root, 'server.js'), 'utf8').includes(viewport)) failures.push('Dinamik yönetici sayfasının viewport değeri değişti');
 const domGroups = [
   ['index.html', ['script.js', 'public/js/store/storefront.js', 'public/js/store/customer-app.js', 'public/js/store/customer-renderers.js', 'public/js/store/product-gallery.js', 'public/js/store/showcase-slider.js']],
-  ['admin/admin.html', ['admin/admin-dashboard.js']],
-  ['admin/index.html', ['admin/admin-gate.js']]
+  [['admin/admin.html', 'admin/index.html'], ['admin/admin-legacy-entry.js', 'admin/admin-entry.js', 'admin/admin-dashboard.js', 'admin/admin-gate.js']]
 ];
 let literalDomReferences = 0;
 for (const [htmlName, scriptNames] of domGroups) {
-  const htmlSource = fs.readFileSync(path.join(root, htmlName), 'utf8');
+  const htmlSource = (Array.isArray(htmlName) ? htmlName : [htmlName]).map(name => fs.readFileSync(path.join(root, name), 'utf8')).join('\n');
   const elementIds = new Set([...htmlSource.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
   const sharedUI = fs.readFileSync(path.join(root, 'public/js/ui/app-ui.js'), 'utf8');
   for (const match of sharedUI.matchAll(/\.id\s*=\s*['"]([A-Za-z][\w:-]*)['"]|\bid="([^"]+)"/g)) elementIds.add(match[1] || match[2]);
