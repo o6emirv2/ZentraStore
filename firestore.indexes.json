@@ -73,48 +73,6 @@
           "order": "DESCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "storeAffiliateReferrals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "code",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "storeAffiliateCommissions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "code",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "storeSecurityEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "uid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": [
@@ -132,12 +90,6 @@
     },
     {
       "collectionGroup": "storeAdminBrowserNonces",
-      "fieldPath": "expiresAt",
-      "ttl": true,
-      "indexes": []
-    },
-    {
-      "collectionGroup": "storeDeviceNonces",
       "fieldPath": "expiresAt",
       "ttl": true,
       "indexes": []

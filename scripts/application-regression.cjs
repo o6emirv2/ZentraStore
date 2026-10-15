@@ -42,9 +42,7 @@ test('financial role cannot edit the catalog and loses access immediately after 
 });
 test('malformed stored dates cannot credit funds while a committed receipt remains replayable', async () => {
   const row = fixture.db.records.get('storePromotions/FINANCE200'); row.startsAt = 'tomorrow';
-  assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'member', method: 'POST', body: { code: 'FINANCE200' } })).status, 409);
-  const unregistered = await fixture.request('/api/store/balance-codes/redeem', { uid: 'viewer', method: 'POST', body: { code: 'FINANCE200' } });
-  assert.equal(unregistered.status, 403); assert.equal(unregistered.body.error, 'SECURITY_REGISTRATION_REQUIRED');
+  assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'viewer', method: 'POST', body: { code: 'FINANCE200' } })).status, 409);
   assert.equal(fixture.db.records.get('users/viewer'), undefined);
   fixture.db.records.get('storePromotions/ZENTRASTORE200').active = false;
   assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'member', method: 'POST', body: { code: 'ZENTRASTORE200' } })).body.idempotentReplay, true);

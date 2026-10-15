@@ -2,18 +2,14 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { mockModule, memoryFirestore } = require('./helpers/memory-firestore.cjs');
-process.env.STORE_KEY_FINGERPRINT_SECRET = require('node:crypto').randomBytes(48).toString('hex');
 process.env.NODE_ENV = 'development'; process.env.RATE_LIMIT_STORE = 'memory';
 let cookieReads = 0, revokedChecks = [], tokenUid = 'bearer-user';
 const db = memoryFirestore();
-mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ db, auth: { getUser: async uid => ({ uid, metadata: { creationTime: '2020-01-01T00:00:00.000Z' } }), verifyIdToken: async (token, revoked) => {
+mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ db, auth: { verifyIdToken: async (token, revoked) => {
   revokedChecks.push(revoked); if (token !== 'valid.token') throw new Error('revoked or invalid token');
   return { uid: tokenUid, email: 'bearer@example.test', email_verified: true, auth_time: Math.floor(Date.now() / 1000), firebase: { sign_in_provider: 'password' } };
 } } }) });
 mockModule('../../server/core/userSessionService', { verifyUserSession: async () => { cookieReads++; return { uid: 'cookie-user' }; }, trustedOrigin: (req) => req.headers.origin === 'https://store.example.test' });
-db.records.set('storeDevices/'+'a'.repeat(64), { ownerUid:'',blocked:false });
-mockModule('../../server/core/storeDeviceService', { verifyDevice: async req => { req.storeDevice={deviceId:'a'.repeat(64),data:{}};return req.storeDevice; } });
-mockModule('../../server/core/storeNetworkPolicy', { checkNetwork: async () => ({ip:'8.8.4.4',blocked:false,categories:[],checkedAt:Date.now()}) });
 const security = require('../server/core/security');
 async function verify(headers = {}, method = 'GET') {
   const req = { headers, method }, res = { statusCode: 200, status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; } };

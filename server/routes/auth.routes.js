@@ -42,7 +42,7 @@ router.post('/client-errors', clientErrorLimiter, (req, res) => {
 router.get('/public/runtime-config', (_req, res) => {
   const runtime = env.publicRuntimeConfig();
   const firebaseReady = !!(runtime.firebase.apiKey && runtime.firebase.authDomain && runtime.firebase.projectId && runtime.firebase.appId);
-  return res.json({ ok: true, ...runtime, firebaseReady, accountSecurity: { required: true, deviceProofVersion: 1 } });
+  return res.json({ ok: true, ...runtime, firebaseReady });
 });
 
 router.get('/auth/me', requireAuth, (req, res) => res.json({
@@ -57,9 +57,6 @@ router.post('/auth/session', strictLimiter, async (req, res) => {
   if (!idToken) return res.status(400).json({ ok: false, error: 'ID_TOKEN_REQUIRED' });
   try {
     const result = await createUserSession(idToken, req.body?.remember === true);
-    req.user = result.decoded;
-    const adminPrincipal = result.decoded.email_verified === true && await require('../core/security').isAdminPrincipal(result.decoded.uid, result.decoded.email);
-    if (!adminPrincipal) await require('../core/storeAccountSecurity').enforceCustomerAccess(req, { pendingAllowed: true });
     res.setHeader('Set-Cookie', sessionCookieHeader(result.sessionCookie, result.remember));
     return res.json({
       ok: true,
@@ -73,7 +70,6 @@ router.post('/auth/session', strictLimiter, async (req, res) => {
     });
   } catch (error) {
     res.setHeader('Set-Cookie', clearSessionCookieHeader());
-    if (error.storeSecurityError) return res.status(error.statusCode || 403).json({ ok: false, error: error.code });
     const unavailable = error?.code === 'AUTH_UNAVAILABLE';
     return res.status(unavailable ? 503 : 401).json({ ok: false, error: unavailable ? 'AUTH_UNAVAILABLE' : 'AUTH_INVALID' });
   }

@@ -110,10 +110,8 @@ async function requireAuth(req, res, next) {
     if (user?.originBlocked) return res.status(403).json({ ok: false, error: 'ORIGIN_NOT_ALLOWED' });
     if (!user?.uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
     req.user = user;
-    await require('./storeAccountSecurity').customerRouteGuard(req);
     return next();
-  } catch (error) {
-    if (error.storeSecurityError) return next(error);
+  } catch (_) {
     return res.status(401).json({ ok: false, error: 'AUTH_INVALID' });
   }
 }

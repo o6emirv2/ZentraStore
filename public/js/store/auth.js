@@ -1,5 +1,4 @@
-import { currentReferral, clearReferral } from './referral.js?v=zentra-affiliate-v1';
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-security-v1';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v78';
 import { createAccountReader } from './account-state.js?v=zentra-ui-v78';
 
 const FIREBASE_VERSION = '12.17.1';
@@ -40,9 +39,7 @@ const accountReader = createAccountReader({
 });
 function bindUser(user) {
   if (uid(state.user) !== uid(user)) { accountReader.invalidate(); state.account = null; state.accountStale = false; state.accountLoading = false; state.pendingEmail = ''; }
-  const providerChanged = state.user !== (user || null);
-  state.user = user || null;
-  if (providerChanged) setStoreTokenProvider(user ? () => user.getIdToken() : null);
+  state.user = user || null; setStoreTokenProvider(user ? () => user.getIdToken() : null);
 }
 function requireSignedInUser() { const user = state.auth?.currentUser; if (!user || state.localSignedOut) throw failure('AUTH_REQUIRED', 'Devam etmek için giriş yapın.'); return user; }
 function requireUnchangedUser(expected) {
@@ -186,13 +183,12 @@ export async function registerStore(input = {}) {
     const available = await storeApi(`/api/auth/check-username?username=${encodeURIComponent(username)}`, { auth: false });
     if (available.available === false) throw failure('USERNAME_TAKEN');
     const persistenceWarning = await setAuthPersistence(input.remember === true);
-    if (!retry) await storeApi('/api/store/security/preflight', { auth: false, method: 'POST', body: {} });
     const credential = retry ? { user: state.auth.currentUser } : await state.sdk.createUserWithEmailAndPassword(state.auth, email, password);
     state.localSignedOut = false;
     if (retry) await state.sdk.reauthenticateWithCredential(credential.user, state.sdk.EmailAuthProvider.credential(email, password));
     pendingRegistration = { uid: uid(credential.user), email }; bindUser(credential.user); emit();
-    await storeApi('/api/profile/update', { method: 'POST', body: { firstName, lastName, username, birthDate, ...(currentReferral() ? { affiliateCode: currentReferral() } : {}) } });
-    requireUnchangedUser(credential.user); pendingRegistration = null; clearReferral();
+    await storeApi('/api/profile/update', { method: 'POST', body: { firstName, lastName, username, birthDate } });
+    requireUnchangedUser(credential.user); pendingRegistration = null;
     await state.sdk.updateProfile(credential.user, { displayName: username }).catch(() => {});
     await finishIdentity(credential.user, persistenceWarning ? false : input.remember === true);
     state.warning = [persistenceWarning, state.warning].filter(Boolean).join(' '); emit(); return snapshot();

@@ -66,11 +66,6 @@ const {
   updateProfileBirthDate, prepareProfileEmailChange
 } = require('../core/storeProfileService');
 const { redeemBalanceCode, saveBalanceCode, listBalanceCodes } = require('../core/storeBalanceCodeService');
-const { resolveAffiliateLink, listAffiliateLinks, saveAffiliateLink, affiliateDetails, customerAffiliateSummary, releaseHeldCommission } = require('../core/storeAffiliateService');
-const { previewTransfer, transferBalance, customerWalletHistory } = require('../core/storeTransferService');
-const { checkedContext, fail: securityFailure, securityEvent } = require('../core/storeAccountSecurity');
-const { registerDevice } = require('../core/storeDeviceService');
-const { listSecurityEvents, readAccountSecurity, moderateSecurityAccount } = require('../core/storeAbuseService');
 const router = createRouter();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
@@ -121,7 +116,6 @@ function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inven
     ['encryption-key-id', 'Aktif kasa anahtarı', !!String(configuration.keyVaultActiveKeyId || '').trim()],
     ['inventory', 'Otomatik teslimat', inventory.ready === true],
     ['render', 'Canlı mağaza ayarları', configuration.ready === true],
-    ['account-protection', 'IP / cihaz / VPN kayıt koruması', connections.accountSecurityReady === true],
     ['storage-connection', 'Veritabanı erişim denetimi', connections.storageReady === true],
     ['identity-connection', 'Kimlik sağlayıcısı erişim denetimi', connections.identityReady === true]
   ].map(([key, label, ok]) => ({ key, label, ok, weight: 1, earned: ok ? 1 : 0 }));
@@ -144,82 +138,6 @@ function initFirebaseReady() {
 router.get('/store/catalog', asyncRoute(async (_req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
   res.json({ ok: true, catalog: await publicCatalog() });
-}));
-
-router.post('/store/security/preflight', strictLimiter, asyncRoute(async (req, res) => {
-  const context = await checkedContext(req);
-  const { db } = require('../config/firebaseAdmin').initFirebaseAdmin();
-  const ip = await db.collection('storeRegistrationIps').doc(context.ipHash).get();
-  if (ip.data()?.ownerUid || req.storeDevice.data.ownerUid) {
-    const code = ip.data()?.ownerUid ? 'SECURITY_IP_ACCOUNT_EXISTS' : 'SECURITY_DEVICE_ACCOUNT_EXISTS';
-    await securityEvent(req, code); securityFailure(code);
-  }
-  noStore(res); res.json({ ok: true, available: true });
-}));
-
-router.post('/store/security/device', strictLimiter, asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, ...await registerDevice(req) });
-}));
-
-router.get('/admin/store/abuse', ...adminChain, requireStorePermission('store.security.read'), asyncRoute(async (req, res) => {
-  noStore(res); res.json({ ok: true, ...await listSecurityEvents(req.query.cursor || '') });
-}));
-router.get('/admin/store/abuse/users/:uid', ...adminChain, requireStorePermission('store.users.read'), asyncRoute(async (req, res) => {
-  noStore(res); res.json({ ok: true, account: await readAccountSecurity(req.params.uid) });
-}));
-router.put('/admin/store/abuse/users/:uid', ...sensitiveAdminChain('store.users.write'), asyncRoute(async (req, res) => {
-  const result = await moderateSecurityAccount(req.params.uid, req.body || {}, req.user);
-  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, result });
-}));
-
-router.get('/store/affiliate/resolve', strictLimiter, asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, referral: await resolveAffiliateLink(req.query.code) });
-}));
-
-router.get('/store/affiliate', requireAuth, asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, ...await customerAffiliateSummary(req.user.uid) });
-}));
-
-router.get('/store/wallet/history', requireAuth, asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, ...await customerWalletHistory(req.user.uid, req.query.cursor || '') });
-}));
-
-router.post('/store/transfers/preview', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, preview: await previewTransfer(req.user.uid, req.body || {}) });
-}));
-
-router.post('/store/transfers', requireAuth, strictLimiter, requireRecentUserAuth, asyncRoute(async (req, res) => {
-  const result = await transferBalance(req.user.uid, req.body || {}, req.requestId || '');
-  invalidateAdminStoreCaches();
-  noStore(res);
-  res.status(201).json({ ok: true, ...result });
-}));
-
-router.post('/admin/store/affiliate-commissions/:orderId/release', ...sensitiveAdminChain('store.wallet.write'), asyncRoute(async (req, res) => {
-  const result = await releaseHeldCommission(req.params.orderId, req.user);
-  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, result });
-}));
-
-router.get('/admin/store/affiliates', ...adminChain, requireStorePermission('store.wallet.read'), asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, ...await listAffiliateLinks(req.query) });
-}));
-
-router.get('/admin/store/affiliates/:code/details', ...adminChain, requireStorePermission('store.wallet.read'), asyncRoute(async (req, res) => {
-  noStore(res);
-  res.json({ ok: true, ...await affiliateDetails(req.params.code, req.query) });
-}));
-
-router.put('/admin/store/affiliates/:code', ...sensitiveAdminChain('store.wallet.write'), asyncRoute(async (req, res) => {
-  const link = await saveAffiliateLink(req.params.code, req.body || {}, req.user);
-  invalidateAdminStoreCaches();
-  noStore(res);
-  res.json({ ok: true, link });
 }));
 
 router.get('/store/account', requireAuth, asyncRoute(async (req, res) => {
@@ -651,13 +569,11 @@ router.get('/admin/store/security', ...adminChain, requireStorePermission('store
   const gateSecurity = adminAuthRouter.securityPosture();
   const inventory = inventoryReadiness();
   const connections = await connectionReadiness();
-  const accountProtection = await require('../core/storeNetworkPolicy').networkReadiness();
-  const security = operationalSecurityPosture(configuration, gateSecurity, inventory, { ...connections, accountSecurityReady: accountProtection.ready });
+  const security = operationalSecurityPosture(configuration, gateSecurity, inventory, connections);
   noStore(res);
   res.json({
     ok: true,
     security,
-    accountProtection,
     gateSecurity,
     runtime: {
       appCheckMode: configuration.appCheckMode,
