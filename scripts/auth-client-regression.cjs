@@ -2,13 +2,16 @@
 const { test, before, after } = require('node:test'), assert = require('node:assert/strict');
 const { applicationFixture } = require('./helpers/application-fixture.cjs');
 const { browserModule } = require('./helpers/browser-module.cjs');
-let fixture, registrationSequence = 0;
+let fixture, registrationSequence = 0, scenarioSequence = 0;
 before(async () => { fixture = await applicationFixture(); });
 after(async () => { await fixture?.close(); });
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 async function scenario(callback, source = 'public/js/store/auth.js', setup = () => {}) {
   const previous = { window: global.window, document: global.document, fetch: global.fetch, adapter: global.__authFixture };
   const fetch = global.fetch, listeners = new Set(), faults = {}, calls = [];
+  fixture.resetLimits();
+  const deviceName = `client-scenario-${++scenarioSequence}`;
+  fixture.networkState.ip = `8.8.8.${scenarioSequence}`;
   const counts = { creates: 0, changes: 0, appCheck: 0 };
   const auth = { currentUser: null, useDeviceLanguage() {}, authStateReady: async () => {} };
   function user(uid) { const row = fixture.users.get(uid); return { uid, email: row.email, emailVerified: row.emailVerified, displayName: 'Fixture', getIdToken: async () => fixture.idToken(uid) }; }
@@ -29,7 +32,7 @@ async function scenario(callback, source = 'public/js/store/auth.js', setup = ()
   };
   const app = { name: 'zentra-store' }, appSdk = { getApps: () => [app], initializeApp: () => app };
   const appCheckSdk = { ReCaptchaEnterpriseProvider: class {}, initializeAppCheck: () => { counts.appCheck++; return {}; }, getToken: async () => ({ token: 'fixture-appcheck' }) };
-  global.__authFixture = { appSdk, sdk, appCheckSdk };
+  global.__authFixture = { appSdk, sdk, appCheckSdk, deviceHeaders: async ({url,method,body}) => { const u=new URL(url); return fixture.deviceHeaders(u.pathname+u.search, method, typeof body === 'string' ? JSON.parse(body) : body, deviceName); } };
   global.window = { location: { origin: fixture.origin, href: fixture.origin + '/', protocol: 'http:' }, crypto: global.crypto, dispatchEvent() {}, setTimeout, clearTimeout };
   global.document = { cookie: '', querySelector: () => ({ content: fixture.origin }) };
   global.fetch = async (url, options = {}) => {
@@ -46,7 +49,7 @@ async function scenario(callback, source = 'public/js/store/auth.js', setup = ()
     if (path === '/api/store/account' && faults.wrongAccount) { const body = await result.json(); body.account.uid = 'other-user'; return response(body); }
     return result;
   };
-  const replacements = { 'import(FIREBASE_APP_URL)': 'Promise.resolve(globalThis.__authFixture.appSdk)', 'import(FIREBASE_AUTH_URL)': 'Promise.resolve(globalThis.__authFixture.sdk)', 'import(FIREBASE_APP_CHECK_URL)': 'Promise.resolve(globalThis.__authFixture.appCheckSdk)', 'const INITIALIZATION_TIMEOUT_MS = 15000;': 'const INITIALIZATION_TIMEOUT_MS = 15;' };
+  const replacements = { 'export async function storeDeviceHeaders({ url, method, body, headers, signal }) {': 'export async function storeDeviceHeaders({ url, method, body, headers, signal }) { return globalThis.__authFixture.deviceHeaders({url,method,body});', 'import(FIREBASE_APP_URL)': 'Promise.resolve(globalThis.__authFixture.appSdk)', 'import(FIREBASE_AUTH_URL)': 'Promise.resolve(globalThis.__authFixture.sdk)', 'import(FIREBASE_APP_CHECK_URL)': 'Promise.resolve(globalThis.__authFixture.appCheckSdk)', 'const INITIALIZATION_TIMEOUT_MS = 15000;': 'const INITIALIZATION_TIMEOUT_MS = 15;' };
   setup({ faults, auth, sdk, user, adapter: global.__authFixture });
   replacements['const INITIALIZATION_TIMEOUT_MS = 15000;'] = `const INITIALIZATION_TIMEOUT_MS = ${faults.shortStartup ? 15 : 15000};`;
   try { const module = await browserModule(source, replacements); await module.initStoreAuth(); return await callback({ module, faults, calls, counts, auth, sdk, user, changed }); }

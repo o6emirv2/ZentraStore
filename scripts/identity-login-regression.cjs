@@ -30,6 +30,7 @@ mock('../server/config/env', { firebase: { publicConfig: { apiKey: 'test-public-
 mock('../server/core/security', Object.fromEntries(['authLoginLimiter', 'authAccountLimiter', 'resetAccountLimiter', 'passwordResetLimiter', 'strictLimiter', 'requireAuth'].map((key) => [key, (_req, _res, next) => next()])));
 mock('../server/core/userSessionService', { trustedOrigin: () => true });
 mock('../server/core/storeService', { readAccount: async () => ({}) });
+mock('../server/core/storeAccountSecurity', { enforceCustomerAccess: async () => {} });
 const router = require('../server/routes/identity.routes');
 let server, origin;
 const originalFetch = global.fetch;

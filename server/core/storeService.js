@@ -1,7 +1,9 @@
 'use strict';
+const { requireEconomicAccount } = require('./storeAccountPolicy');
 
 const { normalizeFeatures } = require('./storeProductSchema');
 const crypto = require('crypto');
+const { debtOf, settleAffiliateDebt, readAffiliateCommission, applyAffiliateCommission } = require('./storeAffiliateService');
 const env = require('../config/env');
 const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -105,7 +107,7 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
   const lastName = safeText(profile.lastName || '', 50);
   return {
     uid: safeText(authUser.uid || '', 160),
-    profileInitializationPending: profile.profileInitializationPending === true,
+    profileInitializationPending: profile.profileInitializationPending === true || (!profile.storeRegistrationSecurity?.admittedAt && !profile.username),
     username,
     email: safeText(authUser.email || profile.email || '', 254),
     firstName,
@@ -116,6 +118,8 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
     avatarUrl: avatar?.image || '',
     balanceKurus: clampBalance(profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0),
     accountStatus,
+    affiliateDebtKurus: debtOf(profile),
+    referral: profile.storeAffiliate ? { code: profile.storeAffiliate.code, rate: profile.storeAffiliate.rate, boundAt: profile.storeAffiliate.boundAt } : null,
     profileChanges: {
       username: changeStatus('username', 3),
       fullName: changeStatus('fullName', 1),
@@ -131,7 +135,8 @@ async function readAccount(uid, authUser = {}) {
   const { db } = firebaseStore();
   const ref = db.collection('users').doc(safeUid);
   const snap = await ref.get();
-  const profile = snap.exists ? (snap.data() || {}) : {};
+  let profile = snap.exists ? (snap.data() || {}) : {};
+  if (debtOf(profile) && clampBalance(profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0)) profile = await settleAffiliateDebt(safeUid);
   const account = normalizeStoreProfile(profile, authUser);
   const authEmail = safeText(authUser.email || '', 254).toLowerCase();
   const profileEmail = safeText(profile.email || '', 254).toLowerCase();
@@ -444,14 +449,18 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
     }
     const userSnapshot = await tx.get(userRef);
     const userData = userSnapshot.exists ? (userSnapshot.data() || {}) : {};
+    requireEconomicAccount(userData);
     const liveAccount = normalizeStoreProfile(userData, authUser);
     if (liveAccount.accountStatus !== 'active') throw serviceError('STORE_PURCHASE_BLOCKED', 403);
+    if (debtOf(userData)) throw serviceError('AFFILIATE_DEBT_OUTSTANDING', 409);
     const promotion = await readPromotionInTransaction({
       transaction: tx, db, uid: safeUid, code: safePromotionCode, cart
     });
     const totalKurus = promotion?.result.totalKurus || cart.totalKurus;
     let balanceKurus = liveAccount.balanceKurus;
     if (method === 'wallet' && balanceKurus < totalKurus) throw serviceError('STORE_INSUFFICIENT_BALANCE', 409, { balanceKurus });
+    const affiliate = userData.storeAffiliate || null;
+    const commission = method === 'wallet' ? await readAffiliateCommission({ tx, db, orderId: orderRef.id, order: { uid: safeUid, totalKurus, affiliate } }) : null;
     const now = Date.now();
     let allocations = [];
     if (method === 'wallet') {
@@ -472,6 +481,7 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
         discountKurus: promotion.result.discountKurus
       } : null,
       totalKurus,
+      affiliate,
       delivery: isAutomaticDelivery
         ? { status: 'delivered', title: 'Otomatik teslimat hazır', message: 'Dijital teslimat bilgileriniz güvenli teslimat ekranında hazır.', deliveredAt: now, itemCount: allocations.length, automatic: true }
         : { status: 'locked', title: '', message: '', deliveredAt: 0, itemCount: 0, automatic: false },
@@ -491,6 +501,7 @@ async function createOrder({ uid, authUser = {}, rawItems = [], paymentMethod = 
         actor: { uid: safeUid, email: liveAccount.email, source: 'customer' }, createdAt: now
       });
     }
+    applyAffiliateCommission({ tx, db, commission, orderId: orderRef.id, uid: safeUid, now });
     applyPromotionInTransaction({ transaction: tx, promotion, uid: safeUid, orderId: orderRef.id, now });
     tx.create(orderRef, rawOrder);
     tx.create(idempotencyRef, {
@@ -601,6 +612,7 @@ async function cancelOrderByUser({ uid = '', orderId = '', reason = '' } = {}) {
       transaction: tx, db, order: current, orderId: safeOrderId
     });
 
+    const commission = await readAffiliateCommission({ tx, db, orderId: safeOrderId, order: current, reverse: true });
     const shouldRefund = current.paymentMethod === 'wallet' && currentStatus === 'paid' && !current.walletRefundedAt;
     if (shouldRefund) {
       const userSnapshot = await tx.get(userRef);
@@ -621,6 +633,7 @@ async function cancelOrderByUser({ uid = '', orderId = '', reason = '' } = {}) {
       delivery: { status: 'cancelled', title: '', message: '', deliveredAt: 0 },
       updatedAt: now
     };
+    applyAffiliateCommission({ tx, db, commission, orderId: safeOrderId, uid: safeUid, now });
     if (releasePromotionInTransaction({ transaction: tx, release: promotionRelease, reason: 'customer-cancelled', now })) {
       patch.promotion = { ...current.promotion, releasedAt: now };
     }
@@ -832,6 +845,11 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
       if (refundBalanceAfterKurus > MAX_STORE_BALANCE_KURUS) throw serviceError('STORE_BALANCE_LIMIT_EXCEEDED', 409);
     }
 
+    const commission = ['cancelled', 'refunded', 'payment_rejected'].includes(requestedStatus)
+      ? await readAffiliateCommission({ tx, db, orderId: safeOrderId, order: current, reverse: true })
+      : !Number(current.approvedAt || 0) && !['paid', 'processing', 'delivery_pending', 'delivered'].includes(currentStatus)
+        && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(requestedStatus)
+        ? await readAffiliateCommission({ tx, db, orderId: safeOrderId, order: current }) : null;
     const now = Date.now();
     const previousDelivery = current.delivery && typeof current.delivery === 'object' ? current.delivery : {};
     const approvalRequested = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(requestedStatus);
@@ -916,6 +934,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
       patch.refundedBy = { uid: actorUid, email: actorEmail, source: 'admin' };
       patch.refundReason = safeText(input.refundReason || input.reason || 'Admin iade işlemi', 200);
     }
+    applyAffiliateCommission({ tx, db, commission, orderId: safeOrderId, uid: customerUid, now });
     if (releasePromotionInTransaction({ transaction: tx, release: promotionRelease, reason: finalStatus, now })) {
       patch.promotion = { ...current.promotion, releasedAt: now };
     }

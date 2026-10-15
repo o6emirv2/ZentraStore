@@ -26,7 +26,7 @@ function memoryFirestore(initial = []) {
         stats.queries++; if (queryHook) await queryHook(path);
         let rows = [...records].filter(([key, row]) => key.startsWith(path + '/') && !key.slice(path.length + 1).includes('/')
           && filters.every(([field, op, value]) => {
-            const actual = field === '__name__' ? key.split('/').at(-1) : row[field];
+            const actual = field === '__name__' ? key.split('/').at(-1) : String(field).split('.').reduce((value, key) => value?.[key], row);
             return op === '==' ? actual === value : op === 'in' ? value.includes(actual)
               : op === '<=' ? actual <= value : op === '>=' ? actual >= value : op === '>' ? actual > value : actual < value;
           }));
