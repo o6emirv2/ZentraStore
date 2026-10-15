@@ -3,7 +3,7 @@ const http = require('node:http'), crypto = require('node:crypto');
 const { memoryFirestore, mockModule, admin } = require('./memory-firestore.cjs');
 
 // Only the external Firebase/provider boundaries are adapted. Express routes and business services are real.
-async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '' } = {}) {
+async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '', ownerEmail = 'owner@zentra.invalid' } = {}) {
   const server = http.createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`, password = 'Fixture Password 2026!';
   const four = 'Fixture factor four!', five = 'Fixture factor five!', secret = crypto.randomBytes(20), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -16,7 +16,7 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     APP_CHECK_MODE: 'enforce', PUBLIC_FIREBASE_APP_CHECK_SITE_KEY: 'integration-site-key', ADMIN_TOTP_MODE: 'required', RATE_LIMIT_STORE: 'firestore',
     PUBLIC_FIREBASE_CONFIG: JSON.stringify({ apiKey: crypto.randomBytes(25).toString('base64url'), authDomain: 'zentra-integration.firebaseapp.com', projectId: 'zentra-integration', appId: '1:100:web:integration' }),
     FIREBASE_KEY: JSON.stringify({ type: 'service_account', project_id: 'zentra-integration', client_email: 'svc@zentra-integration.iam.gserviceaccount.com', private_key: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }) }),
-    ADMIN_EMAILS: 'owner@zentra.invalid', ADMIN_UIDS: 'owneruid',
+    ADMIN_EMAILS: ownerEmail, ADMIN_UIDS: 'owneruid',
     ADMIN_GATE_FOUR_SALT_HEX: saltFour.toString('hex'), ADMIN_GATE_FOUR_HASH_HEX: crypto.scryptSync(four, saltFour, 32).toString('hex'),
     ADMIN_GATE_FIVE_SALT_HEX: saltFive.toString('hex'), ADMIN_GATE_FIVE_HASH_HEX: crypto.scryptSync(five, saltFive, 32).toString('hex'),
     ADMIN_GATE_SIGNING_SECRET: crypto.randomBytes(48).toString('base64url'),
@@ -24,11 +24,11 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
   });
   const db = memoryFirestore([
     ['users/member', { username: 'EmirHan', usernameLower: 'emirhan', email: 'member@zentra.invalid', firstName: 'Emir', lastName: 'Deneme', birthDate: '2000-01-01', storeBalanceKurus: 50000, storeProfile: { avatarId: '1' }, storeAccountStatus: 'active', createdAt: Date.now() }],
-    ['users/owneruid', { username: 'ShopOwner', email: 'owner@zentra.invalid', storeBalanceKurus: 0, storeProfile: { avatarId: '1' } }],
+    ['users/owneruid', { username: 'ShopOwner', email: ownerEmail, storeBalanceKurus: 0, storeProfile: { avatarId: '1' } }],
     ['users/finance', { username: 'FinanceUser', email: 'finance@zentra.invalid', storeBalanceKurus: 0, storeProfile: { avatarId: '1' } }],
     ['adminUsers/finance', { email: 'finance@zentra.invalid', role: 'finance', active: true }], ['adminUsers/viewer', { email: 'viewer@zentra.invalid', role: 'viewer', active: true }]
   ]);
-  const users = new Map(['member', 'owneruid', 'finance', 'viewer'].map(uid => [uid, { uid, email: `${uid === 'owneruid' ? 'owner' : uid}@zentra.invalid`, emailVerified: true, disabled: false, password, generation: 0 }]));
+  const users = new Map(['member', 'owneruid', 'finance', 'viewer'].map(uid => [uid, { uid, email: uid === 'owneruid' ? ownerEmail : `${uid}@zentra.invalid`, emailVerified: true, disabled: false, password, generation: 0, metadata: { creationTime: '2020-01-01T00:00:00.000Z' } }]));
   const idTokens = new Map(), customTokens = new Map(), cookies = new Map();
   const notFound = () => Object.assign(new Error('missing fixture identity'), { code: 'auth/user-not-found' });
   function publicUser(uid) { const row = users.get(uid); if (!row) throw notFound(); const { password: _password, generation: _generation, ...visible } = row; return { ...visible }; }
@@ -39,6 +39,7 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
   function verified(token, map) { const row = map.get(token), user = row && users.get(row.uid); if (!user || user.disabled || row.generation !== user.generation) throw Object.assign(new Error('invalid fixture token'), { code: 'auth/id-token-revoked' }); return { ...row }; }
   const auth = {
     getUser: async uid => publicUser(uid),
+    updateUser: async (uid, input) => { if (!users.has(uid)) throw notFound(); Object.assign(users.get(uid), input); return publicUser(uid); },
     getUserByEmail: async email => { const row = [...users.values()].find(user => user.email === email); if (!row) throw notFound(); return publicUser(row.uid); },
     listUsers: async (limit = 1000) => ({ users: [...users].slice(0, limit).map(([uid]) => publicUser(uid)) }),
     getUsers: async ids => ({ users: ids.flatMap(value => users.has(value.uid) ? [publicUser(value.uid)] : []), notFound: ids.filter(value => !users.has(value.uid)) }),
@@ -49,6 +50,30 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     revokeRefreshTokens: async uid => { if (!users.has(uid)) throw notFound(); users.get(uid).generation++; }
   };
   mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ enabled: true, db, auth, admin, appCheck: { verifyToken: async token => { if (token !== 'fixture-appcheck') throw new Error('invalid fixture appcheck'); return { app_id: 'fixture' }; } } }) });
+  const realNetwork = require('../../server/core/storeNetworkPolicy');
+  const networkState = { blocked: false, unavailable: false };
+  mockModule('../../server/core/storeNetworkPolicy', { ...realNetwork,
+    checkNetwork: async ip => {
+      networkState.lastInput = ip;
+      if (networkState.unavailable) throw Object.assign(new Error('SECURITY_NETWORK_UNAVAILABLE'), { code:'SECURITY_NETWORK_UNAVAILABLE', statusCode:503, storeSecurityError:true });
+      return { ip:realNetwork.normalizeIp(networkState.ip || ip), blocked:networkState.blocked, categories:networkState.blocked ? ['is_anonymous_vpn'] : [], checkedAt:Date.now() };
+    }, networkReadiness: async () => ({ ready:!networkState.unavailable, reason:networkState.unavailable ? 'SECURITY_NETWORK_UNAVAILABLE' : '', policy:'strict' }) });
+  const deviceKeys = new Map();
+  async function deviceHeaders(path, method, body, deviceName = 'guest') {
+    let device = deviceKeys.get(deviceName);
+    if (!device) {
+      const pair = crypto.generateKeyPairSync('ec',{ namedCurve:'prime256v1' });
+      const {kty,crv,x,y} = pair.publicKey.export({format:'jwk'});
+      const bootstrap = await originalFetch(origin+'/api/store/security/device',{method:'POST',headers:{origin,'content-type':'application/json','x-firebase-appcheck':'fixture-appcheck'},body:JSON.stringify({publicKey:{kty,crv,x,y}})});
+      const result=await bootstrap.json(); if(!result.ok) throw new Error('device bootstrap: '+JSON.stringify(result));
+      device={privateKey:pair.privateKey,deviceId:result.deviceId}; deviceKeys.set(deviceName,device);
+    }
+    const ts=Date.now(),nonce=crypto.randomBytes(18).toString('base64url');
+    const hash=crypto.createHash('sha256').update(JSON.stringify(body||{})).digest('hex');
+    const message=JSON.stringify(['zentra-store-device-v1',device.deviceId,origin,method,path,hash,ts,nonce]);
+    const sig=crypto.sign('sha256',Buffer.from(message),{key:device.privateKey,dsaEncoding:'ieee-p1363'}).toString('base64url');
+    return {'x-zentra-device-proof':Buffer.from(JSON.stringify({v:1,deviceId:device.deviceId,ts,nonce,sig})).toString('base64url')};
+  }
   const originalFetch = global.fetch;
   global.fetch = async (url, options) => {
     if (!String(url).startsWith('https://identitytoolkit.googleapis.com/')) return originalFetch(url, options);
@@ -57,9 +82,12 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
   };
   const { app } = require('../../server.js'); server.on('request', app);
   const requests = [];
-  async function request(path, { uid, token, cookie = '', method = 'GET', body, client = 'secure-admin-v78', headers = {} } = {}) {
+  async function request(path, { uid, token, cookie = '', method = 'GET', body, client = 'secure-admin-v78', headers = {}, deviceName, deviceProof = true } = {}) {
     const bearer = token || (uid ? idToken(uid) : '');
-    const response = await originalFetch(origin + path, { method, headers: { origin, 'x-zentra-store-client': client, 'x-firebase-appcheck': 'fixture-appcheck', ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), ...(cookie ? { cookie } : {}), ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const needsDevice = (path.startsWith('/api/store/') && !path.startsWith('/api/store/catalog') && !path.startsWith('/api/store/affiliate/resolve') && path !== '/api/store/security/device') || path === '/api/profile/update' || path === '/api/auth/login' || (path === '/api/auth/session' && method === 'POST');
+    const actor = uid || idTokens.get(bearer)?.uid || idTokens.get(body?.idToken)?.uid || 'guest';
+    const device = needsDevice && deviceProof ? await deviceHeaders(path,method,body,deviceName || actor) : {};
+    const response = await originalFetch(origin + path, { method, headers: { origin, 'x-zentra-store-client': client, 'x-firebase-appcheck': 'fixture-appcheck', ...device, ...(bearer ? { authorization: `Bearer ${bearer}` } : {}), ...(cookie ? { cookie } : {}), ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
     const payload = await response.json(); requests.push({ path, method, status: response.status }); return { status: response.status, body: payload, headers: response.headers };
   }
   const cookieFrom = headers => headers.getSetCookie().map(value => value.split(';')[0]).filter(value => !value.endsWith('=')).join('; ');
@@ -77,7 +105,10 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     if (proof.status !== 200) return proof;
     return request(path, { ...session, method, body, headers: { 'x-admin-action': proof.body.proof.token } });
   }
-  return { app, origin, db, auth, users, password, four, five, totp, idToken, request, requests, openAdmin, adminWrite,
+  return { app, origin, db, auth, users, deviceHeaders, networkState, resetLimits: () => {
+    for (const [key, row] of db.records) if (key.startsWith('storeSecurityRateLimits/') && ['strict','authLogin','authAccount'].includes(row.namespace)) db.records.delete(key);
+    require('../../server/core/security').apiLimiter.resetKey('127.0.0.1');
+  }, password, four, five, totp, idToken, request, requests, openAdmin, adminWrite,
     exchangeCustomToken: token => { const uid = customTokens.get(token); if (!uid) throw notFound(); return { ...publicUser(uid), idToken: idToken(uid) }; },
     close: async () => { await new Promise(resolve => server.close(resolve)); global.fetch = originalFetch; } };
 }

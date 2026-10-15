@@ -24,7 +24,7 @@ const store = require('../server/core/storeService');
 const sku = 'test-license__daily', itemPath = `storeInventory/${sku}/items/key-0001`;
 function reset() {
   product.inventoryType = 'license'; product.active = true; product.archived = false; product.plans[0].priceKurus = 10000; changeBeforeTransaction = false;
-  db = memoryFirestore(['one', 'two'].map((uid) => [`users/${uid}`, { username: uid, email: `${uid}@example.test`, storeBalanceKurus: 20000, storeAccountStatus: 'active', storeProfile: { avatarId: '1' }, storeCreatedAt: 1, storeUpdatedAt: 1 }]));
+  db = memoryFirestore(['one', 'two'].map((uid) => [`users/${uid}`, { storeRegistrationSecurity: { admittedAt: Date.now() }, username: uid, email: `${uid}@example.test`, storeBalanceKurus: 20000, storeAccountStatus: 'active', storeProfile: { avatarId: '1' }, storeCreatedAt: 1, storeUpdatedAt: 1 }]));
   const plaintext = 'Exact-KEY-Ｘ-1234', context = { recordType: 'inventory', recordId: 'key-0001', sku, productId: product.id, planKey: 'daily' };
   db.records.set(itemPath, { id: 'key-0001', sku, productId: product.id, planKey: 'daily', status: 'available', inventoryType: 'license',
     fingerprint: vault.fingerprintSecret(plaintext), secret: vault.encryptSecret(plaintext, context), masked: 'Exact…', createdAt: 1 });

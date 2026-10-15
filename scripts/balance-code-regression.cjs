@@ -29,7 +29,7 @@ mock('../server/core/storeMutationAudit', { recordMutationAudit: (_tx, _db, _act
 mock('../server/core/firestorePagination', { invalidateCreatedAtPageCache() {} });
 const { savePromotion, previewPromotion, listPromotions } = require('../server/core/storePromotionService');
 const { redeemBalanceCode, saveBalanceCode, listBalanceCodes } = require('../server/core/storeBalanceCodeService');
-function reset() { records = new Map([['users/member', { username: 'Member', storeBalanceKurus: 5000 }], ['users/other', { storeBalanceKurus: 0 }]]); rollback = false; auditDetails.length = 0; }
+function reset() { records = new Map([['users/member', { storeRegistrationSecurity: { admittedAt: Date.now() }, username: 'Member', storeBalanceKurus: 5000 }], ['users/other', { storeRegistrationSecurity: { admittedAt: Date.now() }, storeBalanceKurus: 0 }]]); rollback = false; auditDetails.length = 0; }
 const body = { type: 'balance', value: 20000, title: '200 TL', usageLimit: 1, perUserLimit: 1, active: true, createOnly: true, visibleInWallet: true };
 const create = (patch = {}) => savePromotion('ZENTRASTORE200', { ...body, ...patch }, { uid: 'admin' }, { canManageBalance: true });
 test('bakiye code creation requires financial permission and hides codes from customer listing', async () => {

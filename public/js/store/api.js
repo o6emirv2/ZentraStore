@@ -1,4 +1,5 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v78';
+import { storeDeviceHeaders, needsDeviceProof } from './device-security.js?v=zentra-security-v3';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads, supportsStoreFeature } from '../request-utils.js?v=zentra-security-v3';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -6,8 +7,51 @@ const DEFAULT_TIMEOUT_MS = 9000;
 let tokenProvider = null;
 let appCheckTokenProvider = null;
 let runtimePromise = null;
+let tokenUserId = '', exemptUserId = '';
 
 const USER_MESSAGES = Object.freeze({
+  CLIENT_SECURITY_UPDATE_REQUIRED: 'Mağazanın hesap güvenliği güncellemesi sunucuda tamamlanmamış. İşlem başlatılmadı; lütfen daha sonra yeniden deneyin.',
+  SECURITY_EXTERNAL_ACCOUNT_DISABLED: 'Hesap başka bir yönetim işlemiyle de kapatılmış. Önce o işlemin durumunu inceleyin.',
+  SECURITY_DEVICE_REQUIRED: "Güvenli cihaz doğrulaması gerekli. Sayfayı güncelleyip yeniden deneyin.",
+  SECURITY_DEVICE_INVALID: "Cihaz doğrulaması geçersiz. Sayfayı yenileyin.",
+  SECURITY_DEVICE_REPLAY: "Bu güvenlik doğrulaması zaten kullanılmış. İşlemi yeniden başlatın.",
+  SECURITY_DEVICE_STORAGE_REQUIRED: "Güvenli kayıt için bu sitede tarayıcı depolamasına izin verin ve güncel tarayıcı kullanın.",
+  SECURITY_DEVICE_UNAVAILABLE: "Cihaz doğrulaması şu anda tamamlanamıyor. Yeni kayıt açılmadı.",
+  SECURITY_DEVICE_BLOCKED: "Bu tarayıcı/cihaz kimliği için erişim engellenmiş. Destek ekibiyle iletişime geçin.",
+  SECURITY_IP_ACCOUNT_EXISTS: "Bu internet bağlantısı için hesap kayıt hakkı kullanılmış. Mevcut hesabınızla giriş yapın.",
+  SECURITY_DEVICE_ACCOUNT_EXISTS: "Bu tanınan tarayıcı için hesap kayıt hakkı kullanılmış. Mevcut hesabınızla giriş yapın.",
+  SECURITY_IP_BLOCKED: "Bu internet bağlantısından erişim güvenlik nedeniyle engellenmiş.",
+  SECURITY_ACCOUNT_BLOCKED: "Hesabınız güvenlik incelemesi nedeniyle askıya alınmış. Destek ekibiyle iletişime geçin.",
+  SECURITY_REGISTRATION_REQUIRED: "Mağaza işlemlerinden önce başlayan hesabınızın kaydını tamamlayın.",
+  SECURITY_NETWORK_BLOCKED: "VPN, proxy veya desteklenmeyen anonim bağlantı tespit edildi. Doğrudan internet bağlantınızla yeniden deneyin.",
+  SECURITY_IP_UNAVAILABLE: "İnternet bağlantınızın adresi güvenli biçimde doğrulanamadı.",
+  SECURITY_NETWORK_UNCONFIGURED: "Mağazanın bağlantı güvenliği hizmeti henüz hazır değil. Lütfen daha sonra deneyin.",
+  SECURITY_NETWORK_UNAVAILABLE: "Bağlantı güvenliği denetimi tamamlanamadı. İşlem uygulanmadı.",
+  SECURITY_NETWORK_DB_INVALID: "Bağlantı güvenliği verisi doğrulanamadı. İşlem uygulanmadı.",
+  SECURITY_NETWORK_DB_STALE: "Bağlantı güvenliği verisi güncelleniyor. Lütfen daha sonra deneyin.",
+  SECURITY_NETWORK_CONFIG_INVALID: "Bağlantı güvenliği yapılandırması hazır değil. İşlem uygulanmadı.",
+  SECURITY_PROXY_UNCONFIGURED: "Mağazanın bağlantı doğrulama ayarı tamamlanmamış. İşlem uygulanmadı.",
+  SECURITY_HASH_UNCONFIGURED: "Mağazanın hesap güvenliği ayarları tamamlanmamış. İşlem uygulanmadı.",
+  SECURITY_MODERATION_INVALID: "İşlem türünü ve en az 8 karakterlik gerekçeyi kontrol edin.",
+  SECURITY_MODERATION_CONFLICT: "Hesabın güvenlik kararı başka bir işlemle değişmiş. Hesabı yeniden yükleyin.",
+  SECURITY_MODERATION_BUSY: 'Hesabın güvenlik işlemi sürüyor. Lütfen kısa bir süre sonra yeniden deneyin.',
+  AFFILIATE_HOLD_NOT_RELEASABLE: "Komisyon onaylanamaz. Hesap durumlarını, sipariş ödemesini ve komisyon ayarını kontrol edin.",
+  AFFILIATE_RECEIPT_INVALID: 'Siparişin komisyon kaydı doğrulanamadı. İşlem yapılmadı; destek ekibiyle iletişime geçin.',
+  AFFILIATE_UNAVAILABLE: "Referans bağlantısı yeni kayıtlara kapalı veya bulunamadı. Referans olmadan kayıt ol seçeneğiyle devam edebilirsiniz.",
+  AFFILIATE_INPUT_INVALID: "Bağlantı adını ve izin verilen %5, %10, %15, %20, %25, %30 oranlarını kontrol edin.",
+  AFFILIATE_OWNER_INVALID: "Bağlantı sahibi hesabı bulunamadı, kapalı veya kullanıcı adı benzersiz değil.",
+  AFFILIATE_OWNER_IMMUTABLE: "Bağlantının sahibi değiştirilemez. Farklı bir hesap için yeni bağlantı oluşturun.",
+  AFFILIATE_LINK_CONFLICT: "Bağlantı kaydı farklı bilgilerle zaten oluşturulmuş. Listeyi yenileyin.",
+  AFFILIATE_ALREADY_BOUND: "Bu hesap için referans seçimi zaten tamamlanmış.",
+  AFFILIATE_REGISTRATION_ONLY: "Referans bağlantısı yalnızca yeni hesap kaydında kullanılabilir. Referans olmadan devam edebilirsiniz.",
+  AFFILIATE_SELF_REFERRAL: "Kendi referans bağlantınızla kendi hesabınızı bağlayamazsınız.",
+  AFFILIATE_DEBT_OUTSTANDING: "İade edilen komisyon borcu kapanana kadar satın alma ve bakiye gönderimi kullanılamaz.",
+  TRANSFER_AMOUNT_INVALID: "Transfer tutarı 0,04 ₺ ile 1.000.000 ₺ arasında olmalıdır.",
+  TRANSFER_INPUT_INVALID: "Transfer bilgileri doğrulanamadı. Sayfayı yenileyin.",
+  TRANSFER_RECIPIENT_INVALID: "Alıcı bulunamadı, hesabı uygun değil veya kendi hesabınızı seçtiniz.",
+  TRANSFER_RECIPIENT_CHANGED: "Alıcı hesabın bilgileri değişti. Alıcıyı yeniden kontrol edin.",
+  TRANSFER_ACCOUNT_BLOCKED: "Hesabınız şu anda bakiye gönderimine uygun değil. Hesap durumunuzu ve komisyon borcunu kontrol edin.",
+  TRANSFER_CONFLICT: "Bu işlem kimliği farklı bir transfer için kullanılmış. Geçmişinizi kontrol edin.",
   STORE_PRICE_CHANGED: 'Ürünün fiyatı değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
   STORE_CATALOG_CHANGED: 'Satın alma sırasında ürün bilgileri değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
   STORE_BALANCE_RECORD_INVALID: 'Bakiyenizi güvenli biçimde doğrulayamadık. İşlem yapılmadı; destek ekibiyle iletişime geçin.',
@@ -181,8 +225,15 @@ export async function loadStoreRuntimeConfig({ force = false } = {}) {
   return runtimePromise;
 }
 
-export function setStoreTokenProvider(provider) {
+export function setStoreTokenProvider(provider, userId = '') {
+  const nextUserId = String(userId || '');
+  if (!nextUserId || tokenUserId !== nextUserId) exemptUserId = '';
+  tokenUserId = nextUserId;
   tokenProvider = typeof provider === 'function' ? provider : null;
+}
+export function confirmStoreSecurityExemption(value) {
+  if (value?.uid !== tokenUserId || !tokenUserId) return;
+  exemptUserId = value.exempt === true ? tokenUserId : '';
 }
 
 export function setStoreAppCheckTokenProvider(provider) {
@@ -244,9 +295,13 @@ export async function storeApi(path, options = {}) {
     const destination = new URL(url, window.location.href), base = new URL(getStoreApiBase() || window.location.origin, window.location.href);
     if (destination.origin !== base.origin || destination.username || destination.password || !['https:', 'http:'].includes(destination.protocol)) throw Object.assign(new Error('İstek adresi mağazayla eşleşmedi.'), { code: 'API_ORIGIN_INVALID', mutationNotSent: true });
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
+    if ((destination.pathname === '/api/auth/login' || (destination.pathname === '/api/auth/session' && method === 'POST'))
+      && window.__ZENTRA_RUNTIME__?.clientCompatibility?.identityLogin !== 2) throw Object.assign(new Error(USER_MESSAGES.CLIENT_SECURITY_UPDATE_REQUIRED), { code: 'CLIENT_SECURITY_UPDATE_REQUIRED', mutationNotSent: true });
     const protectedStore = options.auth !== false && destination.pathname.startsWith('/api/store/') && destination.pathname !== '/api/store/catalog';
     if (protectedStore && ['GET', 'HEAD'].includes(method) && !compatiblePrivateReads(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_ACCOUNT_UPDATE_REQUIRED), { code: 'CLIENT_ACCOUNT_UPDATE_REQUIRED', mutationNotSent: true });
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && (destination.pathname.startsWith('/api/store/') || destination.pathname === '/api/profile/update') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_UPDATE_REQUIRED), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
+    const deviceRequired = needsDeviceProof(destination.pathname, method) && !(tokenUserId && exemptUserId === tokenUserId && options.auth !== false);
+    if (deviceRequired && !supportsStoreFeature(window.__ZENTRA_RUNTIME__, 'accountSecurity')) throw Object.assign(new Error(USER_MESSAGES.CLIENT_SECURITY_UPDATE_REQUIRED), { code: 'CLIENT_SECURITY_UPDATE_REQUIRED', mutationNotSent: true });
     if (options.auth !== false && requestTokenProvider) {
       let token;
       try { token = await waitForSignal(Promise.resolve().then(() => requestTokenProvider()), controller.signal); }
@@ -271,6 +326,15 @@ export async function storeApi(path, options = {}) {
       const error = new Error(USER_MESSAGES.AUTH_FRESH_TOKEN_REQUIRED);
       error.code = 'AUTH_FRESH_TOKEN_REQUIRED';
       throw error;
+    }
+    if (deviceRequired) {
+      try {
+        const deviceHeaders = await waitForSignal(storeDeviceHeaders({ url: destination.href, method, body: options.body, headers, signal: controller.signal }), controller.signal);
+        for (const [key, value] of Object.entries(deviceHeaders)) headers.set(key, value);
+      } catch (error) {
+        if (destination.pathname !== '/api/store/account' || method !== 'GET' || !['SECURITY_DEVICE_STORAGE_REQUIRED', 'SECURITY_DEVICE_UNAVAILABLE'].includes(error.code)) throw error;
+      }
+      if (options.auth !== false && tokenProvider !== requestTokenProvider) throw Object.assign(new Error(USER_MESSAGES.AUTH_SESSION_CHANGED), { code: 'AUTH_SESSION_CHANGED', mutationNotSent: true });
     }
     mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method);
     const response = await fetch(url, {

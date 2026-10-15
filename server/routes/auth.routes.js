@@ -6,6 +6,7 @@ const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { requireAuth, strictLimiter } = require('../core/security');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
+const { enforceIdentityAccess } = require('../core/storeAccountSecurity');
 const { revokeAdminSessionsForUser } = require('../core/adminSessionRegistry');
 const {
   trustedOrigin,
@@ -42,13 +43,14 @@ router.post('/client-errors', clientErrorLimiter, (req, res) => {
 router.get('/public/runtime-config', (_req, res) => {
   const runtime = env.publicRuntimeConfig();
   const firebaseReady = !!(runtime.firebase.apiKey && runtime.firebase.authDomain && runtime.firebase.projectId && runtime.firebase.appId);
-  return res.json({ ok: true, ...runtime, firebaseReady });
+  return res.json({ ok: true, ...runtime, firebaseReady, accountSecurity: { required: true, deviceProofVersion: 1, policyVersion: 2 } });
 });
 
-router.get('/auth/me', requireAuth, (req, res) => res.json({
+router.get('/auth/me', requireAuth, async (req, res) => res.json({
   ok: true,
   user: { uid: req.user.uid, email: req.user.email || '' },
-  authSource: req.authSource
+  authSource: req.authSource,
+  accountSecurity: { uid: req.user.uid, exempt: (await enforceIdentityAccess(req)).exempt }
 }));
 
 router.post('/auth/session', strictLimiter, async (req, res) => {
@@ -57,6 +59,8 @@ router.post('/auth/session', strictLimiter, async (req, res) => {
   if (!idToken) return res.status(400).json({ ok: false, error: 'ID_TOKEN_REQUIRED' });
   try {
     const result = await createUserSession(idToken, req.body?.remember === true);
+    req.user = result.decoded;
+    const access = await enforceIdentityAccess(req);
     res.setHeader('Set-Cookie', sessionCookieHeader(result.sessionCookie, result.remember));
     return res.json({
       ok: true,
@@ -66,10 +70,12 @@ router.post('/auth/session', strictLimiter, async (req, res) => {
         email: result.decoded.email || ''
       },
       persistent: result.remember,
+      accountSecurity: { uid: req.user.uid, exempt: access.exempt },
       expiresIn: result.expiresIn
     });
   } catch (error) {
     res.setHeader('Set-Cookie', clearSessionCookieHeader());
+    if (error.storeSecurityError) return res.status(error.statusCode || 403).json({ ok: false, error: error.code });
     const unavailable = error?.code === 'AUTH_UNAVAILABLE';
     return res.status(unavailable ? 503 : 401).json({ ok: false, error: unavailable ? 'AUTH_UNAVAILABLE' : 'AUTH_INVALID' });
   }
@@ -81,10 +87,13 @@ router.get('/auth/session', async (req, res) => {
     res.setHeader('Set-Cookie', clearSessionCookieHeader());
     return res.json({ ok: true, authenticated: false, user: null });
   }
+  req.user = user;
+  const access = await enforceIdentityAccess(req);
   return res.json({
     ok: true,
     authenticated: true,
-    user: { uid: user.uid, email: user.email || '' }
+    user: { uid: user.uid, email: user.email || '' },
+    accountSecurity: { uid: user.uid, exempt: access.exempt }
   });
 });
 

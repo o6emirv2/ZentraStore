@@ -1,4 +1,5 @@
 'use strict';
+const { requireEconomicAccount } = require('./storeAccountPolicy');
 
 const crypto = require('crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -45,6 +46,7 @@ async function redeemBalanceCode(uid, input = {}, { requestId = '' } = {}) {
     const amountKurus = row.value;
     if (!Number.isSafeInteger(amountKurus) || amountKurus < 1 || amountKurus > MAX_CREDIT_KURUS) fail('BALANCE_CODE_CONFIGURATION_INVALID');
     const profile = user.exists ? user.data() || {} : {};
+    requireEconomicAccount(profile);
     if (profile.storeAccountStatus === 'suspended') fail('STORE_ACCOUNT_SUSPENDED', 403);
     const balance = readStoredBalance(profile);
     if (!Number.isSafeInteger(balance) || balance < 0 || balance + amountKurus > MAX_BALANCE_KURUS) fail('STORE_BALANCE_LIMIT_EXCEEDED');

@@ -1,0 +1,9 @@
+.abuse-readiness { padding: 16px; margin-block: 16px; border: 1px solid #c5a04e88; border-radius: 12px; background: #a1731919; color: #ffe0a0; line-height: 1.7; overflow-wrap: anywhere; }
+.abuse-readiness.is-ready { border-color: #4ecca888; color: #a4f2d9; background: #1b9c6e18; }
+#abuseAccount { margin-block: 20px; }
+#abuseAccountInfo p { margin-block: 12px; color: #bbc6dc; line-height: 1.6; overflow-wrap: anywhere; }
+#abuseAccount .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
+#abuseReason { width: 100%; min-height: 90px; padding: 12px; border-radius: 10px; border: 1px solid #ffffff33; color: #fff; background: #0b1120; font: inherit; }
+#abuseAccount .wallet-history, #abuseEvents { overflow-wrap: anywhere; }
+#abuseAccount .form-actions button { min-width: 0; max-width: 100%; white-space: normal; text-align: center; }
+#abuseAccount .abuse-suspend { background: #87364b; border-color: #c6687b; }

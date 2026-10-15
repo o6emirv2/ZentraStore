@@ -69,7 +69,7 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
 }
 
 app.disable('x-powered-by');
-app.set('trust proxy', env.nodeEnv === 'production' ? 1 : false);
+app.set('trust proxy', require('./server/core/storeNetworkPolicy').trustedProxySetting());
 app.set('query parser', 'simple');
 app.set('etag', false);
 app.set('json escape', true);
@@ -278,7 +278,7 @@ app.get('/admin/admin.html', (req, res) => {
 });
 app.get(['/admin/session/handoff', '/admin/session/handoff/'], (_req, res) => res.redirect(302, '/admin/'));
 const adminAssetAllowlist = new Set([
-  'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js', 'promo-codes.js',
+  'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js', 'promo-codes.js', 'affiliate-links.js', 'account-security.js',
   'admin-gate.css', 'admin-gate.js', 'admin-browser-session.js', 'admin-entry.js', 'admin-legacy-entry.js'
 ]);
 app.get('/admin/:asset', (req, res, next) => {

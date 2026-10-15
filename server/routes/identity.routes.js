@@ -3,6 +3,8 @@
 const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
+const { registrationContext, enforceIdentityAccess, legacyIdentity, readRegistrationSecurity, applyRegistrationSecurity, auditSecurityFailure } = require('../core/storeAccountSecurity');
+const { readAffiliateRegistration, applyAffiliateRegistration } = require('../core/storeAffiliateService');
 const { readStoredBalance } = require('../core/storeMoney');
 const { authLoginLimiter, authAccountLimiter, resetAccountLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
 const { trustedOrigin } = require('../core/userSessionService');
@@ -112,10 +114,13 @@ router.post('/auth/login', authLoginLimiter, authAccountLimiter, async (req, res
     if (result.status >= 500) throw serviceError('AUTH_UNAVAILABLE', 503);
     if (!result.ok || !uid || (expectedUid && uid !== expectedUid)) throw authInvalid();
     const { auth } = initFirebaseAdmin();
-    await activeIdentity(auth, uid);
+    req.storeAuthIdentity = await activeIdentity(auth, uid);
+    req.user = { uid, email };
+    const access = await enforceIdentityAccess(req);
     const customToken = await auth.createCustomToken(uid, { zentraLogin: true });
-    return res.json({ ok: true, customToken });
+    return res.json({ ok: true, customToken, accountSecurity: { uid, exempt: access.exempt } });
   } catch (error) {
+    if (error.storeSecurityError) return next(error);
     if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED', 'TOO_MANY_REQUESTS'].includes(String(error?.code || ''))) return next(error);
     return next(serviceError('AUTH_UNAVAILABLE', 503));
   }
@@ -156,9 +161,15 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
     const birthDate = validateBirthDate(req.body?.birthDate);
     const keys = usernameKeys(username);
     const key = keys[0];
-    const { db } = initFirebaseAdmin();
-    if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
+    const { db, auth } = initFirebaseAdmin();
+    if (!db || !auth) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
+    const securityContext = await registrationContext(req);
+    const affiliateCode = req.body?.affiliateCode || '';
+    const identity = affiliateCode ? await auth.getUser(uid) : null;
+    const identityCreatedAt = Date.parse(identity?.metadata?.creationTime || '');
     const userRef = db.collection('users').doc(uid);
+    const preliminary = await userRef.get();
+    const isLegacy = preliminary.exists && await legacyIdentity(uid, preliminary.data() || {});
     const registryRefs = keys.map((entry) => ({ key: entry, ref: db.collection('usernameRegistry').doc(usernameRegistryId(entry)) }));
     let publicUser = null;
     await db.runTransaction(async (transaction) => {
@@ -175,8 +186,12 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
       }
       const legacy = await findUsernameProfiles(db, username, { transaction, includeRegistry: false });
       if (legacy.some((doc) => doc.id !== uid)) throw serviceError('USERNAME_TAKEN', 409, 'Bu kullanıcı adı kullanılıyor.');
+      const claim = await readRegistrationSecurity({ tx: transaction, db, uid, current, context: securityContext, legacy: isLegacy });
+      const registration = await readAffiliateRegistration({ tx: transaction, db, uid, current, code: affiliateCode, createdAt: identityCreatedAt });
       const now = Date.now();
       const patch = {
+        ...applyRegistrationSecurity({ tx: transaction, db, uid, claim }),
+        ...applyAffiliateRegistration({ tx: transaction, db, uid, registration, now }),
         profileInitializationPending: false,
         email,
         firstName: current.firstName || firstName,
@@ -195,7 +210,10 @@ router.post('/profile/update', requireAuth, strictLimiter, async (req, res, next
       publicUser = { uid, email, firstName: patch.firstName, lastName: patch.lastName, fullName: patch.fullName, username, birthDate: patch.birthDate };
     });
     return res.json({ ok: true, user: publicUser });
-  } catch (error) { return next(error); }
+  } catch (error) {
+    if (error.storeSecurityError) { try { await auditSecurityFailure(req, error); } catch (recorded) { return next(recorded); } }
+    return next(error);
+  }
 });
 
 module.exports = router;

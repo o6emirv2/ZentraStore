@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v78';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, supportsStoreFeature, adminRouteFeature } from '../public/js/request-utils.js?v=zentra-security-v3';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -32,6 +32,51 @@ export function startAmbientCanvas(canvas) {
 function errorMessage(payload = {}, status = 0) {
   const code = String((typeof payload.error === 'object' ? payload.error?.code : payload.error) || payload.code || '');
   const messages = {
+    SECURITY_EXTERNAL_ACCOUNT_DISABLED: 'Hesap başka bir yönetim işlemiyle de kapatılmış. Önce o işlemin durumunu inceleyin.',
+    ADMIN_SERVER_UPDATE_REQUIRED: 'Bu bölüm için Render backend sürümü güncel değil. ZIP içindeki backend ve frontend dosyalarını birlikte yayınlayın; ardından yönetici oturumunu yenileyin.',
+    API_ROUTE_NOT_FOUND: 'İstenen API bölümü sunucuda bulunamadı. Render’ın bağlı dalında güncel ZIP dosyalarının yayınlandığını kontrol edin.',
+    APP_CHECK_REQUIRED: 'Firebase App Check doğrulaması eksik. Site anahtarını, izinli alan adını ve Render APP_CHECK_MODE ayarını kontrol edin.',
+    APP_CHECK_INVALID: 'Firebase App Check doğrulaması geçersiz veya süresi dolmuş. Sayfayı yenileyin; sürerse Firebase App Check ayarlarını kontrol edin.',
+    SECURITY_DEVICE_REQUIRED: "Güvenli cihaz doğrulaması gerekli. Sayfayı güncelleyip yeniden deneyin.",
+    SECURITY_DEVICE_INVALID: "Cihaz doğrulaması geçersiz. Sayfayı yenileyin.",
+    SECURITY_DEVICE_REPLAY: "Bu güvenlik doğrulaması zaten kullanılmış. İşlemi yeniden başlatın.",
+    SECURITY_DEVICE_STORAGE_REQUIRED: "Güvenli kayıt için bu sitede tarayıcı depolamasına izin verin ve güncel tarayıcı kullanın.",
+    SECURITY_DEVICE_UNAVAILABLE: "Cihaz doğrulaması şu anda tamamlanamıyor. Yeni kayıt açılmadı.",
+    SECURITY_DEVICE_BLOCKED: "Bu tarayıcı/cihaz kimliği için erişim engellenmiş. Destek ekibiyle iletişime geçin.",
+    SECURITY_IP_ACCOUNT_EXISTS: "Bu internet bağlantısı için hesap kayıt hakkı kullanılmış. Mevcut hesabınızla giriş yapın.",
+    SECURITY_DEVICE_ACCOUNT_EXISTS: "Bu tanınan tarayıcı için hesap kayıt hakkı kullanılmış. Mevcut hesabınızla giriş yapın.",
+    SECURITY_IP_BLOCKED: "Bu internet bağlantısından erişim güvenlik nedeniyle engellenmiş.",
+    SECURITY_ACCOUNT_BLOCKED: "Hesabınız güvenlik incelemesi nedeniyle askıya alınmış. Destek ekibiyle iletişime geçin.",
+    SECURITY_REGISTRATION_REQUIRED: "Mağaza işlemlerinden önce başlayan hesabınızın kaydını tamamlayın.",
+    SECURITY_NETWORK_BLOCKED: "VPN, proxy veya desteklenmeyen anonim bağlantı tespit edildi. Doğrudan internet bağlantınızla yeniden deneyin.",
+    SECURITY_IP_UNAVAILABLE: "İnternet bağlantınızın adresi güvenli biçimde doğrulanamadı.",
+    SECURITY_NETWORK_UNCONFIGURED: "Mağazanın bağlantı güvenliği hizmeti henüz hazır değil. Lütfen daha sonra deneyin.",
+    SECURITY_NETWORK_UNAVAILABLE: "Bağlantı güvenliği denetimi tamamlanamadı. İşlem uygulanmadı.",
+    SECURITY_NETWORK_DB_INVALID: "Bağlantı güvenliği verisi doğrulanamadı. İşlem uygulanmadı.",
+    SECURITY_NETWORK_DB_STALE: "Bağlantı güvenliği verisi güncelleniyor. Lütfen daha sonra deneyin.",
+    SECURITY_NETWORK_CONFIG_INVALID: "Bağlantı güvenliği yapılandırması hazır değil. İşlem uygulanmadı.",
+    SECURITY_PROXY_UNCONFIGURED: "Mağazanın bağlantı doğrulama ayarı tamamlanmamış. İşlem uygulanmadı.",
+    SECURITY_HASH_UNCONFIGURED: "Mağazanın hesap güvenliği ayarları tamamlanmamış. İşlem uygulanmadı.",
+    SECURITY_MODERATION_INVALID: "İşlem türünü ve en az 8 karakterlik gerekçeyi kontrol edin.",
+    SECURITY_MODERATION_CONFLICT: "Hesabın güvenlik kararı başka bir işlemle değişmiş. Hesabı yeniden yükleyin.",
+    SECURITY_MODERATION_BUSY: 'Bu hesap için kimlik sağlayıcısı işlemi sürüyor. Hesabı yenileyip tamamlandıktan sonra yeniden deneyin.',
+    AFFILIATE_HOLD_NOT_RELEASABLE: "Komisyon onaylanamaz. Hesap durumlarını, sipariş ödemesini ve komisyon ayarını kontrol edin.",
+    AFFILIATE_RECEIPT_INVALID: 'Komisyon kaydı sipariş tutarı veya hesap bilgileriyle eşleşmiyor. İşlem yapılmadı; mali kayıtları inceleyin.',
+    AFFILIATE_UNAVAILABLE: "Referans bağlantısı yeni kayıtlara kapalı veya bulunamadı. Referans olmadan kayıt ol seçeneğiyle devam edebilirsiniz.",
+    AFFILIATE_INPUT_INVALID: "Bağlantı adını ve izin verilen %5, %10, %15, %20, %25, %30 oranlarını kontrol edin.",
+    AFFILIATE_OWNER_INVALID: "Bağlantı sahibi hesabı bulunamadı, kapalı veya kullanıcı adı benzersiz değil.",
+    AFFILIATE_OWNER_IMMUTABLE: "Bağlantının sahibi değiştirilemez. Farklı bir hesap için yeni bağlantı oluşturun.",
+    AFFILIATE_LINK_CONFLICT: "Bağlantı kaydı farklı bilgilerle zaten oluşturulmuş. Listeyi yenileyin.",
+    AFFILIATE_ALREADY_BOUND: "Bu hesap için referans seçimi zaten tamamlanmış.",
+    AFFILIATE_REGISTRATION_ONLY: "Referans bağlantısı yalnızca yeni hesap kaydında kullanılabilir. Referans olmadan devam edebilirsiniz.",
+    AFFILIATE_SELF_REFERRAL: "Kendi referans bağlantınızla kendi hesabınızı bağlayamazsınız.",
+    AFFILIATE_DEBT_OUTSTANDING: "İade edilen komisyon borcu kapanana kadar satın alma ve bakiye gönderimi kullanılamaz.",
+    TRANSFER_AMOUNT_INVALID: "Transfer tutarı 0,04 ₺ ile 1.000.000 ₺ arasında olmalıdır.",
+    TRANSFER_INPUT_INVALID: "Transfer bilgileri doğrulanamadı. Sayfayı yenileyin.",
+    TRANSFER_RECIPIENT_INVALID: "Alıcı bulunamadı, hesabı uygun değil veya kendi hesabınızı seçtiniz.",
+    TRANSFER_RECIPIENT_CHANGED: "Alıcı hesabın bilgileri değişti. Alıcıyı yeniden kontrol edin.",
+    TRANSFER_ACCOUNT_BLOCKED: "Hesabınız şu anda bakiye gönderimine uygun değil. Hesap durumunuzu ve komisyon borcunu kontrol edin.",
+    TRANSFER_CONFLICT: "Bu işlem kimliği farklı bir transfer için kullanılmış. Geçmişinizi kontrol edin.",
     ADMIN_ACTION_REQUIRED: 'İşlem doğrulaması eksik. Sayfayı yenileyip parolanızla tekrar doğrulayın.',
     ADMIN_ACTION_INVALID: 'İşlem onayı doğrulanamadı. Parolanızla yeniden doğrulayın.',
     ADMIN_ACTION_MISMATCH: 'Onaylanan işlem bilgileri değişti. Güncel bilgileri kontrol edip yeniden onaylayın.',
@@ -148,8 +193,6 @@ function errorMessage(payload = {}, status = 0) {
     STORE_ACCOUNT_DISABLED: 'Hedef kullanıcı hesabı devre dışı olduğu için bakiye işlemi yapılamaz.',
     STORE_TARGET_UID_REQUIRED: 'Hedef kullanıcı UID bilgisi bulunamadı.',
     STORE_USER_IDENTIFIER_REQUIRED: 'Kullanıcı aramak için e-posta, UID veya kullanıcı adı yazın.',
-    APP_CHECK_REQUIRED: 'Güvenli istek doğrulaması gerekli. Sayfayı yenileyin.',
-    APP_CHECK_INVALID: 'Güvenli istek doğrulaması geçersiz veya süresi dolmuş.',
     STORE_TELEGRAM_ONLY_PRODUCT: 'Bu ürün yalnızca Telegram üzerinden sipariş edilebilir; otomatik teslimat ve bakiye ile otomatik satın alma kullanılamaz.',
     STORE_PRODUCT_FULFILLMENT_REQUIRED: 'Satışta olan bir üründe otomatik teslimat veya Telegram satış kanallarından en az biri açık olmalıdır.',
     STORE_PRODUCT_PRICE_INVALID: 'Paket fiyatı geçersiz. Fiyat sıfırdan büyük ve desteklenen sınırlar içinde olmalıdır.',
@@ -228,6 +271,8 @@ export async function adminFetch(path, options = {}) {
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
     const destination = new URL(url, window.location.href), base = new URL(window.ZENTRA_ADMIN_AUTH?.apiUrl?.('/') || window.location.origin, window.location.href);
     if (destination.origin !== base.origin || destination.username || destination.password || !['https:', 'http:'].includes(destination.protocol)) throw Object.assign(new Error('Yönetim isteğinin adresi doğrulanamadı.'), { code: 'API_ORIGIN_INVALID', mutationNotSent: true });
+    const feature = adminRouteFeature(destination.pathname);
+    if (feature && !supportsStoreFeature(window.__ZENTRA_RUNTIME__, feature)) throw Object.assign(new Error(errorMessage({ error: 'ADMIN_SERVER_UPDATE_REQUIRED' })), { code: 'ADMIN_SERVER_UPDATE_REQUIRED', mutationNotSent: true });
     if (window.__ZENTRA_RUNTIME__ && !['GET', 'HEAD', 'OPTIONS'].includes(method) && destination.pathname.startsWith('/api/admin/store/') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error('Güncel mağaza ve sunucu birlikte yayınlanmalıdır.'), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
     let sameOrigin = false;
     try { sameOrigin = new URL(url, window.location.href).origin === window.location.origin; } catch (_) {}

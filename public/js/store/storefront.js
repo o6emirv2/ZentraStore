@@ -1,9 +1,11 @@
+import { captureReferral, clearReferral, renderReferralNotice } from './referral.js?v=zentra-affiliate-v1';
+import { createWalletTools } from './wallet-tools.js?v=zentra-security-v3';
 import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v78';
 import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v78';
 import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v78';
 import { versionedProductImage } from './product-fields.js?v=zentra-ui-v78';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v78';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v78';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-security-v3';
+import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-security-v3';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,7 +19,7 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v78';
+} from './auth.js?v=zentra-security-v3';
 import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v78';
 import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v78';
 import { installProductGallery } from './product-gallery.js?v=zentra-ui-v78';
@@ -134,6 +136,8 @@ const state = {
 };
 
 const purchaseTracker = createPurchaseTracker({ api: storeApi, userId: () => state.auth.user?.uid });
+
+const walletTools = createWalletTools({ snapshot: () => state.auth, refresh: () => refreshStoreAccount({ force: true }), notify: showNotice, isBusy: () => !!state.accountSecurityBusy || state.accountAvatarBusy || state.accountLogoutBusy });
 
 function loadFavoriteProducts() {
   try {
@@ -1687,9 +1691,12 @@ function applyAvatar(shell, avatarId = '1') {
   const safeAvatar = catalogAvatar || accountAvatarTrusted || FALLBACK_AVATAR_ICONS[requestedAvatar] ? requestedAvatar : '1';
   const image = trustedAvatarImage(safeAvatar);
   shell.dataset.avatarId = safeAvatar;
-  shell.classList.toggle('has-photo', !!image);
   const core = $('.avatar-core', shell);
+  const signature = `${safeAvatar}:${image}`;
+  if (core?.dataset.avatarSignature === signature && core.childNodes.length) return;
+  shell.classList.toggle('has-photo', !!image);
   if (core) {
+    core.dataset.avatarSignature = signature;
     delete core.dataset.avatarFallbackApplied;
     if (image) {
       const photo = document.createElement('img');
@@ -1775,6 +1782,7 @@ function renderAccountHeader() {
 }
 
 function syncCustomerNavigation(view = 'profile') {
+  if (view === 'profile') void walletTools.load();
   const selected = ['cart', 'orders', 'deliveries', 'coupons', 'profile'].includes(view) ? view : 'profile';
   const headerAction = $('#customerHeaderAction');
   if (headerAction) {
@@ -1892,6 +1900,7 @@ function setAuthTab(tab = 'login') {
     $('#registerForm').inert = safe !== 'register';
   }
   if ($('#authTitle')) $('#authTitle').textContent = safe === 'register' ? 'Kayıt ol' : 'Giriş yap';
+  renderReferralNotice();
   clearAuthValidation(safe === 'register' ? $('#registerForm') : $('#loginForm'));
   $('#authSheetBody')?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
@@ -2811,7 +2820,7 @@ export async function bootStorefront() {
   customerAppController = createCustomerAppController({
     layer: $('#customerApp'),
     authenticated: () => !!state.auth.user,
-    busy: () => !!state.accountSecurityBusy || state.accountAvatarBusy || state.accountLogoutBusy,
+    busy: () => !!state.accountSecurityBusy || state.accountAvatarBusy || state.accountLogoutBusy || walletTools.busy,
     deliveryAvailable: () => deliveryEligibleOrders().length > 0,
     onViewChange: (view) => syncCustomerNavigation(view),
     onActionOpen: (action) => {
@@ -2842,6 +2851,9 @@ export async function bootStorefront() {
       }
     }
   });
+  captureReferral(); renderReferralNotice();
+  $('#clearRegistrationReferral')?.addEventListener('click', () => { clearReferral(); renderReferralNotice(); });
+  walletTools.bind();
   installInteractions();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
@@ -2856,6 +2868,7 @@ export async function bootStorefront() {
     const nextUserId = String(auth.user?.uid || '');
     const identityChanged = !!previousUserId && previousUserId !== nextUserId;
     state.auth = auth;
+    walletTools.synchronize(auth);
     if (identityChanged || (!auth.user && previouslySignedIn)) clearCustomerSessionState({ closeProtectedLayer: true });
     renderAccountHeader();
     renderCart();
