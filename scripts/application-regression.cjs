@@ -7,7 +7,7 @@ after(async () => { await fixture?.close(); });
 const credit = { title: '200 TL balance credit', value: 20000, usageLimit: 10, perUserLimit: 1, startsAt: 0, endsAt: 0, active: true, createOnly: true };
 test('real username login, supplementary cookie and account routes agree on the same owner', async () => {
   const login = await fixture.request('/api/auth/login', { method: 'POST', body: { identifier: 'EMIRHAN', password: fixture.password } });
-  assert.equal(login.status, 200); assert.deepEqual(Object.keys(login.body).sort(), ['accountSecurity', 'customToken', 'ok']);
+  assert.equal(login.status, 200); assert.deepEqual(Object.keys(login.body).sort(), ['customToken', 'ok']);
   const user = fixture.exchangeCustomToken(login.body.customToken); assert.equal(user.uid, 'member');
   const account = await fixture.request('/api/store/account', { token: user.idToken }); assert.equal(account.body.account.uid, user.uid); assert.equal(account.body.account.balanceKurus, 50000);
   assert.equal((await fixture.request('/api/auth/session', { method: 'POST', body: { idToken: user.idToken, remember: true } })).status, 200);
@@ -42,9 +42,7 @@ test('financial role cannot edit the catalog and loses access immediately after 
 });
 test('malformed stored dates cannot credit funds while a committed receipt remains replayable', async () => {
   const row = fixture.db.records.get('storePromotions/FINANCE200'); row.startsAt = 'tomorrow';
-  assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'member', method: 'POST', body: { code: 'FINANCE200' } })).status, 409);
-  const unregistered = await fixture.request('/api/store/balance-codes/redeem', { uid: 'viewer', method: 'POST', body: { code: 'FINANCE200' } });
-  assert.equal(unregistered.status, 403); assert.equal(unregistered.body.error, 'SECURITY_REGISTRATION_REQUIRED');
+  assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'viewer', method: 'POST', body: { code: 'FINANCE200' } })).status, 409);
   assert.equal(fixture.db.records.get('users/viewer'), undefined);
   fixture.db.records.get('storePromotions/ZENTRASTORE200').active = false;
   assert.equal((await fixture.request('/api/store/balance-codes/redeem', { uid: 'member', method: 'POST', body: { code: 'ZENTRASTORE200' } })).body.idempotentReplay, true);

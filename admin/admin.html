@@ -11,15 +11,13 @@
   <title>ZENTRA STORE | Yönetim Merkezi</title>
   <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-security-v3" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v78" />
   <script src="./admin-browser-session.js?v=zentra-ui-v78"></script>
-  <script src="./admin-auth.js?v=zentra-security-v3"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v78"></script>
   <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v78" />
-  <link rel="stylesheet" href="/public/css/wallet-tools.css?v=zentra-affiliate-v1" />
-  <link rel="stylesheet" href="/public/css/account-security.css?v=zentra-security-v3" />
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -43,7 +41,6 @@
         <button type="button" data-panel="inventory"><i class="fa-solid fa-vault" aria-hidden="true"></i><span>Stok Kasası</span></button>
         <button type="button" data-panel="products"><i class="fa-solid fa-tags" aria-hidden="true"></i><span>Ürünler</span></button>
         <button type="button" data-panel="users"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Kullanıcılar</span></button>
-        <button type="button" data-panel="affiliates"><i class="fa-solid fa-people-arrows" aria-hidden="true"></i><span>Referans Ortaklığı</span></button>
         <button type="button" data-panel="wallet"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiye Merkezi</span></button>
         <button type="button" data-panel="content"><i class="fa-solid fa-bullhorn" aria-hidden="true"></i><span>İçerikler</span></button>
         <button type="button" data-panel="links"><i class="fa-solid fa-link" aria-hidden="true"></i><span>Bağlantılar</span></button>
@@ -51,7 +48,6 @@
         <button type="button" data-panel="promocodes"><i class="fa-solid fa-gift" aria-hidden="true"></i><span>Promosyon Kodları</span></button>
         <button type="button" data-panel="staff"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><span>Yetkilendirme</span></button>
         <button type="button" data-panel="audit"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>Denetim</span></button>
-        <button type="button" data-panel="abuse"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i><span>Çoklu Hesap Koruması</span></button>
         <button type="button" data-panel="security"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Güvenlik</span></button>
       </nav>
       <footer><span class="live-dot"></span><div><strong>SERVİS DURUMU</strong><small id="sidebarServiceText">Denetleniyor</small></div></footer>
@@ -92,15 +88,6 @@
         <div id="userResult" class="user-result"></div>
       </section>
 
-
-      <section class="admin-panel" data-admin-panel="affiliates" hidden inert>
-        <header class="panel-title"><div><span>SATIŞ ORTAKLIĞI</span><h1>Referans bağlantıları</h1><p>Hesaplara kalıcı referans tanımlayın; onaylı alışverişlerden komisyon kazandırın.</p></div></header>
-        <article class="admin-card"><h2 id="affiliateFormTitle">Yeni referans bağlantısı</h2><p class="wallet-tools__warning">Oran, kayıt anında kullanıcıya sabitlenir. Oran değişikliği yeni kayıtlara uygulanır. Bağlantı sahibi sonradan değiştirilemez. Yeni kayıt kabulü ile komisyon ödemeleri ayrı ayrı yönetilir. Komisyon, indirim sonrası ödenen tutardan hesaplanır; bakiye yükleme ve transfer komisyon oluşturmaz. İade/iptalde komisyon geri alınır.</p>
-          <form class="admin-form" id="affiliateForm"><label>Bağlantı adı<input id="affiliateTitle" minlength="2" maxlength="80" required placeholder="Örn. Ekim içerik ortaklığı" /></label><label>Bağlantı sahibinin kullanıcı adı<input id="affiliateOwner" minlength="5" maxlength="20" required autocomplete="off" placeholder="Kullanıcı adını tam yazın" /></label><label>Yeni kayıtlar için komisyon oranı<select id="affiliateRate"><option value="5">%5</option><option value="10">%10</option><option value="15">%15</option><option value="20">%20</option><option value="25">%25</option><option value="30" selected>%30</option></select></label><label class="toggle-row"><input type="checkbox" id="affiliateActive" checked /><span>Yeni kayıt kabul et</span></label><label class="toggle-row"><input type="checkbox" id="affiliateCommissionEnabled" checked /><span>Bağlı hesapların yeni ödemelerinde komisyon ver</span></label><div class="form-actions"><button class="primary-action" type="submit">Güvenli kaydet</button><button class="secondary-action" type="button" id="affiliateReset">Yeni bağlantı oluştur</button></div></form>
-        </article>
-        <div class="affiliate-grid" id="affiliateList" aria-live="polite"></div><button class="secondary-action" type="button" id="affiliateMore" hidden>Daha fazla bağlantı</button>
-        <article class="admin-card" id="affiliateDetails" hidden><h2 id="affiliateDetailTitle">Bağlantı geçmişi</h2><ul class="wallet-history" id="affiliateDetailRows"></ul><button class="secondary-action" type="button" id="affiliateDetailsMore" hidden>Daha fazla kayıt</button></article>
-      </section>
       <section class="admin-panel" data-admin-panel="wallet" hidden inert>
         <header class="panel-title"><div><span>DEĞİŞTİRİLEMEZ HAREKET KAYDI</span><h1>Bakiye merkezi</h1><p>Önce kullanıcıyı tam eşleşmeyle bulun; önizlemeyi doğruladıktan sonra gerekçeli işlem oluşturun.</p></div></header>
         <div class="panel-live-status" id="walletMetrics" aria-live="polite"></div><div class="metric-grid wallet-summary-grid" id="walletSummaryGrid" aria-live="polite"></div><form class="wallet-form" id="walletResolveForm"><div class="wallet-form__hero"><span><i class="fa-solid fa-magnifying-glass"></i></span><div><small>ADIM 1</small><h2>Kullanıcıyı doğrula</h2><p>E-posta, UID veya kullanıcı adı kullanabilirsiniz.</p></div></div><label><span>Kullanıcı tanımlayıcısı</span><div><i class="fa-solid fa-at"></i><input id="walletIdentifier" type="text" autocomplete="off" placeholder="o6emirxl veya e-posta/UID" required /></div></label><button class="secondary-action" type="submit">Kullanıcıyı Getir</button></form>
@@ -195,14 +182,6 @@
         <div class="panel-live-status" id="auditMetrics" aria-live="polite"></div><article class="admin-card"><div id="auditList" class="audit-list"></div></article>
       </section>
 
-
-      <section class="admin-panel" data-admin-panel="abuse" hidden inert>
-        <header class="panel-title"><div><span>IP · CİHAZ · VPN</span><h1>Çoklu hesap koruması</h1><p>Aynı kayıt IP’si veya tanınan cihazdan ikinci kayıt reddedilir. Benzer cihaz özellikleri kesin donanım kimliği değildir.</p></div><button class="secondary-action" type="button" id="abuseRefresh">Yenile</button></header>
-        <div class="abuse-readiness" id="abuseReadiness" role="status">Koruma durumu yükleniyor…</div>
-        <form class="lookup-bar" id="abuseSearchForm"><label class="admin-search"><input id="abuseSearch" type="search" placeholder="Kullanıcı adı, e-posta veya UID" autocomplete="off" required /></label><button class="primary-action" type="submit">Hesabı incele</button></form>
-        <article class="admin-card" id="abuseAccount" hidden><div id="abuseAccountInfo"></div><h3>Güvenlik kararı</h3><p>Askıya alma, hesaba ait kayıt IP’sini ve cihazını da yasaklar. Başka hesaba ait ortak IP/cihaz otomatik yasaklanmaz. Bakiyeler ve sipariş kayıtları korunur.</p><label for="abuseReason">İnceleme gerekçesi</label><textarea id="abuseReason" minlength="8" maxlength="300" placeholder="Kararın gerekçesini yazın"></textarea><div class="form-actions"><button class="primary-action abuse-suspend" type="button" data-abuse-action="suspend">Hesabı ve sahip olduğu IP/cihazı engelle</button><button class="secondary-action" type="button" data-abuse-action="restore">İnceleme sonrası yeniden aç</button><button class="secondary-action" type="button" data-abuse-action="retry-revocation" hidden>Oturum iptalini yeniden dene</button></div><h3>İlişkili hesaplar</h3><p>Gözlenen ortak IP, geçmişte aynı IP’den kayıt olunduğunu kanıtlamaz. Liste her eşleşme türünde en fazla 20 hesapla sınırlıdır.</p><ul class="wallet-history" id="abuseRelated"></ul><h3>Hesabın güvenlik olayları</h3><ul class="wallet-history" id="abuseAccountEvents"></ul><h3>Son bakiye, transfer ve komisyon hareketleri</h3><ul class="wallet-history" id="abuseAccountMoney"></ul></article>
-        <article class="admin-card"><h2>Güvenlik olayları</h2><ul class="wallet-history" id="abuseEvents"></ul><button class="secondary-action" type="button" id="abuseMore" hidden>Daha fazla olay</button></article>
-      </section>
       <section class="admin-panel" data-admin-panel="security" hidden inert>
         <header class="panel-title"><div><span>CANLI YAPILANDIRMA DENETİMİ</span><h1>Güvenlik durumu</h1><p>Aktif korumaların yapılandırma skoru; penetrasyon testi sonucu değildir.</p></div></header>
         <div class="panel-live-status" id="securityRuntime" aria-live="polite"></div><div class="security-overview"><div class="security-ring" id="securityRing"><strong id="securityScore">0</strong><small>/100</small></div><div><span id="securityLevel">Denetleniyor</span><h2>Yönetici paneli koruması</h2><p>Beş adımlı yönetici kapısı, yeniden parola doğrulaması, güvenli istek denetimi, oran sınırlama ve şifreli stok kasası birlikte çalışır.</p></div></div><div class="security-checks" id="securityChecks"></div>
@@ -242,6 +221,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-legacy-entry.js?v=zentra-security-v3"></script>
+  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v78"></script>
 </body>
 </html>

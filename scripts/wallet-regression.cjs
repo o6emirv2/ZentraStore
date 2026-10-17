@@ -46,7 +46,7 @@ mock('../server/core/storeCatalogService', { getEffectiveCatalog: async () => st
 mock('../server/core/storeInventoryService', { allocateInventoryInTransaction: async () => [{ id: 'delivered-item' }], invalidateStockCache() {}, decorateCatalogWithStock: async (value) => value });
 const service = require('../server/core/storeService');
 function reset(balance = 20000) {
-  docs = new Map([['users/user-1', { storeRegistrationSecurity: { admittedAt: Date.now() }, email: 'old@example.test', username: 'OriginalName', storeBalanceKurus: balance, storeProfile: { avatarId: '1' }, storeAccountStatus: 'active' }]]);
+  docs = new Map([['users/user-1', { email: 'old@example.test', username: 'OriginalName', storeBalanceKurus: balance, storeProfile: { avatarId: '1' }, storeAccountStatus: 'active' }]]);
   writes = []; catalog.products[0].archived = false; catalog.products[0].automaticEnabled = true;
 }
 const order = { uid: 'user-1', authUser: { uid: 'user-1', email: 'new@example.test' }, paymentMethod: 'wallet', idempotencyKey: 'financial-test-key-1',

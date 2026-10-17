@@ -1,16 +1,6 @@
 export const CLIENT_RELEASE = 78;
 export const compatibleStoreWrites = runtime => Number(runtime?.version) === CLIENT_RELEASE || runtime?.clientCompatibility?.storeWrite === 2;
 export const compatiblePrivateReads = runtime => Number(runtime?.version) === CLIENT_RELEASE || runtime?.clientCompatibility?.storeRead === 2;
-export function supportsStoreFeature(runtime, feature) {
-  if (feature === 'accountSecurity') return runtime?.accountSecurity?.required === true
-    && runtime.accountSecurity.deviceProofVersion === 1 && runtime.clientCompatibility?.accountSecurity === 2;
-  return ['affiliate', 'walletTransfer'].includes(feature) && runtime?.clientCompatibility?.[feature] === 1;
-}
-export function adminRouteFeature(path) {
-  if (/^\/api\/admin\/store\/(?:affiliates(?:\/|$)|affiliate-commissions\/)/.test(path)) return 'affiliate';
-  if (/^\/api\/admin\/store\/abuse(?:\/|$)/.test(path)) return 'accountSecurity';
-  return '';
-}
 
 export function waitForSignal(promise, signal) {
   const pending = Promise.resolve(promise);

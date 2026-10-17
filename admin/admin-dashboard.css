@@ -359,23 +359,6 @@ img {
   border-color:rgba(255,90,111,.22);
   color:var(--danger)
 }
-.panel-feedback {
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr) auto;
-  align-items:start;
-  gap:12px;
-  padding:16px;
-  min-width:0;
-  max-width:100%
-}
-.panel-feedback__text { min-width:0; overflow-wrap:anywhere; line-height:1.6 }
-.panel-feedback__text p { margin:6px 0 }
-.panel-feedback__text small { display:block; margin-top:6px; font-size:.75rem; color:var(--muted) }
-.panel-feedback > button { min-width:0; max-width:100%; white-space:normal; word-break:normal }
-@media(max-width:640px) {
-  .panel-feedback { grid-template-columns:auto minmax(0,1fr) }
-  .panel-feedback > button { grid-column:2; justify-self:start }
-}
 .metric-grid {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));

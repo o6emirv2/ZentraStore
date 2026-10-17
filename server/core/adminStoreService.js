@@ -404,7 +404,6 @@ async function computeWalletSummary({ fresh = false } = {}) {
   }
   const totals = { CREDIT: 0, DEBIT: 0, REFUND: 0, CORRECTION: 0 };
   const counts = { CREDIT: 0, DEBIT: 0, REFUND: 0, CORRECTION: 0 };
-  let totalTransferFeeKurus = 0, totalAffiliateCommissionKurus = 0, totalAffiliateReversalKurus = 0;
   let todayCreditKurus = 0;
   let todayRefundKurus = 0;
   const today = turkeyDateKey(now);
@@ -412,9 +411,6 @@ async function computeWalletSummary({ fresh = false } = {}) {
     const type = safeText(row.type, 30).toUpperCase();
     const amountKurus = Math.trunc(Number(row.amountKurus) || 0);
     const createdAt = Math.max(0, Number(row.createdAt || 0) || 0);
-    if (type === 'TRANSFER_OUT') totalTransferFeeKurus += Math.max(0, Number(row.feeKurus) || 0);
-    if (type === 'AFFILIATE_COMMISSION') totalAffiliateCommissionKurus += Math.max(0, Number(row.commissionKurus) || 0);
-    if (type === 'AFFILIATE_REVERSAL') totalAffiliateReversalKurus += Math.max(0, Number(row.commissionKurus) || 0);
     if (Object.prototype.hasOwnProperty.call(totals, type)) {
       totals[type] += amountKurus;
       counts[type] += 1;
@@ -450,7 +446,6 @@ async function computeWalletSummary({ fresh = false } = {}) {
     totalDebitKurus: Math.abs(Math.min(0, totals.DEBIT)),
     totalRefundKurus: Math.max(0, totals.REFUND),
     totalCorrectionKurus: totals.CORRECTION,
-    totalTransferFeeKurus, totalAffiliateCommissionKurus, totalAffiliateReversalKurus,
     todayCreditKurus,
     todayRefundKurus,
     counts,

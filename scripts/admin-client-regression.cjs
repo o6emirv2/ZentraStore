@@ -4,12 +4,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const url = (source) => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const utils = url(fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js'), 'utf8'));
-const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-security-v3'", JSON.stringify(utils));
+const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-ui-v78'", JSON.stringify(utils));
 const modulePromise = import(url(source));
-async function scenario(callback, request = ['/api/admin/store/wallet/adjust', { method: 'POST', body: { uid: 'customer', amountKurus: 20000 } }], runtime = { version: 78, accountSecurity: { required: true, deviceProofVersion: 1 }, clientCompatibility: { affiliate: 1, accountSecurity: 2 } }) {
+async function scenario(callback, request = ['/api/admin/store/wallet/adjust', { method: 'POST', body: { uid: 'customer', amountKurus: 20000 } }]) {
   const original = { fetch: global.fetch, window: global.window }; let uid = 'admin-a'; const calls = [], events = [];
   global.window = { location: { href: 'https://store.example.test/admin/admin.html', origin: 'https://store.example.test' },
-    dispatchEvent: (event) => events.push(event.type), setTimeout, clearTimeout, __ZENTRA_RUNTIME__: runtime,
+    dispatchEvent: (event) => events.push(event.type), setTimeout, clearTimeout,
     ZENTRA_ADMIN_AUTH: { currentUser: () => ({ uid }), activeSession: () => ({ uid }), token: async () => 'verified-token',
       consumeActionPassword: () => 'controlled-password', appCheckToken: async () => 'appcheck-token', apiUrl: (value) => 'https://store.example.test' + value } };
   global.fetch = async (target, options) => {
@@ -72,15 +72,4 @@ test('token failures stop same-origin reads before any cookie-authorized request
   global.fetch = async () => { calls++; return json({ ok: true }); };
   try { await assert.rejects((await modulePromise).adminFetch('/api/admin/store/balance-codes'), { code: 'AUTH_INVALID', mutationNotSent: true }); assert.equal(calls, 0); }
   finally { global.window = previous; global.fetch = fetch; }
-});
-test('new admin sections reject an older backend before issuing reads or action proofs',async()=>{
- for(const path of ['/api/admin/store/affiliates','/api/admin/store/abuse']) {
-  await assert.rejects(scenario(()=>{throw new Error('must not send');},[path,{}],{version:78,clientCompatibility:{adminAction:1}}),{code:'ADMIN_SERVER_UPDATE_REQUIRED',mutationNotSent:true});
-  assert.equal(scenario.last.calls.length,0);assert.deepEqual(scenario.last.events,[]);
- }
-});
-test('missing routes and App Check failures retain their diagnostic codes and actionable messages',async()=>{
- await assert.rejects(scenario(()=>json({ok:false,error:'API_ROUTE_NOT_FOUND',requestId:'route-missing'},404),['/api/admin/store/affiliates',{}]),error=>error.code==='API_ROUTE_NOT_FOUND'&&/Render/.test(error.message));
- await assert.rejects(scenario(()=>json({ok:false,error:'APP_CHECK_REQUIRED'},401),['/api/admin/store/abuse',{}]),error=>error.code==='APP_CHECK_REQUIRED'&&/App Check/.test(error.message));
- assert.deepEqual(scenario.last.events,[]);
 });

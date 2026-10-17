@@ -110,13 +110,10 @@ async function requireAuth(req, res, next) {
     if (user?.originBlocked) return res.status(403).json({ ok: false, error: 'ORIGIN_NOT_ALLOWED' });
     if (!user?.uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
     req.user = user;
-  } catch (error) {
+    return next();
+  } catch (_) {
     return res.status(401).json({ ok: false, error: 'AUTH_INVALID' });
   }
-  try {
-    await require('./storeAccountSecurity').customerRouteGuard(req);
-    return next();
-  } catch (error) { return next(error); }
 }
 
 function requireRecentUserAuth(req, res, next) {

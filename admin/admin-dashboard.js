@@ -1,11 +1,9 @@
-import { createAccountSecurityManager } from './account-security.js?v=zentra-security-v3';
-import { createAffiliateManager } from './affiliate-links.js?v=zentra-security-v3';
 import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v78';
 import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v78';
 import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
 import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v78';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-security-v3';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-security-v3';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v78';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v78';
 import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v78';
 import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v78';
 import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v78';
@@ -14,8 +12,8 @@ installInteractionGuard();
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const PANELS = Object.freeze(['overview', 'orders', 'inventory', 'products', 'users', 'wallet', 'affiliates', 'content', 'links', 'coupons', 'promocodes', 'staff', 'audit', 'abuse', 'security']);
-const PANEL_PERMISSIONS = Object.freeze({ overview: 'store.overview.read', orders: 'store.orders.read', inventory: 'store.inventory.read', products: 'store.catalog.read', users: 'store.users.read', wallet: 'store.wallet.read', affiliates: 'store.wallet.read', content: 'store.content.read', links: 'store.content.read', coupons: 'store.content.read', promocodes: 'store.wallet.write', staff: 'store.staff.read', audit: 'store.audit.read', abuse: 'store.security.read', security: 'store.security.read' });
+const PANELS = Object.freeze(['overview', 'orders', 'inventory', 'products', 'users', 'wallet', 'content', 'links', 'coupons', 'promocodes', 'staff', 'audit', 'security']);
+const PANEL_PERMISSIONS = Object.freeze({ overview: 'store.overview.read', orders: 'store.orders.read', inventory: 'store.inventory.read', products: 'store.catalog.read', users: 'store.users.read', wallet: 'store.wallet.read', content: 'store.content.read', links: 'store.content.read', coupons: 'store.content.read', promocodes: 'store.wallet.write', staff: 'store.staff.read', audit: 'store.audit.read', security: 'store.security.read' });
 const revealedStockFields = new WeakMap();
 const state = {
   activePanel: 'overview', loaded: new Set(), overview: null, orders: [], catalog: null, inventory: [], users: [],
@@ -105,7 +103,6 @@ function applyAdminPermissions() {
   const staticWriteControls = [
     ['#inventoryKeys, #inventoryImportForm button[type="submit"], #inventoryMigrateShared, #inventoryRotateKeys', 'store.inventory.write'],
     ['#openProductCreate', 'store.catalog.write'],
-    ['#affiliateForm input, #affiliateForm select, #affiliateForm button', 'store.wallet.write'],
     ['#walletForm input, #walletForm select, #walletForm textarea, #walletForm button, #promoCodeForm input, #promoCodeForm button', 'store.wallet.write'],
     ['#contentForm input, #contentForm select, #contentForm textarea, #contentForm button, #promotionForm input, #promotionForm select, #promotionForm textarea, #promotionForm button, #quickLinksForm input, #quickLinksForm select, #quickLinksForm textarea, #quickLinksForm button', 'store.content.write'],
     ['#staffForm input, #staffForm select, #staffForm textarea, #staffForm button', 'store.staff.write']
@@ -177,8 +174,7 @@ function emptyMarkup(title, message, icon = 'fa-box-open') {
 function failureMarkup(title, error, panel = '') {
   const requestId = String(error?.requestId || '').trim();
   const retry = panel ? `<button class="secondary-action" type="button" data-panel-retry="${escapeHtml(panel)}"><i class="fa-solid fa-rotate"></i> Yeniden Dene</button>` : '';
-  const code = String(error?.code || '').slice(0, 100);
-  return `<div class="list-message is-error panel-feedback" role="status"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><div class="panel-feedback__text"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(error?.message || 'İşlem tamamlanamadı. Lütfen yeniden deneyin.')}</p>${code ? `<small>Hata kodu: ${escapeHtml(code)}</small>` : ''}${requestId ? `<small>İstek kodu: ${escapeHtml(requestId)}</small>` : ''}</div>${retry}</div>`;
+  return `<div class="list-message is-error"><i class="fa-solid fa-triangle-exclamation"></i><strong>${escapeHtml(title)}</strong><p>${escapeHtml(error?.message || 'İşlem tamamlanamadı. Lütfen yeniden deneyin.')}</p>${requestId ? `<small>İstek kodu: ${escapeHtml(requestId)}</small>` : ''}${retry}</div>`;
 }
 
 function renderLiveStatus(hostSelector, { icon = 'fa-satellite-dish', title = 'Canlı veri', detail = '', tone = 'ok', meta = '' } = {}) {
@@ -1425,9 +1421,6 @@ async function loadWalletSummary() {
     metricCard('fa-circle-plus', w.ledgerComplete === false ? 'SON HAREKETLER CREDIT' : 'TOPLAM CREDIT', formatPrice(w.totalCreditKurus || 0), 'green'),
     metricCard('fa-circle-minus', w.ledgerComplete === false ? 'SON HAREKETLER DEBIT' : 'TOPLAM DEBIT', formatPrice(w.totalDebitKurus || 0), 'yellow'),
     metricCard('fa-rotate-left', w.ledgerComplete === false ? 'SON HAREKETLER REFUND' : 'TOPLAM REFUND', formatPrice(w.totalRefundKurus || 0), w.totalRefundKurus ? 'yellow' : ''),
-    metricCard('fa-money-bill-transfer', w.ledgerComplete === false ? 'SON HAREKETLER TRANSFER KESİNTİSİ' : 'TRANSFER KESİNTİLERİ', formatPrice(w.totalTransferFeeKurus || 0)),
-    metricCard('fa-people-arrows', w.ledgerComplete === false ? 'SON HAREKETLER KOMİSYON' : 'REFERANS KOMİSYONLARI', formatPrice(w.totalAffiliateCommissionKurus || 0)),
-    metricCard('fa-rotate-left', w.ledgerComplete === false ? 'SON HAREKETLER KOMİSYON İADESİ' : 'GERİ ALINAN KOMİSYON', formatPrice(w.totalAffiliateReversalKurus || 0)),
     metricCard('fa-screwdriver-wrench', 'CORRECTION NET', formatPrice(w.totalCorrectionKurus || 0, true))
   ].join('');
   const rows = Array.isArray(w.recent) ? w.recent : [];
@@ -1845,8 +1838,6 @@ function renderPanelFailure(name, error) {
     audit: '#auditList',
     staff: '#staffList',
     wallet: '#walletRecent',
-    affiliates: '#affiliateList',
-    abuse: '#abuseEvents',
     security: '#securityRuntime',
     content: '#contentStatus',
     links: '#adminQuickLinks',
@@ -1855,11 +1846,6 @@ function renderPanelFailure(name, error) {
   };
   const host = $(hosts[name]);
   if (host) host.innerHTML = failureMarkup('Panel verisi yüklenemedi', error, name);
-  if (name === 'abuse') {
-    const readiness = $('#abuseReadiness');
-    readiness.classList.remove('is-ready');
-    readiness.textContent = `Koruma durumu yüklenemedi. ${error?.message || 'Bağlantıyı kontrol edip yeniden deneyin.'}`;
-  }
   if (name === 'inventory') {
     state.inventoryReadiness = { ready: false, blockers: [] };
     renderInventoryReadiness();
@@ -1883,7 +1869,6 @@ async function loadPanel(name, force = false) {
       else if (name === 'inventory') await loadInventory();
       else if (name === 'products') await loadProducts();
       else if (name === 'users') await loadUsers();
-      else if (name === 'affiliates') { await affiliateManager.load(); state.loaded.add('affiliates'); }
       else if (name === 'wallet') await loadWalletSummary();
       else if (name === 'content') await loadContent();
       else if (name === 'links') await loadQuickLinks();
@@ -1891,7 +1876,6 @@ async function loadPanel(name, force = false) {
       else if (name === 'promocodes') { await promoCodeManager.load(); state.loaded.add('promocodes'); }
       else if (name === 'staff') await loadStaff();
       else if (name === 'audit') await loadAudit();
-      else if (name === 'abuse') { await accountSecurityManager.load(); state.loaded.add('abuse'); }
       else if (name === 'security') await loadSecurity();
       state.panelLoadedAt.set(name, Date.now());
       rememberForms(panel);
@@ -1944,13 +1928,9 @@ function bindAction(element, type, handler, label = 'İşlem yapılıyor…') {
   });
 }
 
-const accountSecurityManager = createAccountSecurityManager({ adminFetch, requestAdminReauth, toast, hasPermission, escapeHtml, formatPrice });
-const affiliateManager = createAffiliateManager({ adminFetch, requestAdminReauth, toast, hasPermission, escapeHtml, formatPrice, rememberForms, confirmDiscard });
 const promoCodeManager = createPromoCodeManager({ adminFetch, requestAdminReauth, toast, hasPermission, requirePermission, escapeHtml, formatPrice, parseMoneyInput, renderLiveStatus, loadingMarkup, emptyMarkup, failureMarkup, rememberForms, hasUnsavedForms, confirmDiscard });
 
 function bind() {
-  accountSecurityManager.bind();
-  affiliateManager.bind();
   promoCodeManager.bind();
   $('[data-open-promocodes]')?.addEventListener('click', () => { void switchPanel('promocodes'); });
   let redirecting = false;

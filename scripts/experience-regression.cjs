@@ -91,14 +91,15 @@ test('external abort and request timeout remain distinct and listeners are clean
 });
 
 test('store writes bind the initial identity and do not fall back to another account cookie', async () => {
-  const { browserModule } = require('./helpers/browser-module.cjs');
+  const utils = 'data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js')).toString('base64');
+  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v78'", JSON.stringify(utils));
   const previous = { window: global.window, document: global.document, fetch: global.fetch };
   let fetches = 0;
-  global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 78, accountSecurity: { required: true, deviceProofVersion: 1 }, clientCompatibility: { accountSecurity: 2 } } };
+  global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 78 } };
   global.document = { querySelector: () => null };
   global.fetch = async (_url, options) => { fetches++; assert.equal(options.headers.get('Authorization'), 'Bearer initial-user'); return new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } }); };
   try {
-    const api = await browserModule('public/js/store/api.js', { 'export async function storeDeviceHeaders({ url, method, body, headers, signal }) {': 'export async function storeDeviceHeaders({ url, method, body, headers, signal }) { return {}; ' });
+    const api = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
     api.setStoreTokenProvider(async () => 'initial-user');
     await api.storeApi('/api/store/orders', { method: 'POST', body: {} });
     assert.equal(fetches, 1);

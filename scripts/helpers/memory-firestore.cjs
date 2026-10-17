@@ -5,11 +5,11 @@ const crypto = require('node:crypto');
 // Transaction fixture: serial commits, discarded writes on failure, and enforced read-before-write ordering.
 function memoryFirestore(initial = []) {
   const records = new Map(initial), stats = { reads: 0, queries: 0, commits: 0, writes: 0 };
-  let tail = Promise.resolve(), failCommit = false, queryHook = null, readHook = null;
+  let tail = Promise.resolve(), failCommit = false, queryHook = null;
   const snapshot = (ref) => { const exists = records.has(ref.path), value = structuredClone(records.get(ref.path)); return { id: ref.id, ref, exists, data: () => structuredClone(value) }; };
   function reference(path) {
     return { path, id: path.split('/').at(-1), collection: (name) => collection(`${path}/${name}`),
-      get: async () => { stats.reads++; if (readHook) await readHook(path); return snapshot(reference(path)); },
+      get: async () => { stats.reads++; return snapshot(reference(path)); },
       set: async (data, options) => apply([{ kind: options?.merge ? 'merge' : 'set', ref: reference(path), data }]),
       update: async (data) => apply([{ kind: 'update', ref: reference(path), data }]),
       delete: async () => records.delete(path) };
@@ -23,11 +23,10 @@ function memoryFirestore(initial = []) {
       add: async data => { const ref = reference(`${path}/${crypto.randomUUID()}`); await ref.set(data); return ref; },
       count: () => ({ get: async () => { const result = await query.get(); return { data: () => ({ count: result.size }) }; } }),
       get: async () => {
-        stats.queries++; if (queryHook) await queryHook(path, { filters, orders });
+        stats.queries++; if (queryHook) await queryHook(path);
         let rows = [...records].filter(([key, row]) => key.startsWith(path + '/') && !key.slice(path.length + 1).includes('/')
-          && orders.every(([field]) => field === '__name__' || row[field] !== undefined)
           && filters.every(([field, op, value]) => {
-            const actual = field === '__name__' ? key.split('/').at(-1) : String(field).split('.').reduce((value, key) => value?.[key], row);
+            const actual = field === '__name__' ? key.split('/').at(-1) : row[field];
             return op === '==' ? actual === value : op === 'in' ? value.includes(actual)
               : op === '<=' ? actual <= value : op === '>=' ? actual >= value : op === '>' ? actual > value : actual < value;
           }));
@@ -41,8 +40,8 @@ function memoryFirestore(initial = []) {
         };
         rows.sort(compare);
         if (cursor) {
-          const anchor = typeof cursor === 'string' ? [path + '/' + cursor, records.get(path + '/' + cursor)] : [cursor.ref.path, cursor.data()];
-          rows = rows.filter(row => compare(row, anchor) > 0);
+          const id = typeof cursor === 'string' ? cursor : cursor.id;
+          rows = rows.filter(([key]) => key.split('/').at(-1) > id);
         }
         const docs = rows.slice(0, take).map(([key]) => snapshot(reference(key))); stats.reads += docs.length;
         return { docs, empty: !docs.length, size: docs.length };
@@ -53,13 +52,6 @@ function memoryFirestore(initial = []) {
     const updated = new Map(records);
     for (const { kind, ref, data } of staged) {
       if (kind === 'delete') { updated.delete(ref.path); continue; }
-      const validate = (value, location) => {
-        assert.notEqual(value, undefined, `Firestore rejects undefined at ${location}`);
-        if (value && typeof value === 'object' && !(value instanceof Date) && !Buffer.isBuffer(value)) {
-          for (const [key, item] of Object.entries(value)) validate(item, `${location}.${key}`);
-        }
-      };
-      validate(data, ref.path);
       if (kind === 'create') assert(!updated.has(ref.path), 'create cannot overwrite');
       if (kind === 'update') assert(updated.has(ref.path), 'update needs an existing record');
       const before = updated.get(ref.path) || {}, row = { ...(kind === 'merge' || kind === 'update' ? before : {}), ...structuredClone(data) };
@@ -71,7 +63,7 @@ function memoryFirestore(initial = []) {
   }
   const db = { collection, doc: reference, records, stats,
     getAll: async (...refs) => Promise.all(refs.map((ref) => ref.get())),
-    setFailure: (value) => { failCommit = value; }, setQueryHook: (hook) => { queryHook = hook; }, setReadHook: hook => { readHook = hook; },
+    setFailure: (value) => { failCommit = value; }, setQueryHook: (hook) => { queryHook = hook; },
     runTransaction: (callback) => {
       const job = tail.then(async () => {
         const staged = []; let writing = false;

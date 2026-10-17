@@ -1,5 +1,4 @@
-import { currentReferral, clearReferral } from './referral.js?v=zentra-affiliate-v1';
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, confirmStoreSecurityExemption, storeApi } from './api.js?v=zentra-security-v3';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v78';
 import { createAccountReader } from './account-state.js?v=zentra-ui-v78';
 
 const FIREBASE_VERSION = '12.17.1';
@@ -9,7 +8,7 @@ const FIREBASE_APP_CHECK_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VE
 const REMEMBER_COOKIE = 'zentra_store_remember';
 const INITIALIZATION_TIMEOUT_MS = 15000;
 const subscribers = new Set(), appChecks = new WeakMap();
-let initPromise = null, pendingRegistration = null, identityRevision = 0, unsubscribe = null, limitedWarning = '';
+let initPromise = null, pendingRegistration = null, identityRevision = 0, unsubscribe = null;
 const state = { ready: false, available: true, busy: false, user: null, account: null, auth: null, sdk: null, error: '', warning: '', pendingEmail: '', accountLoading: false, accountStale: false, localSignedOut: false };
 const uid = user => String(user?.uid || '');
 const failure = (code, message) => Object.assign(new Error(message || code), { code });
@@ -34,19 +33,13 @@ async function boundedInitialization(promise, cleanup = () => {}) {
 const accountReader = createAccountReader({
   userId: () => uid(state.user), read: signal => storeApi('/api/store/account', { signal }),
   start: () => { state.accountLoading = true; emit(); },
-  accept: account => { state.account = account; state.accountStale = false; state.error = '';
-    if (limitedWarning) state.warning = state.warning.replace(limitedWarning, '').trim();
-    limitedWarning = account.security?.limited ? `Girişiniz korundu. ${friendlyStoreError(account.security.reason)} Yeni kayıt ve para işlemleri güvenlik onayı tamamlanana kadar kapalıdır.` : '';
-    state.warning = [state.warning, limitedWarning].filter(Boolean).join(' ');
-  },
+  accept: account => { state.account = account; state.accountStale = false; state.error = ''; },
   failed: error => { state.accountStale = !!state.account; state.error = friendlyStoreError(error); },
   finish: () => { state.accountLoading = false; emit(); }
 });
 function bindUser(user) {
-  if (uid(state.user) !== uid(user)) { accountReader.invalidate(); state.account = null; state.accountStale = false; state.accountLoading = false; state.pendingEmail = ''; state.warning = ''; limitedWarning = ''; }
-  const providerChanged = state.user !== (user || null);
-  state.user = user || null;
-  if (providerChanged) setStoreTokenProvider(user ? () => user.getIdToken() : null, uid(user));
+  if (uid(state.user) !== uid(user)) { accountReader.invalidate(); state.account = null; state.accountStale = false; state.accountLoading = false; state.pendingEmail = ''; }
+  state.user = user || null; setStoreTokenProvider(user ? () => user.getIdToken() : null);
 }
 function requireSignedInUser() { const user = state.auth?.currentUser; if (!user || state.localSignedOut) throw failure('AUTH_REQUIRED', 'Devam etmek için giriş yapın.'); return user; }
 function requireUnchangedUser(expected) {
@@ -66,8 +59,7 @@ export async function refreshStoreAccount(options = {}) {
 }
 async function syncServerSession(user, remember = rememberPreference()) {
   requireUnchangedUser(user); const idToken = await user.getIdToken(true); requireUnchangedUser(user);
-  const session = await storeApi('/api/auth/session', { method: 'POST', auth: false, body: { idToken, remember: !!remember } }); requireUnchangedUser(user);
-  confirmStoreSecurityExemption(session.accountSecurity);
+  await storeApi('/api/auth/session', { method: 'POST', auth: false, body: { idToken, remember: !!remember } }); requireUnchangedUser(user);
 }
 async function finishIdentity(user, remember = rememberPreference(), { restore = false } = {}) {
   requireUnchangedUser(user); bindUser(user); state.warning = ''; state.error = '';
@@ -75,7 +67,6 @@ async function finishIdentity(user, remember = rememberPreference(), { restore =
     let session = null;
     if (restore) session = await storeApi('/api/auth/session', { auth: false, timeoutMs: 4500 }).catch(() => null);
     requireUnchangedUser(user);
-    if (session?.authenticated && uid(session.user) === uid(user)) confirmStoreSecurityExemption(session.accountSecurity);
     if (!session?.authenticated || uid(session.user) !== uid(user)) await syncServerSession(user, remember);
   } catch (error) { requireUnchangedUser(user); state.warning = `Giriş korundu; sunucu oturumu yenilenemedi. ${friendlyStoreError(error)}`; }
   try { await refreshStoreAccount({ force: true }); }
@@ -171,9 +162,7 @@ export async function signInStore({ identifier = '', password = '', remember = f
     const login = await storeApi('/api/auth/login', { auth: false, body: { identifier: String(identifier).trim(), password: String(password) } });
     if (!login.customToken) throw failure('LOGIN_CREDENTIALS_INVALID');
     const credential = await state.sdk.signInWithCustomToken(state.auth, login.customToken);
-    state.localSignedOut = false; pendingRegistration = null; bindUser(credential.user);
-    if (login.accountSecurity?.uid === uid(credential.user)) confirmStoreSecurityExemption(login.accountSecurity);
-    await finishIdentity(credential.user, persistenceWarning ? false : remember);
+    state.localSignedOut = false; pendingRegistration = null; bindUser(credential.user); await finishIdentity(credential.user, persistenceWarning ? false : remember);
     if (pendingRegistration) throw failure('REGISTER_PENDING', state.warning);
     state.warning = [persistenceWarning, state.warning].filter(Boolean).join(' '); emit(); return snapshot();
   });
@@ -194,13 +183,12 @@ export async function registerStore(input = {}) {
     const available = await storeApi(`/api/auth/check-username?username=${encodeURIComponent(username)}`, { auth: false });
     if (available.available === false) throw failure('USERNAME_TAKEN');
     const persistenceWarning = await setAuthPersistence(input.remember === true);
-    if (!retry) await storeApi('/api/store/security/preflight', { auth: false, method: 'POST', body: {} });
     const credential = retry ? { user: state.auth.currentUser } : await state.sdk.createUserWithEmailAndPassword(state.auth, email, password);
     state.localSignedOut = false;
     if (retry) await state.sdk.reauthenticateWithCredential(credential.user, state.sdk.EmailAuthProvider.credential(email, password));
     pendingRegistration = { uid: uid(credential.user), email }; bindUser(credential.user); emit();
-    await storeApi('/api/profile/update', { method: 'POST', body: { firstName, lastName, username, birthDate, ...(currentReferral() ? { affiliateCode: currentReferral() } : {}) } });
-    requireUnchangedUser(credential.user); pendingRegistration = null; clearReferral();
+    await storeApi('/api/profile/update', { method: 'POST', body: { firstName, lastName, username, birthDate } });
+    requireUnchangedUser(credential.user); pendingRegistration = null;
     await state.sdk.updateProfile(credential.user, { displayName: username }).catch(() => {});
     await finishIdentity(credential.user, persistenceWarning ? false : input.remember === true);
     state.warning = [persistenceWarning, state.warning].filter(Boolean).join(' '); emit(); return snapshot();

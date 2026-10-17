@@ -50,7 +50,6 @@
   <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v78" />
-  <link rel="stylesheet" href="/public/css/wallet-tools.css?v=zentra-affiliate-v1" />
 </head>
 <body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
@@ -212,8 +211,6 @@
         </form>
 
         <form class="auth-form" id="registerForm" aria-labelledby="authRegisterTab" novalidate hidden inert>
-          <p class="registration-referral">Bir internet IP’si ve tanınan tarayıcı başına tek hesap açılabilir. VPN/proxy bağlantılarından kayıt kabul edilmez.</p>
-          <aside class="registration-referral" id="registrationReferral" hidden><p data-referral-label></p><button type="button" id="clearRegistrationReferral">Referans olmadan kayıt ol</button></aside>
           <div class="form-grid">
             <label class="form-field"><span>İsim</span><span class="form-field__input"><i class="fa-solid fa-id-card" aria-hidden="true"></i><input id="registerFirstName" name="firstName" type="text" autocomplete="given-name" autocapitalize="words" spellcheck="false" enterkeyhint="next" minlength="2" maxlength="50" required placeholder="İsmin" /></span></label>
             <label class="form-field"><span>Soyisim</span><span class="form-field__input"><i class="fa-solid fa-id-card" aria-hidden="true"></i><input id="registerLastName" name="lastName" type="text" autocomplete="family-name" autocapitalize="words" spellcheck="false" enterkeyhint="next" minlength="2" maxlength="50" required placeholder="Soyismin" /></span></label>
@@ -301,13 +298,6 @@
         <section class="account-page is-active" id="customerViewProfile" data-customer-view="profile" aria-labelledby="customerTitle">
           <article class="account-page__identity"><button class="account-page__avatar" type="button" data-account-action-open="avatar" aria-label="Profil avatarını değiştir"><span class="avatar-shell" id="accountAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-user" aria-hidden="true"></i></span></span><span class="account-page__avatar-edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></span></button><div><span class="screen-eyebrow">Size özel alan</span><h2 id="accountUsername">—</h2><p id="accountEmail">—</p><span class="account-page__status" id="accountStatusLabel">Hesap yükleniyor…</span></div></article>
           <article class="account-page__wallet"><div class="account-page__wallet-heading"><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Mağaza bakiyeniz</span><i class="fa-solid fa-lock" aria-hidden="true"></i></div><strong id="accountBalance">—</strong><p id="accountBalanceDescription">Bakiyeniz yükleniyor…</p><div class="account-page__shortcuts"><button type="button" data-customer-nav-target="orders"><i class="fa-solid fa-box" aria-hidden="true"></i>Siparişlerim</button><button type="button" data-customer-nav-target="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i>Kuponlarım</button><button type="button" data-customer-nav-target="cart"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>Sepetim</button></div></article>
-
-          <p class="wallet-tools__warning" id="accountAffiliateDebt" hidden></p>
-          <section class="wallet-tools" aria-labelledby="transferHeading"><h3 id="transferHeading"><i class="fa-solid fa-money-bill-transfer" aria-hidden="true"></i> Bakiye transferi</h3><p>Başka bir ZENTRA hesabına bakiye gönderin. Gönderdiğiniz tutarın <strong>%75’i kesilir, %25’i alıcıya ulaşır.</strong> Örnek: 100 ₺ gönderim → 75 ₺ kesinti → 25 ₺ alıcı bakiyesi.</p>
-            <form id="walletTransferForm"><label for="transferRecipient">Alıcının kullanıcı adı<input id="transferRecipient" autocomplete="off" autocapitalize="none" spellcheck="false" minlength="5" maxlength="20" required placeholder="Kullanıcı adını eksiksiz girin" /></label><label for="transferAmount">Bakiyenizden düşülecek tutar (₺)<input id="transferAmount" type="text" inputmode="decimal" autocomplete="off" maxlength="11" required placeholder="100,00" /></label><button class="screen-button" type="submit" id="transferPreview">Alıcıyı ve kesintiyi kontrol et</button><p class="wallet-tools__quote" id="transferQuote" hidden aria-live="polite"></p><label for="transferPassword">Onay için mevcut hesap şifreniz<input id="transferPassword" type="password" autocomplete="current-password" maxlength="4096" /></label><button class="screen-button screen-button--danger" id="transferConfirm" type="button" hidden>Kesintiyi kabul et ve transferi onayla</button><p class="wallet-tools__message" id="transferMessage" role="status" aria-live="polite"></p></form>
-          </section>
-          <section class="wallet-tools" aria-labelledby="accountAffiliateHeading"><h3 id="accountAffiliateHeading">Referans ortaklığım</h3><p>Yönetim tarafından size tanımlanan bağlantılar ve kazançlarınız.</p><div id="accountAffiliateLinks"></div></section>
-          <section class="wallet-tools" aria-labelledby="walletHistoryHeading"><h3 id="walletHistoryHeading">Bakiye hareketlerim</h3><button class="screen-button" type="button" id="walletToolsRefresh">Bakiye geçmişini ve referansları yenile</button><ul class="wallet-history" id="walletHistory"></ul><button class="screen-button" type="button" id="walletHistoryMore" hidden>Daha fazla hareket</button></section>
           <aside class="account-email-pending" id="accountEmailPending" hidden><i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i><div><strong>E-posta doğrulaması bekleniyor</strong><p id="accountPendingEmailText"></p><button class="screen-button" type="button" id="accountRefreshIdentity">Doğrulama durumunu kontrol et</button></div></aside><button class="notice-sound-control" type="button" data-notice-sound-toggle aria-pressed="true"><i class="fa-solid fa-volume-low" aria-hidden="true"></i><span data-notice-sound-label>Bildirim sesi açık</span></button><section class="account-page__section" aria-labelledby="accountDetailsHeading"><header><h3 id="accountDetailsHeading">Hesap bilgileri</h3><p>Bilgilerinizi görüntüleyin ve güncelleyin.</p></header><div class="account-page__rows">
             <button class="account-row" id="accountUsernameActionButton" type="button" data-account-action-open="username"><i class="fa-solid fa-at" aria-hidden="true"></i><span><strong>Kullanıcı adı</strong><small id="accountUsernameDetail">—</small><em id="accountUsernameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
             <button class="account-row" id="accountNameActionButton" type="button" data-account-action-open="name"><i class="fa-regular fa-address-card" aria-hidden="true"></i><span><strong>Ad ve soyad</strong><small id="accountFullNameDetail">—</small><em id="accountNameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
@@ -359,6 +349,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-security-v3"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v78"></script>
 </body>
 </html>
