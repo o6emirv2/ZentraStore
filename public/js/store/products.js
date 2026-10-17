@@ -1,6 +1,6 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v79';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v79';
-import { CATALOG_FILTERS, CATEGORY_VISIBILITY_KEYS, GAME_KEYS } from './catalog-schema.mjs?v=zentra-ui-v79';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v79-1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v79-1';
+import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v79-1';
 
 export { CATALOG_FILTERS };
 
@@ -124,7 +124,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     immutablePlatform: source.immutablePlatform === true,
     name,
     category: String(source.category || '').trim().slice(0, 50),
-    categoryKey: String(source.categoryKey || '').trim().slice(0, 40),
+    categoryKey: normalizeCategoryKey(source.categoryKey, source.platform).trim().slice(0, 40),
     features: Object.freeze(productFeatures(source.features)),
     badgeKey: badge.key,
     badge: badge.label,
@@ -155,10 +155,7 @@ function normalizeStorefront(source = {}) {
     services: Object.freeze({ automaticDelivery: services.automaticDelivery !== false, telegramSupport: services.telegramSupport !== false, balancePayment: services.balancePayment !== false }),
     support: Object.freeze({ telegramUsername: String(support.telegramUsername || '').replace(/^@+/, '').replace(/[^a-z0-9_]/gi, '').slice(0, 32) }),
     home: Object.freeze({ title: String(home.title || '').slice(0, 80), message: String(home.message || '').slice(0, 240) }),
-    categoryVisibility: Object.freeze(Object.fromEntries(
-      CATEGORY_VISIBILITY_KEYS
-        .map((key) => [key, categoryVisibility[key] !== false])
-    )),
+    categoryVisibility: Object.freeze(normalizeCategoryVisibility(categoryVisibility)),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   });
 }
@@ -210,7 +207,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {
-        source = await apiRequest('/api/store/catalog?v=12', { auth: false, timeoutMs: 6500 });
+        source = await apiRequest('/api/store/catalog?v=13', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {

@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v79';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v79';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v79';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v79';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v79';
-import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v79';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v79-1';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v79-1';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v79-1';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v79-1';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v79-1';
+import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v79-1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,13 +17,13 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v79';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v79';
-import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v79';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v79';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v79';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v79';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v79';
+} from './auth.js?v=zentra-ui-v79-1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v79-1';
+import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v79-1';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v79-1';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v79-1';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v79-1';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v79-1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -36,19 +36,19 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v79';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v79';
+} from './customer-app.js?v=zentra-ui-v79-1';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v79-1';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v79';
+} from './customer-renderers.js?v=zentra-ui-v79-1';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v79';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v79';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v79';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v79-1';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v79-1';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v79-1';
 
 const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
@@ -473,8 +473,8 @@ function renderStorefrontConfiguration() {
   const categoryVisibility = storefront.categoryVisibility || {};
   const androidVisible = categoryVisibility.android !== false;
   const iosVisible = categoryVisibility.ios !== false;
-  $$('[data-store-scroll="android"], [data-filter="android"], [data-category-platform="android"]').forEach((control) => { control.hidden = !androidVisible; });
-  $$('[data-store-scroll="ios"], [data-filter="ios"], [data-category-platform="ios"]').forEach((control) => { control.hidden = !iosVisible; });
+  $$('[data-store-scroll="android"], [data-filter="android"]').forEach((control) => { control.hidden = !androidVisible; });
+  $$('[data-store-scroll="ios"], [data-filter="ios"]').forEach((control) => { control.hidden = !iosVisible; });
 
   const quickLinks = renderQuickLinks($('#quickLinksGrid'), storefront.quickLinks || []);
   const officialChannel = quickLinks.find((link) => link.id === 'official-telegram');

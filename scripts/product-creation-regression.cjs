@@ -237,7 +237,56 @@ test('catalog upgrades add every new product while preserving existing prices an
     }
     assert.equal(upgraded.products.find((row) => row.id === 'kingmod').plans.find((plan) => plan.key === 'daily').priceKurus, 77777);
     assert.deepEqual(stored.catalog.products['retired-example'], { active: false, archived: true });
-    assert.equal(stored.catalog.sourceVersion, 12);
+    assert.equal(stored.catalog.sourceVersion, require('../public/data/store-products.json').version);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+test('version twelve combined categories retain custom products, saved prices and platform visibility after upgrading', async () => {
+  const previous = structuredClone(stored);
+  try {
+    const added = require('../public/data/store-products.json').products.slice(22);
+    stored.catalog.sourceVersion = 12;
+    for (const product of added) {
+      stored.catalog.products[product.id].categoryKey = product.game;
+      stored.catalog.products[product.id].category = product.game;
+    }
+    stored.catalog.products['ios-cloud-codm'].plans.weekly.priceKurus = 87654;
+    const customId = 'category-codm-android';
+    stored.catalog.customProducts[customId].categoryKey = 'codm';
+    stored.catalog.products[customId].categoryKey = 'codm';
+    stored.categoryVisibility = { codm: false, 'codm-ios': true, 'free-fire': false };
+    service.invalidateCatalogCache();
+    const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
+    for (const source of added) {
+      const product = upgraded.products.find((row) => row.id === source.id);
+      assert.equal(product.categoryKey, source.categoryKey);
+      assert.equal(product.category, source.category);
+    }
+    assert.equal(upgraded.products.find((row) => row.id === customId).categoryKey, 'codm-android');
+    assert.equal(upgraded.products.find((row) => row.id === 'ios-cloud-codm').plans.find((row) => row.key === 'weekly').priceKurus, 87654);
+    assert.equal(upgraded.storefront.categoryVisibility['codm-ios'], true);
+    assert.equal(upgraded.storefront.categoryVisibility['codm-android'], false);
+    assert.equal(upgraded.storefront.categoryVisibility['free-fire-ios'], false);
+    assert.equal(upgraded.storefront.categoryVisibility['free-fire-android'], false);
+    assert.equal(stored.catalog.sourceVersion, 13);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+test('legacy visibility writes update both platforms and separate writes only change their own shortcut', async () => {
+  const previous = structuredClone(stored);
+  try {
+    await service.updateStorefrontSettings({ categoryVisibility: { codm: false } }, actor);
+    assert.equal(stored.categoryVisibility['codm-ios'], false);
+    assert.equal(stored.categoryVisibility['codm-android'], false);
+    await service.updateStorefrontSettings({ categoryVisibility: { 'codm-ios': true } }, actor);
+    assert.equal(stored.categoryVisibility['codm-ios'], true);
+    assert.equal(stored.categoryVisibility['codm-android'], false);
   } finally {
     stored = previous;
     service.invalidateCatalogCache();

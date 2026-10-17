@@ -1,13 +1,13 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v79';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v79';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v79';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v79';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v79';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v79';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v79';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v79';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v79';
-import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v79';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v79-1';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v79-1';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v79-1';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v79-1';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v79-1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v79-1';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v79-1';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v79-1';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v79-1';
+import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v79-1';
 
 installInteractionGuard();
 
@@ -1018,7 +1018,7 @@ document.addEventListener('change', (event) => {
     const form = event.target.closest('[data-product-form]');
     const categoryKey = $('[data-product-category-key]', form);
     const preset = PRODUCT_CATEGORY_PRESETS[categoryKey.value];
-    if (['pubg', 'oxide'].includes(preset?.game)) {
+    if (preset?.game && Object.hasOwn(PRODUCT_CATEGORY_PRESETS, `${preset.game}-${event.target.value}`)) {
       categoryKey.value = `${preset.game}-${event.target.value}`;
       $('[data-product-category]', form).value = PRODUCT_CATEGORY_PRESETS[categoryKey.value].category;
     }

@@ -84,14 +84,14 @@ test('updated client bundles use fresh cache versions rather than stale immutabl
   const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
   const storefront = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
-  assert.match(index, /\/style\.css\?v=zentra-ui-v79/);
-  assert.match(index, /\/script\.js\?v=zentra-ui-v79/);
-  assert.match(script, /\/storefront\.js\?v=zentra-ui-v79/);
-  assert.match(storefront, /products\.js\?v=zentra-ui-v79/);
-  assert.match(storefront, /notification-center\.js\?v=zentra-ui-v79/);
-  assert.match(admin, /admin-legacy-entry\.js\?v=zentra-ui-v79/);
+  assert.match(index, /\/style\.css\?v=zentra-ui-v79-1/);
+  assert.match(index, /\/script\.js\?v=zentra-ui-v79-1/);
+  assert.match(script, /\/storefront\.js\?v=zentra-ui-v79-1/);
+  assert.match(storefront, /products\.js\?v=zentra-ui-v79-1/);
+  assert.match(storefront, /notification-center\.js\?v=zentra-ui-v79-1/);
+  assert.match(admin, /admin-legacy-entry\.js\?v=zentra-ui-v79-1/);
   const entry = fs.readFileSync(path.join(__dirname, '../admin/admin-entry.js'), 'utf8');
-  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v79/);
+  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v79-1/);
 });
 
 const additions = [
@@ -114,7 +114,7 @@ test('all twelve supplied products retain their exact prices, platforms and avai
     const product = catalog.find((row) => row.id === id);
     assert.ok(product, id);
     assert.equal(product.game, game, id);
-    assert.equal(product.categoryKey, game, id);
+    assert.equal(product.categoryKey, `${game}-${platform}`, id);
     assert.equal(product.platform, platform, id);
     assert.deepEqual(product.plans.map((row) => [row.key, row.priceKurus]),
       ['daily', 'weekly', 'monthly'].flatMap((key, index) => prices[index] === null ? [] : [[key, prices[index] * 100]]), id);
@@ -126,12 +126,15 @@ test('each new collection selects exactly its own products in both the storefron
   const { productMatchesCatalogFilter } = await modulePromise;
   const { matchesAdminProduct } = await browserModule('public/js/ui/list-controls.js');
   for (const game of new Set(additions.map((row) => row[1]))) {
-    const expected = additions.filter((row) => row[1] === game).map((row) => row[0]).sort();
-    assert.deepEqual(catalog.filter((row) => productMatchesCatalogFilter(row, game)).map((row) => row.id).sort(), expected, game);
-    assert.deepEqual(catalog.filter((row) => matchesAdminProduct(row, { category: game })).map((row) => row.id).sort(), expected, game);
-    for (const row of additions.filter((row) => row[1] === game)) {
-      const legacy = { ...catalog.find((product) => product.id === row[0]), categoryKey: undefined };
-      assert.equal(matchesAdminProduct(legacy, { category: game }), true);
+    for (const platform of ['ios', 'android']) {
+      const key = `${game}-${platform}`;
+      const expected = additions.filter((row) => row[1] === game && row[2] === platform).map((row) => row[0]).sort();
+      assert.deepEqual(catalog.filter((row) => productMatchesCatalogFilter(row, key)).map((row) => row.id).sort(), expected, key);
+      assert.deepEqual(catalog.filter((row) => matchesAdminProduct(row, { category: key })).map((row) => row.id).sort(), expected, key);
+      for (const row of additions.filter((row) => row[1] === game && row[2] === platform)) {
+        const legacy = { ...catalog.find((product) => product.id === row[0]), categoryKey: game };
+        assert.equal(matchesAdminProduct(legacy, { category: key }), true);
+      }
     }
   }
 });
@@ -141,13 +144,13 @@ test('browser catalog normalization preserves new game IDs and visibility settin
   const hidden = Object.fromEntries(CATEGORY_VISIBILITY_KEYS.map((key) => [key, false]));
   const normalized = await loadStoreCatalog(async () => ({ products: catalog, storefront: { categoryVisibility: hidden } }));
   assert.deepEqual(normalized.storefront.categoryVisibility, hidden);
-  for (const [id, game] of additions) {
+  for (const [id, game, platform] of additions) {
     assert.equal(normalized.products.find((product) => product.id === id).game, game);
-    assert.equal(resolveCatalogFilter(game, hidden), 'all');
+    assert.equal(resolveCatalogFilter(`${game}-${platform}`, hidden), 'all');
   }
 });
 
-test('category navigation assigns boolean visibility for categories spanning both platforms', async () => {
+test('category navigation assigns boolean visibility to every platform category', async () => {
   const vm = require('node:vm');
   const { CATALOG_FILTERS, productMatchesCatalogFilter } = await modulePromise;
   const source = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
@@ -163,7 +166,50 @@ test('category navigation assigns boolean visibility for categories spanning bot
     state: { catalog: { products: catalog, storefront: {} }, favorites: new Set() },
     $$: () => controls, CATALOG_FILTERS, productMatchesCatalogFilter
   });
-  for (const key of ['all', 'gbox', 'delta-force', 'codm', '8ball-pool', 'free-fire']) {
+  for (const key of ['all', 'gbox', 'delta-force-ios', 'codm-ios', 'codm-android', '8ball-pool-android', 'free-fire-ios']) {
     assert.equal(controls.find((control) => control.dataset.filter === key).hidden, false, key);
   }
+});
+
+test('every new game has separate platform presets and no combined storefront filter', async () => {
+  const { CATALOG_FILTERS } = await modulePromise;
+  for (const game of new Set(additions.map((row) => row[1]))) {
+    assert.equal(Object.hasOwn(CATALOG_FILTERS, game), false);
+    for (const platform of ['ios', 'android']) {
+      const key = `${game}-${platform}`;
+      assert.equal(CATEGORY_PRESETS[key].platform, platform);
+      assert.equal(CATALOG_FILTERS[key].game, game);
+      assert.equal(CATALOG_FILTERS[key].platform, platform);
+    }
+  }
+});
+
+test('legacy combined category records normalize by platform while explicit visibility wins', async () => {
+  const { loadStoreCatalog } = await browserModule('public/js/store/products.js');
+  const products = catalog.map((product) => ({ ...product, categoryKey: additions.some((row) => row[0] === product.id) ? product.game : product.categoryKey }));
+  const normalized = await loadStoreCatalog(async () => ({ products, storefront: { categoryVisibility: { codm: false, 'codm-ios': true } } }));
+  for (const [id, game, platform] of additions) assert.equal(normalized.products.find((product) => product.id === id).categoryKey, `${game}-${platform}`);
+  assert.equal(normalized.storefront.categoryVisibility['codm-android'], false);
+  assert.equal(normalized.storefront.categoryVisibility['codm-ios'], true);
+  assert.equal(Object.hasOwn(normalized.storefront.categoryVisibility, 'codm'), false);
+});
+
+test('initial storefront configuration preserves hidden and empty platform category shortcuts', async () => {
+  const vm = require('node:vm');
+  const { CATALOG_FILTERS, productMatchesCatalogFilter } = await modulePromise;
+  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
+  const navigation = source.slice(source.indexOf('function renderCategoryNavigation()'), source.indexOf('function updateCatalogFilterControls()'));
+  const configuration = source.slice(source.indexOf('function renderStorefrontConfiguration()'), source.indexOf('async function subscribeSelectedStock()'));
+  const controls = Object.entries(CATALOG_FILTERS).map(([key, filter]) => ({ dataset: { filter: key, categoryPlatform: filter.platform }, hidden: false, querySelector: () => null }));
+  vm.runInNewContext(navigation + configuration + '\nrenderCategoryNavigation();renderStorefrontConfiguration();', {
+    state: { catalog: { products: catalog, storefront: { categoryVisibility: { 'codm-ios': false } } }, favorites: new Set() },
+    $: () => null,
+    $$: (selector) => selector === '#gameCategories .game-category' ? controls
+      : selector.includes('data-category-platform') ? controls.filter((control) => selector.includes(`data-category-platform="${control.dataset.categoryPlatform}"`)) : [],
+    CATALOG_FILTERS, productMatchesCatalogFilter, showcaseSliderController: null, renderQuickLinks: () => [], renderStorefrontStatus() {}
+  });
+  for (const key of ['delta-force-android', 'valorant-android', 'bloodstrike-ios', 'mobile-legends-android', 'codm-ios']) {
+    assert.equal(controls.find((control) => control.dataset.filter === key).hidden, true, key);
+  }
+  assert.equal(controls.find((control) => control.dataset.filter === 'codm-android').hidden, false);
 });

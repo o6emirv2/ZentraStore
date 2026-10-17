@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const url = (source) => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const utils = url(fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js'), 'utf8'));
-const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-ui-v79'", JSON.stringify(utils));
+const source = fs.readFileSync(path.join(__dirname, '../admin/admin-core.js'), 'utf8').replace("'../public/js/request-utils.js?v=zentra-ui-v79-1'", JSON.stringify(utils));
 const modulePromise = import(url(source));
 async function scenario(callback, request = ['/api/admin/store/wallet/adjust', { method: 'POST', body: { uid: 'customer', amountKurus: 20000 } }]) {
   const original = { fetch: global.fetch, window: global.window }; let uid = 'admin-a'; const calls = [], events = [];

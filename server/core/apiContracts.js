@@ -1,6 +1,6 @@
 'use strict';
 
-const { CATEGORY_VISIBILITY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
+const { CATEGORY_VISIBILITY_KEYS, LEGACY_GAME_CATEGORY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 
 const text = (max) => (value) => typeof value === 'string' && value.length <= max;
 const integer = (min, max) => (value) => Number.isSafeInteger(value) && value >= min && value <= max;
@@ -30,7 +30,7 @@ const content = object({ maintenance: boolean,
   announcement: object({ enabled: boolean, title: text(100), message: text(500), tone: text(20), ctaLabel: text(40), ctaTarget: text(80) }),
   services: object({ automaticDelivery: boolean, telegramSupport: boolean, balancePayment: boolean }),
   support: object({ telegramUsername: text(80) }), home: object({ title: text(100), message: text(500) }),
-  categoryVisibility: object(Object.fromEntries(CATEGORY_VISIBILITY_KEYS.map((key) => [key, boolean]))), quickLinks: list(link, 16) });
+  categoryVisibility: object(Object.fromEntries([...CATEGORY_VISIBILITY_KEYS, ...LEGACY_GAME_CATEGORY_KEYS].map((key) => [key, boolean]))), quickLinks: list(link, 16) });
 const CONTRACTS = [
   ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
