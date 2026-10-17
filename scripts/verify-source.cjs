@@ -60,7 +60,8 @@ for (const filename of files) {
   }
   if (name.endsWith('.html')) {
     const metas = [...source.matchAll(/<meta\b[^>]*\bname=["']viewport["'][^>]*>/gi)].map((x) => x[0]);
-    if (metas.length !== 1 || metas[0] !== viewport) failures.push(name + ': viewport değişti veya çoğaltıldı');
+    const expectedViewport = name.startsWith('odeme/') ? '<meta name="viewport" content="width=device-width, initial-scale=1" />' : viewport;
+    if (metas.length !== 1 || metas[0] !== expectedViewport) failures.push(name + ': viewport değişti veya çoğaltıldı');
     const ids = [...source.matchAll(/\sid="([^"]+)"/g)].map((x) => x[1]);
     if (ids.length !== new Set(ids).size) failures.push(name + ': tekrarlanan HTML kimliği');
     for (const match of source.matchAll(/\b(?:src|href)="([^"]+)"/g)) {

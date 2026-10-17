@@ -38,18 +38,18 @@
   <meta name="twitter:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
 
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v79-1" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v80" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
   <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v76" fetchpriority="high" />
-  <link rel="stylesheet" href="/style.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v79-1" />
+  <link rel="stylesheet" href="/style.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v80" />
 </head>
 <body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
@@ -343,9 +343,10 @@
               <fieldset class="customer-payment"><legend>Sipariş yöntemi</legend>
                 <label><input type="radio" name="paymentMethod" value="wallet" checked /><span><i class="fa-solid fa-wallet" aria-hidden="true"></i><strong>Mağaza bakiyesi</strong><small>Anında ve korumalı ödeme</small><b>ÖNERİLEN</b></span></label>
                 <label><input type="radio" name="paymentMethod" value="telegram" /><span><i class="fa-brands fa-telegram" aria-hidden="true"></i><strong>Telegram siparişi</strong><small>Hazır sipariş mesajı</small></span></label>
+                <label><input type="radio" name="paymentMethod" value="shopier" disabled /><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i><strong>Shopier ile öde</strong><small>Güvenli kart ödemesi</small></span></label>
               </fieldset>
               <section class="customer-summary" aria-labelledby="cartSummaryTitle"><h3 id="cartSummaryTitle">Sipariş özeti</h3><dl><div><dt>Ürün adedi</dt><dd id="cartLineCount">0</dd></div><div><dt>Ara toplam</dt><dd id="cartSubtotal">0,00 ₺</dd></div><div id="cartDiscountRow" hidden><dt>Kupon indirimi</dt><dd id="cartDiscount">−0,00 ₺</dd></div><div><dt>Ödenecek toplam</dt><dd id="cartTotal">0,00 ₺</dd></div></dl></section>
-              <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
+              <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="button button--shopier button--large button--full" id="shopierCheckoutButton" type="button" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile öde</span></button><p class="shopier-checkout-status" id="shopierCheckoutStatus" role="status" aria-live="polite">Kartla ödeme durumu kontrol ediliyor.</p><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
             </aside>
           </div>
         </section>
@@ -429,6 +430,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-ui-v79-1"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v80"></script>
 </body>
 </html>

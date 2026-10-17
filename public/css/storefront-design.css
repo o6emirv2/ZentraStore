@@ -59,3 +59,11 @@
 @media(max-width:430px){.showcase-social{padding:10px;gap:6px}.showcase-social__copy strong{font-size:13px}.showcase-slider__copy strong{font-size:18px}.showcase-slider__copy button{font-size:14px;padding-inline:10px}.auth-pending>span:last-child{max-width:14ch}}
 @media(hover:none){.showcase-social:hover,.game-category:hover{background:var(--app-panel)}}
 @media(prefers-reduced-motion:reduce){.showcase-slider__track,.showcase-slider__progress>span,.showcase-social{transition:none}}
+
+/* Hosted card checkout follows the existing storefront controls. */
+.button--shopier{background:linear-gradient(125deg,#564bc5,#7958d5);border:1px solid #aaa0f0;color:#fff;min-height:52px;gap:10px}
+.button--shopier:hover:not(:disabled){filter:brightness(1.12)}
+.button--shopier:focus-visible{outline:3px solid #c5baff;outline-offset:3px}
+.button--shopier:disabled{opacity:.5;cursor:not-allowed}
+.shopier-checkout-status{font-size:12px;line-height:1.6;color:#b6bed3;margin:0;text-align:center;overflow-wrap:anywhere}
+.customer-payment label:has(input:disabled){opacity:.6}

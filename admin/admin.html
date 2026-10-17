@@ -9,15 +9,15 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v79-1" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v80" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v79-1" />
-  <script src="./admin-browser-session.js?v=zentra-ui-v79-1"></script>
-  <script src="./admin-auth.js?v=zentra-ui-v79-1"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v79-1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v79-1" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v80" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v80"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v80"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v80" />
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -63,9 +63,9 @@
 
       <section class="admin-panel" data-admin-panel="orders" hidden inert>
         <header class="panel-title"><div><span>SİPARİŞ KONTROLÜ</span><h1>Siparişler</h1><p>Otomatik satışlar şifreli stok kasasından teslim edilir; Telegram siparişleri ise otomatik stoktan bağımsız, yönetici onaylı manuel teslimat akışını kullanır.</p></div><button class="primary-action" type="button" data-refresh="orders"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
-        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article></div>
-        <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="Sipariş no, e-posta, kullanıcı veya UID ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
-        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
+        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><section class="shopier-operations" aria-label="Shopier bağlantı ve iş kuyruğu"><div id="shopierOperationalStatus" role="status">Shopier bağlantısı kontrol ediliyor…</div><div id="shopierFailedJobs"></div></section><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article></div>
+        <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="WEQ / Shopier no, müşteri, ürün veya paket ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
+        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><label for="orderPaymentFilter">Ödeme yöntemi (yüklenen kayıtlar)<select id="orderPaymentFilter"><option value="all">Tüm yöntemler</option><option value="wallet">Mağaza bakiyesi</option><option value="telegram">Telegram</option><option value="shopier">Shopier</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
         <button class="secondary-action admin-pagination" id="adminLoadMoreOrders" type="button" hidden><i class="fa-solid fa-clock-rotate-left"></i> Önceki Siparişleri Yükle</button>
       </section>
 
@@ -237,6 +237,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v79-1"></script>
+  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v80"></script>
 </body>
 </html>

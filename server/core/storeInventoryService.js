@@ -607,15 +607,30 @@ async function assertStockForCartInTransaction({ tx, db, items = [] }) {
   }
 }
 
-async function allocateInventoryInTransaction({ tx, db, admin, items = [], orderId = '', uid = '', now = Date.now() }) {
+async function allocateInventoryInTransaction({ tx, db, admin, items = [], orderId = '', uid = '', now = Date.now(), reserveOnly = false, reservations = null }) {
   const requirements = allocationRequirements(items);
   const allocations = [];
   const summaryDeltas = new Map();
+  const fromReservation = Array.isArray(reservations);
+  const requiredCount = requirements.reduce((sum, requirement) => sum + requirement.quantity, 0);
+  if (fromReservation && (reserveOnly || reservations.length !== requiredCount
+    || new Set(reservations.map((entry) => entry.inventoryPath)).size !== requiredCount)) throw serviceError('STORE_STOCK_CONFLICT', 409);
 
   for (const requirement of requirements) {
     const selected = [];
     let remaining = requirement.quantity;
-    for (const sourceSku of requirement.sourceSkus) {
+    if (fromReservation) {
+      const entries = reservations.filter((entry) => requirement.segments.some((segment) => segment.item.productId === entry.productId && segment.item.planKey === entry.planKey));
+      for (const entry of entries) {
+        const match = INVENTORY_PATH_PATTERN.exec(String(entry.inventoryPath || ''));
+        if (!match || !requirement.sourceSkus.includes(match[1])) throw serviceError('STORE_STOCK_CONFLICT', 409);
+        const doc = await tx.get(db.doc(entry.inventoryPath));
+        if (!doc.exists || doc.data()?.orderId !== orderId || doc.data()?.customerUid !== uid) throw serviceError('STORE_STOCK_CONFLICT', 409);
+        selected.push({ doc, sourceSku: match[1] });
+      }
+      remaining -= entries.length;
+    }
+    for (const sourceSku of fromReservation ? [] : requirement.sourceSkus) {
       if (remaining < 1) break;
       const snapshot = await tx.get(inventoryItemCollection(db, sourceSku).where('status', '==', 'available').limit(remaining));
       snapshot.docs.forEach((doc) => selected.push({ doc, sourceSku }));
@@ -647,7 +662,7 @@ async function allocateInventoryInTransaction({ tx, db, admin, items = [], order
   // Validate every encrypted allocation before the first write or wallet debit.
   for (const allocation of allocations) {
     const data = allocation.doc.data() || {};
-    if (data.status !== 'available' || data.sku !== allocation.sourceSku
+    if (data.status !== (fromReservation ? 'reserved' : 'available') || data.sku !== allocation.sourceSku
       || data.planKey !== allocation.item.planKey || !/^[a-f0-9]{64}$/.test(String(data.fingerprint || ''))
       || (data.inventoryType !== undefined && !INVENTORY_TYPES.includes(data.inventoryType))
       || inventoryType(data.inventoryType || allocation.item.inventoryType) !== inventoryType(allocation.item.inventoryType)) throw serviceError('STORE_STOCK_CONFLICT', 409);
@@ -657,26 +672,27 @@ async function allocateInventoryInTransaction({ tx, db, admin, items = [], order
     if (keyVault.fingerprintSecret(encoded) !== data.fingerprint) throw serviceError('STORE_STOCK_CONFLICT', 409);
   }
   for (const [sourceSku, quantity] of summaryDeltas) {
-    const available = summaryStates.get(sourceSku)?.availableCount;
+    const available = summaryStates.get(sourceSku)?.[fromReservation ? 'reservedCount' : 'availableCount'];
     if (!Number.isSafeInteger(available) || available < quantity) throw serviceError('STORE_STOCK_CONFLICT', 409);
   }
 
   for (const allocation of allocations) {
     const data = allocation.doc.data() || {};
-    if (data.status !== 'available' || data.sku !== allocation.sourceSku) throw serviceError('STORE_STOCK_CONFLICT', 409);
+    if (data.status !== (fromReservation ? 'reserved' : 'available') || data.sku !== allocation.sourceSku) throw serviceError('STORE_STOCK_CONFLICT', 409);
     tx.update(allocation.doc.ref, {
-      status: 'delivered', orderId, customerUid: uid,
+      status: reserveOnly ? 'reserved' : 'delivered', orderId, customerUid: uid,
       inventoryType: inventoryType(data.inventoryType || allocation.item.inventoryType),
-      reservedAt: now, deliveredAt: now,
+      reservedAt: data.reservedAt || now, deliveredAt: reserveOnly ? 0 : now,
       statusHistory: [
         ...(Array.isArray(data.statusHistory) ? data.statusHistory.slice(-16) : []),
-        { status: 'reserved', at: now, orderId }, { status: 'delivered', at: now, orderId }
+        ...(!fromReservation ? [{ status: 'reserved', at: now, orderId }] : []), ...(!reserveOnly ? [{ status: 'delivered', at: now, orderId }] : [])
       ],
       updatedAt: now
     });
     tx.set(db.collection('storeInventoryFingerprints').doc(safeText(data.fingerprint, 64)), {
-      sku: allocation.sourceSku, itemId: allocation.doc.id, status: 'delivered', orderId, customerUid: uid, deliveredAt: now
+      sku: allocation.sourceSku, itemId: allocation.doc.id, status: reserveOnly ? 'reserved' : 'delivered', orderId, customerUid: uid, deliveredAt: reserveOnly ? 0 : now
     }, { merge: true });
+    if (!reserveOnly) {
     const deliveryId = allocation.sourceSku === allocation.requirement.sku
       ? allocation.doc.id
       : `l_${crypto.createHash('sha256').update(`${allocation.sourceSku}:${allocation.doc.id}`).digest('hex').slice(0, 30)}`;
@@ -688,28 +704,63 @@ async function allocateInventoryInTransaction({ tx, db, admin, items = [], order
       inventoryType: inventoryType(data.inventoryType || allocation.item.inventoryType),
       masked: safeText(data.masked, 80), createdAt: now
     });
+    }
     const eventRef = db.collection('storeInventoryEvents').doc();
     tx.create(eventRef, {
-      id: eventRef.id, type: 'delivered', sku: allocation.requirement.sku, storageSku: allocation.sourceSku,
+      id: eventRef.id, type: reserveOnly ? 'reserved' : 'delivered', sku: allocation.requirement.sku, storageSku: allocation.sourceSku,
       inventoryPoolId: allocation.requirement.poolId, itemId: allocation.doc.id,
       productId: allocation.item.productId, planKey: allocation.item.planKey,
-      quantity: -1, orderId, customerUid: uid, actor: { uid: 'system', source: 'automatic-delivery' }, createdAt: now
+      quantity: reserveOnly ? 0 : -1, orderId, customerUid: uid, actor: { uid: 'system', source: reserveOnly ? 'shopier-reservation' : 'automatic-delivery' }, createdAt: now
     });
   }
 
   for (const [sourceSku, quantity] of summaryDeltas.entries()) {
     const current = summaryStates.get(sourceSku) || {};
     tx.set(db.collection('storeInventorySummary').doc(sourceSku), {
-      availableCount: Math.max(0, Math.trunc(Number(current.availableCount) || 0) - quantity),
-      deliveredCount: Math.max(0, Math.trunc(Number(current.deliveredCount) || 0)) + quantity,
-      lastDeliveryAt: now,
+      availableCount: Math.max(0, Math.trunc(Number(current.availableCount) || 0) - (fromReservation ? 0 : quantity)),
+      reservedCount: Math.max(0, Math.trunc(Number(current.reservedCount) || 0) + (reserveOnly ? quantity : fromReservation ? -quantity : 0)),
+      deliveredCount: Math.max(0, Math.trunc(Number(current.deliveredCount) || 0)) + (reserveOnly ? 0 : quantity),
+      ...(!reserveOnly ? { lastDeliveryAt: now } : {}),
       updatedAt: now
     }, { merge: true });
   }
   return allocations.map((allocation) => ({
-    itemId: allocation.doc.id, productId: allocation.item.productId, planKey: allocation.item.planKey,
+    itemId: allocation.doc.id, inventoryPath: allocation.doc.ref.path, productId: allocation.item.productId, planKey: allocation.item.planKey,
     masked: safeText(allocation.doc.data()?.masked, 80)
   }));
+}
+
+// Only call after the remote listing was conclusively closed, or a definitively rejected create.
+// A local timer alone must never release stock behind an active Shopier payment link.
+async function releaseShopierReservationInTransaction({ tx, db, order, now = Date.now() }) {
+  const entries = Array.isArray(order.inventoryReservations) ? order.inventoryReservations : [];
+  if (entries.length > 100 || new Set(entries.map((entry) => entry.inventoryPath)).size !== entries.length) throw serviceError('STORE_STOCK_CONFLICT', 409);
+  const selected = [], counts = new Map(), summaries = new Map();
+  for (const entry of entries) {
+    const match = INVENTORY_PATH_PATTERN.exec(String(entry.inventoryPath || ''));
+    if (!match) throw serviceError('STORE_STOCK_CONFLICT', 409);
+    const snap = await tx.get(db.doc(entry.inventoryPath));
+    if (!snap.exists || snap.data()?.status !== 'reserved' || snap.data()?.orderId !== order.id
+      || snap.data()?.customerUid !== order.uid || snap.data()?.sku !== match[1]) throw serviceError('STORE_STOCK_CONFLICT', 409);
+    selected.push(snap); counts.set(match[1], (counts.get(match[1]) || 0) + 1);
+  }
+  for (const [sku, count] of counts) {
+    const snap = await tx.get(db.collection('storeInventorySummary').doc(sku));
+    if (!Number.isSafeInteger(snap.data()?.reservedCount) || snap.data().reservedCount < count
+      || !Number.isSafeInteger(snap.data()?.availableCount) || snap.data().availableCount < 0) throw serviceError('STORE_STOCK_CONFLICT', 409);
+    summaries.set(sku, snap.data());
+  }
+  for (const snap of selected) {
+    const data = snap.data();
+    tx.update(snap.ref, { status: 'available', orderId: '', customerUid: '', reservedAt: 0, updatedAt: now,
+      statusHistory: [...(data.statusHistory || []).slice(-16), { status: 'available', at: now, previousOrderId: order.id }] });
+    tx.set(db.collection('storeInventoryFingerprints').doc(data.fingerprint), { status: 'available', orderId: '', customerUid: '' }, { merge: true });
+  }
+  for (const [sku, count] of counts) {
+    const data = summaries.get(sku);
+    tx.update(db.collection('storeInventorySummary').doc(sku), { reservedCount: data.reservedCount - count,
+      availableCount: Math.max(0, Number(data.availableCount) || 0) + count, updatedAt: now });
+  }
 }
 
 async function attachManualDeliveryInTransaction({ tx, db, orderId = '', uid = '', items = [], values = [], now = Date.now() }) {
@@ -1388,6 +1439,7 @@ module.exports = {
   summaryMapForCatalog,
   assertStockForCartInTransaction,
   allocateInventoryInTransaction,
+  releaseShopierReservationInTransaction,
   attachManualDeliveryInTransaction,
   inspectInventoryImport,
   importInventory,

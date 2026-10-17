@@ -32,6 +32,9 @@ const content = object({ maintenance: boolean,
   support: object({ telegramUsername: text(80) }), home: object({ title: text(100), message: text(500) }),
   categoryVisibility: object(Object.fromEntries([...CATEGORY_VISIBILITY_KEYS, ...LEGACY_GAME_CATEGORY_KEYS].map((key) => [key, boolean]))), quickLinks: list(link, 16) });
 const CONTRACTS = [
+  ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
+  ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],
+  ['POST', /^\/api\/admin\/store\/orders\/[^/]+\/shopier\/(?:reconcile|close)$/, object({})],
   ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
   ['POST', /^\/api\/auth\/password-reset$/, object({ identifier: text(254) })],
@@ -82,7 +85,7 @@ function apiBodyContract(req, res, next) {
 function apiClientGuard(req, res, next) {
   const match = /^(?:premium-store|secure-admin)-v(\d+)$/.exec(String(req.headers['x-zentra-store-client'] || ''));
   const path = String(req.originalUrl || '').split('?')[0];
-  const businessWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (path.startsWith('/api/store/') || path.startsWith('/api/admin/store/') || path === '/api/profile/update');
+  const businessWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (path.startsWith('/api/store/') || path.startsWith('/api/payments/') || path.startsWith('/api/admin/store/') || path === '/api/profile/update');
   if (businessWrite && match && Number(match[1]) < 77) return res.status(409).json({ ok: false, error: 'CLIENT_UPDATE_REQUIRED', message: 'Mağaza güncellendi. İşlemi sürdürmek için sayfayı yenileyin.', requestId: req.requestId });
   return next();
 }

@@ -1,0 +1,211 @@
+WEQ / ZENTRA STORE — SHOPIER / RENDER KURULUMU
+Kaynak sürümü: 80.0.0 | İnceleme tarihi: 17.10.2026 UTC
+
+KOD HAZIRDIR; CANLI ENTEGRASYON BU ÇALIŞMADA YAYINLANMADI / ETKİNLEŞTİRİLMEDİ.
+SHOPIER_ENABLED=false olarak teslim edilir. Gerçek tahsilat veya iade yapılmadı.
+Yeni PAT ve iki gerçek abonelik token'ı bu dosyada BULUNMAZ.
+
+1) DOĞRULANAN ADRESLER
+
+Frontend: https://zentrastore.com.tr
+Backend: https://emirhan-siye.onrender.com
+Mevcut backend sağlık adresi: https://emirhan-siye.onrender.com/api/healthz
+Shopier ürün görseli: https://zentrastore.com.tr/public/assets/images/apple-touch-icon.png
+Bu üç HTTPS adresi 17.10.2026 tarihinde TLS doğrulaması açıkken HTTP 200 döndürdü.
+Backend adı render.yaml içindeki emirhan-siye Web Service ile eşleşir.
+
+Yeni kodun sağlayacağı URL'ler:
+POST https://emirhan-siye.onrender.com/api/payments/shopier/create
+POST https://emirhan-siye.onrender.com/api/payments/shopier/webhook
+GET  https://emirhan-siye.onrender.com/api/payments/shopier/orders/SIPARIS_ID
+     SIPARIS_ID yalnızca kullanıcının kendi gerçek sipariş kimliğiyle değiştirilir.
+     Bu satır şablondur; var olan bir sipariş bağlantısı değildir.
+Frontend sonuç sayfası: https://zentrastore.com.tr/odeme/sonuc
+Frontend kontrol/iptal sayfası: https://zentrastore.com.tr/odeme/iptal
+
+Yeni URL'ler kaynakta oluşturuldu ve yerel HTTP/tarayıcı testlerinde çalıştı.
+Bu ZIP canlıya dağıtılmadığı için yeni yolların CANLIDA erişilebilir olduğu iddia
+edilmez. Backend ve frontend yayını sonrasında aşağıdaki kontroller yapılmalıdır.
+
+2) RENDER'A KOPYALANACAK YENİ ANAHTARLAR
+
+Render → İlgili Web Service: emirhan-siye → Environment
+Yalnızca backend Web Service'e ekleyin. Statik frontend servisine EKLEMEYİN.
+Mevcut Firebase, admin, kasa, domain, CORS ve diğer ENV değerlerini KORUYUN.
+
+SHOPIER_ENABLED=false
+SHOPIER_PAT=<YENI_OLUSTURULMUS_GIZLI_PAT>
+SHOPIER_API_BASE_URL=https://api.shopier.com/v1
+SHOPIER_WEBHOOK_TOKEN=<ORDER_CREATED_ABONELIGININ_SHOPIER_TOKENI>
+SHOPIER_REFUND_WEBHOOK_TOKEN=<REFUND_UPDATED_ABONELIGININ_AYRI_SHOPIER_TOKENI>
+SHOPIER_WEBHOOK_URL=https://emirhan-siye.onrender.com/api/payments/shopier/webhook
+WEQ_PUBLIC_BASE_URL=https://zentrastore.com.tr
+SHOPIER_SUCCESS_URL=https://zentrastore.com.tr/odeme/sonuc
+SHOPIER_CANCEL_URL=https://zentrastore.com.tr/odeme/iptal
+SHOPIER_HTTP_TIMEOUT_MS=15000
+
+<...> alanları güvenli yer tutucudur; gerçek anahtar değildir. Bunları Shopier'den
+alınan yeni değerlerle yalnızca Render Environment içinde değiştirin. Bu dosyaya,
+Git'e, frontend'e, ekran görüntüsüne veya destek mesajına gerçek değer yazmayın.
+
+3) HER DEĞİŞKENİN ANLAMI
+
+Tüm satırların hedef servisi: Render Web Service / emirhan-siye.
+
+SHOPIER_ENABLED
+Değer: false. Gizli: hayır. Teknik olarak isteğe bağlı; varsayılan kapalıdır.
+Amaç: yeni ödeme bağlantılarını açmak. Canlı kabul kontrolü tamamlanmadan true
+yapmayın. false, daha önce başlatılmış ödemelerin webhook/doğrulamasını durdurmaz.
+
+SHOPIER_PAT
+Değer: yeni, kendi Shopier hesabınızdan oluşturulan PAT. Gizli: EVET.
+Ödeme/yeniden sorgulama için zorunlu. URL içermez. Shopier hesabınızda 2FA açıkken
+Hesap → Personal Access Token alanından üretin. Daha önce ifşa edilen PAT'i Shopier
+panelinden silin/iptal edin. Yazılım bir PAT'in geçmişte ifşa edildiğini kendiliğinden
+tespit edemez; eski anahtarın yeniden kullanılmaması operatör sorumluluğudur.
+
+SHOPIER_API_BASE_URL
+Değer: https://api.shopier.com/v1. Gizli: hayır. Varsayılanıyla isteğe bağlı.
+Amaç: güncel resmî REST v1 adresi. Başka host veya keyfi proxy kabul edilmez.
+Kaynak: Shopier resmî geliştirici belgeleri. Klasik form/API_KEY yöntemi kullanılmaz.
+
+SHOPIER_WEBHOOK_TOKEN
+Değer: POST /webhooks ile oluşturulan order.created aboneliğinin ilk yanıtındaki
+token. Gizli: EVET. Entegrasyonun yapılandırılması için zorunlu.
+Yerelde rastgele token üretip yazmak Shopier imzasını doğrulamaz. Shopier'in
+VERDİĞİ token kullanılmalıdır. PAT ile aynı olamaz. URL içermez.
+
+SHOPIER_REFUND_WEBHOOK_TOKEN
+Değer: refund.updated aboneliğinin ilk yanıtındaki ayrı token. Gizli: EVET.
+Otomatik iade takibi ve entegrasyonun açılması için zorunlu. order.created token'ı
+ve PAT ile aynı olamaz. Ayrı abonelik anahtarı, imzalanmayan olay başlığının farklı
+bir olay türüne çevrilerek kullanılmasını engeller. URL içermez.
+
+SHOPIER_WEBHOOK_URL
+Değer: https://emirhan-siye.onrender.com/api/payments/shopier/webhook
+Gizli: hayır. Zorunlu. Amaç: iki aboneliğin de HTTPS bildirim adresi.
+Gerçek değer, render.yaml + Render servisinin mevcut PUBLIC_BACKEND_ORIGIN değeri
+ile belirlenmiştir. Servis domain'i gerçekten değişirse mevcut backend ayarlarını,
+bu ENV'yi ve Shopier aboneliklerini birlikte güncelleyin; domain tahmin etmeyin.
+
+WEQ_PUBLIC_BASE_URL
+Değer: https://zentrastore.com.tr. Gizli: hayır. Varsayılanıyla isteğe bağlı.
+Amaç: mağaza sayfaları ve Shopier'e verilen herkese açık PNG ürün görseli adresi.
+Mevcut PUBLIC_BASE_URL ile aynı HTTPS origin olmalıdır. Kaynak: mevcut proje ve
+TLS doğrulamasıyla erişilen gerçek mağaza adresi.
+
+SHOPIER_SUCCESS_URL
+Değer: https://zentrastore.com.tr/odeme/sonuc. Gizli: hayır.
+Varsayılanıyla isteğe bağlı. Amaç: WEQ ödeme takip sayfasının uygulama adresi.
+Kaynak: gerçek frontend origin + ZIP'teki odeme/sonuc/index.html.
+Shopier REST ürün oluşturma isteğine success_url veya callback olarak gönderilmez.
+Bu ürün bağlantısı akışında otomatik Shopier dönüşü vaat edilmez. Kullanıcı
+Siparişlerim ekranından takip sayfasını açar; sayfanın açılması ödeme kanıtı değildir.
+
+SHOPIER_CANCEL_URL
+Değer: https://zentrastore.com.tr/odeme/iptal. Gizli: hayır.
+Varsayılanıyla isteğe bağlı. Amaç: ödeme ekranı kapatıldıktan sonra durum kontrolü.
+Kaynak: gerçek frontend origin + ZIP'teki odeme/iptal/index.html.
+Shopier'e desteklenmeyen cancel_url parametresi olarak gönderilmez. Bu sayfanın
+açılması tahsilatı iptal etmez veya iade başlatmaz.
+
+SHOPIER_HTTP_TIMEOUT_MS
+Değer: 15000. Gizli: hayır. Varsayılanıyla isteğe bağlı. Amaç: API ve yanıt gövdesi
+zaman aşımı. Tam sayı 1000–20000 ms arası kabul edilir. URL içermez.
+
+4) YAYIN VE ABONELİK KURULUMU
+
+a. Önce mevcut Firestore verisini ve mevcut ENV'leri yönetici imkânlarıyla
+   yedekleyin. Bu ZIP mevcut kayıtları silen veya topluca değiştiren migration içermez.
+b. Backend kaynağını mevcut Render servisine uygulayın. Build ve Start komutları
+   korunmuştur: npm ci --omit=dev --no-fund && npm run build / node server.js.
+   Node 24 kullanılır. SHOPIER_ENABLED=false olarak bırakın.
+c. firestore.indexes.json içindeki yeni storeOrders / uid + shopierOpen indeksini
+   mevcut Firebase projesine, diğer indeksleri silmeden ekleyin. İndeksin Enabled
+   olmasını bekleyin. Genel sorguların tek alan indekslerini devre dışı bırakmayın.
+   Firestore kuralları varsayılan olarak tüm tarayıcı erişimini reddetmeye devam eder.
+d. Ayrı statik frontend hosting kullanılıyorsa npm run build:pages çıktısının
+   dist-pages içeriğini mevcut frontend'e yayınlayın. odeme klasörünü de yükleyin.
+   Backend ve frontend'i aynı sürümden yayınlayın. Eski sepet/yatay kategori sistemi
+   korunur; asset sürümü zentra-ui-v80 olarak yenilenmiştir.
+e. Yeni PAT'i yalnızca Render Environment'e ekleyin. Gerçek anahtarı bu sohbet veya
+   kaynak dosyası üzerinden paylaşmayın. Webhook URL'sini yukarıdaki gerçek adrese ayarlayın.
+f. PAT kullanan hesapta POST https://api.shopier.com/v1/webhooks ile iki abonelik
+   oluşturun. İlk gövde: event=order.created, url=SHOPIER_WEBHOOK_URL.
+   İkinci gövde: event=refund.updated, url=SHOPIER_WEBHOOK_URL.
+   Token request parametresi değildir; Shopier ilk oluşturma yanıtında token üretir.
+g. Operatör için scripts/shopier-webhooks.cjs aracı sağlanmıştır:
+   npm run shopier:webhooks -- --check
+   npm run shopier:webhooks -- --register
+   Bu komutlar backend/operatör ortamında SHOPIER_PAT ve geçerli URL ENV'leriyle
+   çalışır. Gerçek abonelik açar; ürün, tahsilat veya iade oluşturmaz. Bu teslimde
+   gerçek hesapta çalıştırılmadı. --register token'ları konsola yazmaz; yalnızca
+   shopier-webhook-secrets.env dosyasına 0600 izinle kaydeder. Dosyayı özel bir
+   editörle açıp iki değeri Render Environment'e taşıyın ve özel dosyayı kaldırın.
+   Dosya Git'e/yayın paketine girmez. Var olan abonelikte token yeniden dönmez;
+   mevcut Render token'ını koruyun. Kayıp token'ı tahmin etmeyin; abonelik rotasyonu
+   gerekiyorsa açık siparişleri uzlaştırıp Shopier panelinde bilinçli şekilde yapın.
+h. İki token'ı ayrı Render alanlarına ekleyip yeniden dağıtın. Shopier'i kapalı tutun.
+   Admin → Siparişler ekranındaki bağlantı/ENV/kuyruk durumunu kontrol edin.
+i. Yeni webhook yoluna imzasız JSON POST güvenli biçimde 401 dönmelidir. 404 yanlış
+   yayına, 503 eksik yapılandırmaya/erişilemeyen depoya işaret eder. Geçerli Shopier
+   imzalı bildirim 5 saniye içinde 200 dönmelidir. Alıcı, teslimatı beklemeden kalıcı
+   kuyruğa yazar; depoya yazamazsa 200 vermez, sağlayıcının tekrar denemesini sağlar.
+j. Gerçek hesapta resmî ürün oluşturma izinlerini, özel dijital ürünün görünürlüğünü,
+   PNG görselini, fiyatı, para birimini ve iki imza token'ını doğrulayın. Shopier'deki
+   genel/otomatik indirimler tutarı değiştiriyorsa bu özel ödeme ürünlerine uygulamayın.
+   ZENTRA indirimleri zaten sunucuda hesaplanıp tek ürünün fiyatına dahildir.
+k. Canlı tahsilat veya iade ayrı açık onay gerektirir; bu teslimde yapılmadı. Gerçek
+   hesabın test/sandbox yeteneği doğrulanmadığı için ücretsiz sandbox varmış gibi
+   sunulmaz. Gerekli kontrollü canlı ödeme kabul testi tamamlanmadan genel müşteriye
+   SHOPIER_ENABLED=true açmayın. Kabul testi için sınırlı bakım penceresi/izole
+   doğrulama düzenini mağaza operatörü planlamalıdır.
+
+5) AĞ / HTTPS / IP
+
+İki gerçek origin mevcut CORS ve reverse proxy ayarlarıyla korunmuştur. Tarayıcı
+ödeme başlatma uçları mevcut oturum, App Check politikası, Origin/CSRF ve rate limit
+kontrollerinden geçer. Sadece tam webhook yolu, sunucudan sunucuya imzalı iletişim
+için tarayıcı Origin/App Check zincirinden önce ham gövdeyle alınır.
+
+Bu PAT akışı için incelenen resmî Shopier belgelerinde ayrıca bir sabit çıkış IP'si
+parametresi bulunmadı. Render servisinin bölgesi/dedicated IP özelliği bu çalışma
+ortamından doğrulanmadı; hiçbir IP uydurulmadı veya beyaz listeye eklenmedi.
+Gerekirse gerçek aralıklar: Render → emirhan-siye → Connect → Outbound.
+Render standart çıkışları bölgesel paylaşılan IP aralıkları olabilir; tek sabit IP
+varsaymayın. Webhook güvenliği IP'ye değil HMAC ve Shopier API doğrulamasına dayanır.
+
+6) İŞLETİM / GERİ ALMA
+
+Yeni ödemeleri durdurmak için SHOPIER_ENABLED=false yapın. Açık siparişler varken
+PAT ve webhook token'larını silmeyin; doğrulama kuyruğu çalışmaya devam etmelidir.
+Firestore'daki shopierJobs kalıcıdır; yeniden başlatma ve birden fazla instance
+için lease/transaction kullanılır. Normal retry 10 denemede hata kuyruğuna düşer.
+Admin → Siparişler, başarısız işleri ve güvenli yeniden kuyruğa alma düğmesini gösterir.
+Üretimde servis uyumamalıdır; free/cold-start veya uzun kesinti bildirim gecikmesine
+sebep olabilir. Herhangi bir ücretli Render planı otomatik satın alınmadı/değiştirilmedi.
+
+Ödeme bağlantısını kapat düğmesi Shopier stok miktarını sıfırlar, API'den ödeme
+kontrol eder ve rezervasyonu en erken 10 dakika sonra ikinci açık kontrolde bırakır.
+Bu, sağlayıcının kart tahsilatını iptal/iade etme garantisi değildir. Geç tahsilat
+gelirse sipariş paid + yönetici incelemesi olur; başka siparişe ayrılan key teslim
+edilmez. Terk edilen siparişler kendiliğinden stok serbest bırakmaz; admin kontrolü
+gerektirir. Kullanıcı başına en fazla iki açık Shopier rezervasyonu vardır.
+
+İadeyi Shopier panelinde uygulayın. Bu proje kendiliğinden canlı iade başlatmaz.
+refund.updated + API doğrulaması sonucu kaydı günceller. Teslim edilmiş lisansın
+sağlayıcı tarafında geri alınması/iptali için gerçek bir mevcut API bulunmadığından
+lisans iptal edilmiş gibi gösterilmez; mağazanın mevcut politikasıyla admin yönetir.
+
+Sonraki dosyalar: README.md, SHOPIER_TESLIM_RAPORU.md, TEST_SONUCLARI.json.
+Resmî kaynaklar:
+https://developer.shopier.com/docs/creating-and-using-pats
+https://developer.shopier.com/reference/post-products
+https://developer.shopier.com/reference/the-product-model
+https://developer.shopier.com/reference/get-orders-id
+https://developer.shopier.com/reference/the-order-model
+https://developer.shopier.com/reference/post-webhooks
+https://developer.shopier.com/reference/the-webhook-model
+https://developer.shopier.com/reference/webhook-configuration
+https://developer.shopier.com/recipes/webhook-handler-nodejs-1
+https://render.com/docs/outbound-ip-addresses

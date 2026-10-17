@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v79-1';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v80';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -8,6 +8,14 @@ let appCheckTokenProvider = null;
 let runtimePromise = null;
 
 const USER_MESSAGES = Object.freeze({
+  SHOPIER_DISABLED: 'Kartla ödeme şu anda kapalı. Diğer sipariş yöntemlerini kullanabilirsiniz.',
+  SHOPIER_CONFIGURATION_INVALID: 'Kartla ödeme bağlantısı şu anda hazır değil. Siparişinizin durumunu kontrol edin veya destek alın.',
+  SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. Aynı işlemi kontrol ederek devam edin; yeni sipariş başlatmayın.',
+  SHOPIER_CONNECTION_FAILED: 'Ödeme bağlantısı kurulamadı. Aynı işlemi tekrar kontrol edin.',
+  SHOPIER_PENDING_LIMIT: 'İki Shopier siparişiniz ödeme bekliyor. Önce bu siparişleri kontrol edin.',
+  SHOPIER_API_ERROR: 'Shopier işlemi şu anda tamamlanamıyor. Sipariş durumunu kontrol edip yeniden deneyin.',
+  SHOPIER_RATE_LIMITED: 'Ödeme hizmeti yoğun. Kısa bir süre sonra aynı işlemi kontrol edin.',
+  SHOPIER_PAYMENT_URL_INVALID: 'Ödeme bağlantısı güvenli biçimde doğrulanamadı. Sipariş numaranızla destek alın.',
   STORE_PRICE_CHANGED: 'Ürünün fiyatı değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
   STORE_CATALOG_CHANGED: 'Satın alma sırasında ürün bilgileri değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',
   STORE_BALANCE_RECORD_INVALID: 'Bakiyenizi güvenli biçimde doğrulayamadık. İşlem yapılmadı; destek ekibiyle iletişime geçin.',
@@ -244,9 +252,9 @@ export async function storeApi(path, options = {}) {
     const destination = new URL(url, window.location.href), base = new URL(getStoreApiBase() || window.location.origin, window.location.href);
     if (destination.origin !== base.origin || destination.username || destination.password || !['https:', 'http:'].includes(destination.protocol)) throw Object.assign(new Error('İstek adresi mağazayla eşleşmedi.'), { code: 'API_ORIGIN_INVALID', mutationNotSent: true });
     const method = String(options.method || (options.body === undefined ? 'GET' : 'POST')).toUpperCase();
-    const protectedStore = options.auth !== false && destination.pathname.startsWith('/api/store/') && destination.pathname !== '/api/store/catalog';
+    const protectedStore = options.auth !== false && (destination.pathname.startsWith('/api/store/') || destination.pathname.startsWith('/api/payments/')) && destination.pathname !== '/api/store/catalog';
     if (protectedStore && ['GET', 'HEAD'].includes(method) && !compatiblePrivateReads(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_ACCOUNT_UPDATE_REQUIRED), { code: 'CLIENT_ACCOUNT_UPDATE_REQUIRED', mutationNotSent: true });
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && (destination.pathname.startsWith('/api/store/') || destination.pathname === '/api/profile/update') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_UPDATE_REQUIRED), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && (destination.pathname.startsWith('/api/store/') || destination.pathname.startsWith('/api/payments/') || destination.pathname === '/api/profile/update') && !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)) throw Object.assign(new Error(USER_MESSAGES.CLIENT_UPDATE_REQUIRED), { code: 'CLIENT_UPDATE_REQUIRED', mutationNotSent: true });
     if (options.auth !== false && requestTokenProvider) {
       let token;
       try { token = await waitForSignal(Promise.resolve().then(() => requestTokenProvider()), controller.signal); }

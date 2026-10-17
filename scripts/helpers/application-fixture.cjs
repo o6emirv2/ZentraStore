@@ -3,7 +3,7 @@ const http = require('node:http'), crypto = require('node:crypto');
 const { memoryFirestore, mockModule, admin } = require('./memory-firestore.cjs');
 
 // Only the external Firebase/provider boundaries are adapted. Express routes and business services are real.
-async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '' } = {}) {
+async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '', shopier = false } = {}) {
   const server = http.createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`, password = 'Fixture Password 2026!';
   const four = 'Fixture factor four!', five = 'Fixture factor five!', secret = crypto.randomBytes(20), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -22,6 +22,10 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     ADMIN_GATE_SIGNING_SECRET: crypto.randomBytes(48).toString('base64url'),
     STORE_KEY_ACTIVE_KEY_ID: 'legacy-v1', STORE_KEY_ENCRYPTION_SECRET: crypto.randomBytes(48).toString('base64url'), STORE_KEY_FINGERPRINT_SECRET: crypto.randomBytes(48).toString('base64url'), ADMIN_TOTP_SECRET_BASE32: base32
   });
+  if (shopier) Object.assign(process.env, { SHOPIER_ENABLED: 'true', SHOPIER_PAT: crypto.randomBytes(48).toString('base64url'),
+    SHOPIER_WEBHOOK_TOKEN: crypto.randomBytes(32).toString('hex'), SHOPIER_REFUND_WEBHOOK_TOKEN: crypto.randomBytes(32).toString('hex'),
+    SHOPIER_WEBHOOK_URL: `${origin}/api/payments/shopier/webhook`, WEQ_PUBLIC_BASE_URL: origin,
+    SHOPIER_SUCCESS_URL: `${origin}/odeme/sonuc`, SHOPIER_CANCEL_URL: `${origin}/odeme/iptal`, SHOPIER_HTTP_TIMEOUT_MS: '1000' });
   const db = memoryFirestore([
     ['users/member', { username: 'EmirHan', usernameLower: 'emirhan', email: 'member@zentra.invalid', firstName: 'Emir', lastName: 'Deneme', birthDate: '2000-01-01', storeBalanceKurus: 50000, storeProfile: { avatarId: '1' }, storeAccountStatus: 'active', createdAt: Date.now() }],
     ['users/owneruid', { username: 'ShopOwner', email: 'owner@zentra.invalid', storeBalanceKurus: 0, storeProfile: { avatarId: '1' } }],
