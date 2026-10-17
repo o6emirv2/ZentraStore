@@ -114,9 +114,9 @@ test('newly created products can be edited through the existing bulk management 
   ], actor), (error) => error.code === 'STORE_PRODUCT_BULK_DUPLICATE');
 });
 
-test('server normalizes all six category visibility flags with backwards-compatible defaults', () => {
+test('server normalizes every category visibility flag with backwards-compatible defaults', () => {
   const defaults = service.normalizeStorefront({});
-  for (const key of ['pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'random-account', 'gbox']) {
+  for (const key of require('../public/js/store/catalog-schema.mjs').CATEGORY_VISIBILITY_KEYS) {
     assert.equal(defaults.categoryVisibility[key], true);
   }
   const changed = service.normalizeStorefront({ categoryVisibility: { gbox: false, 'random-account': false, ios: true } });
@@ -146,7 +146,7 @@ test('features survive create, bulk save and public serialization, and can be cl
   assert.deepEqual(catalog.products.find((row) => row.id === product.id).features, []);
 });
 
-test('all six category presets persist their membership and defaults', async () => {
+test('all category presets persist their membership and defaults', async () => {
   const { CATEGORY_PRESETS } = require('../server/core/storeProductSchema');
   for (const [key, preset] of Object.entries(CATEGORY_PRESETS)) {
     const created = await service.createProduct({ ...valid, id: `category-${key}`, categoryKey: key }, actor);
@@ -217,6 +217,30 @@ test('optional empty image paths use brand and category defaults without blockin
   }
   for (const image of [null, 123, {}, 'public/assets/products/missing.png']) {
     assert.throws(() => images.normalizeCreatedProduct({ ...valid, image }), { code: 'STORE_PRODUCT_IMAGE_INVALID' });
+  }
+});
+
+test('catalog upgrades add every new product while preserving existing prices and retired settings', async () => {
+  const previous = structuredClone(stored);
+  try {
+    const added = require('../public/data/store-products.json').products.filter((product) => product.categoryKey);
+    assert.equal(added.length, 12);
+    for (const product of added) delete stored.catalog.products[product.id];
+    stored.catalog.sourceVersion = 11;
+    stored.catalog.products.kingmod.plans.daily.priceKurus = 77777;
+    stored.catalog.products['retired-example'] = { active: false, archived: true };
+    service.invalidateCatalogCache();
+    const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
+    for (const product of added) {
+      assert.equal(stored.catalog.products[product.id].categoryKey, product.categoryKey);
+      assert.ok(upgraded.products.some((row) => row.id === product.id));
+    }
+    assert.equal(upgraded.products.find((row) => row.id === 'kingmod').plans.find((plan) => plan.key === 'daily').priceKurus, 77777);
+    assert.deepEqual(stored.catalog.products['retired-example'], { active: false, archived: true });
+    assert.equal(stored.catalog.sourceVersion, 12);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
   }
 });
 

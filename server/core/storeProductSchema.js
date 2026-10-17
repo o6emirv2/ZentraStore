@@ -1,25 +1,8 @@
 'use strict';
 
-const CATEGORY_PRESETS = Object.freeze({
-  'pubg-android': { category: 'PUBG Android', platform: 'android', game: 'pubg', inventoryType: 'license' },
-  'pubg-ios': { category: 'PUBG iOS', platform: 'ios', game: 'pubg', inventoryType: 'license' },
-  gbox: { category: 'GBox', platform: 'ios', game: 'other', inventoryType: 'license', fulfillmentMode: 'telegram_only' },
-  'random-account': { category: 'Random Hesap', inventoryType: 'account' },
-  'oxide-android': { category: 'Oxide Android', platform: 'android', game: 'oxide', inventoryType: 'license' },
-  'oxide-ios': { category: 'Oxide iOS', platform: 'ios', game: 'oxide', inventoryType: 'license' }
-});
+const { CATEGORY_PRESETS, categoryKey } = require('../../public/js/store/catalog-schema.mjs');
 
 function failure(code) { return Object.assign(new Error(code), { code, statusCode: 400 }); }
-
-function categoryKey(product = {}) {
-  if (Object.hasOwn(CATEGORY_PRESETS, product.categoryKey)) return product.categoryKey;
-  if (product.categoryKey === 'custom') return 'custom';
-  const category = String(product.category || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ı/g, 'i');
-  if (category === 'gbox' || /^ios-gbox-/.test(product.id || '')) return 'gbox';
-  if (product.inventoryType === 'account' || /random.*hesap|random.*account/.test(category)) return 'random-account';
-  return ['pubg', 'oxide'].includes(product.game) && ['android', 'ios'].includes(product.platform)
-    ? `${product.game}-${product.platform}` : 'custom';
-}
 
 function productCategory(input = {}, base = {}, { creating = false } = {}) {
   const key = input.categoryKey === undefined ? categoryKey({ ...base, ...input }) : String(input.categoryKey);

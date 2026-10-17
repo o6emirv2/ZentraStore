@@ -1,23 +1,13 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v78';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v78';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v79';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v79';
+import { CATALOG_FILTERS, CATEGORY_VISIBILITY_KEYS, GAME_KEYS } from './catalog-schema.mjs?v=zentra-ui-v79';
+
+export { CATALOG_FILTERS };
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
 let catalogReload = null;
-
-export const CATALOG_FILTERS = Object.freeze({
-  all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
-  android: Object.freeze({ label: 'Android Ürünleri', platform: 'android', game: '' }),
-  ios: Object.freeze({ label: 'iOS Ürünleri', platform: 'ios', game: '' }),
-  favorites: Object.freeze({ label: 'Favori Ürünlerin', platform: '', game: '' }),
-  'pubg-ios': Object.freeze({ label: 'PUBG İOS', platform: 'ios', game: 'pubg' }),
-  'pubg-android': Object.freeze({ label: 'PUBG ANDROİD', platform: 'android', game: 'pubg' }),
-  'oxide-ios': Object.freeze({ label: 'OXİDE İOS', platform: 'ios', game: 'oxide' }),
-  'oxide-android': Object.freeze({ label: 'OXİDE ANDROİD', platform: 'android', game: 'oxide' }),
-  gbox: Object.freeze({ label: 'GBOX', platform: 'ios', game: '' }),
-  'random-account': Object.freeze({ label: 'RANDOM HESAPLAR', platform: '', game: '' })
-});
 
 export function resolveCatalogFilter(value = 'all', visibility = {}) {
   const key = Object.prototype.hasOwnProperty.call(CATALOG_FILTERS, value) ? value : 'all';
@@ -123,7 +113,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   return Object.freeze({
     id,
     platform: source.platform === 'ios' ? 'ios' : 'android',
-    game: ['pubg', 'oxide'].includes(source.game) ? source.game : 'other',
+    game: GAME_KEYS.includes(source.game) ? source.game : 'other',
     inventoryType: source.inventoryType === 'account' ? 'account' : 'license',
     inventoryPoolId: String(source.inventoryPoolId || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 80),
     fulfillmentMode: source.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
@@ -146,7 +136,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     description,
     active: source.active !== false,
     featured: source.featured === true,
-    sortOrder: Math.max(0, Math.min(10000, Math.trunc(Number(source.sortOrder) || 500))),
+    sortOrder: Math.max(0, Math.min(10000, Math.trunc(Number(source.sortOrder ?? 500) || 0))),
     tags: Object.freeze((Array.isArray(source.tags) ? source.tags : []).map((tag) => String(tag || '').toLowerCase()).filter((tag) => ['new', 'popular', 'discounted'].includes(tag))),
     stock: normalizeStock(source.stock),
     plans: Object.freeze((Array.isArray(source.plans) ? source.plans : []).map(normalizePlan).filter((plan) => plan.active !== false && plan.key && plan.priceKurus > 0))
@@ -166,7 +156,7 @@ function normalizeStorefront(source = {}) {
     support: Object.freeze({ telegramUsername: String(support.telegramUsername || '').replace(/^@+/, '').replace(/[^a-z0-9_]/gi, '').slice(0, 32) }),
     home: Object.freeze({ title: String(home.title || '').slice(0, 80), message: String(home.message || '').slice(0, 240) }),
     categoryVisibility: Object.freeze(Object.fromEntries(
-      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+      CATEGORY_VISIBILITY_KEYS
         .map((key) => [key, categoryVisibility[key] !== false])
     )),
     quickLinks: normalizeQuickLinks(source.quickLinks)
@@ -220,7 +210,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {
-        source = await apiRequest('/api/store/catalog?v=11', { auth: false, timeoutMs: 6500 });
+        source = await apiRequest('/api/store/catalog?v=12', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {

@@ -1,6 +1,7 @@
 'use strict';
 
 const { normalizeFeatures } = require('./storeProductSchema');
+const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const crypto = require('crypto');
 const env = require('../config/env');
 const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
@@ -1001,7 +1002,7 @@ async function publicCatalog() {
   const products = (stocked.products || []).map((product) => ({
     id: safeText(product.id, 80),
     platform: product.platform === 'ios' ? 'ios' : 'android',
-    game: ['pubg', 'oxide'].includes(product.game) ? product.game : 'other',
+    game: GAME_KEYS.includes(product.game) ? product.game : 'other',
     inventoryType: product.inventoryType === 'account' ? 'account' : 'license',
     fulfillmentMode: product.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
     automaticEnabled: product.automaticEnabled !== false && product.fulfillmentMode !== 'telegram_only',

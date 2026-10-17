@@ -33,7 +33,7 @@ function cssStructureValid(source) {
 }
 const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.80, minimum-scale=0.80, maximum-scale=0.80, user-scalable=no, viewport-fit=cover" />';
 for (const filename of files) {
-  if (!/\.(?:js|cjs|html|css|json)$/.test(filename)) continue;
+  if (!/\.(?:js|mjs|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
   const name = relative(filename);
   if (name.endsWith('.css')) {
@@ -47,8 +47,8 @@ for (const filename of files) {
     }
     if (!cssStructureValid(source)) failures.push(name + ': CSS blok, parantez veya metin yapısı bozuk');
   }
-  if (/\.(?:js|cjs)$/.test(name)) {
-    const esm = name === 'script.js' || name.startsWith('public/js/') || name.startsWith('admin/');
+  if (/\.(?:js|mjs|cjs)$/.test(name)) {
+    const esm = name.endsWith('.mjs') || name === 'script.js' || name.startsWith('public/js/') || name.startsWith('admin/');
     const result = spawnSync(process.execPath, esm ? ['--input-type=module', '--check'] : ['--check', filename], { input: esm ? source : undefined, encoding: 'utf8' });
     if (result.status !== 0) failures.push(name + ': ' + result.stderr);
     jsCount++;
@@ -106,7 +106,7 @@ const productIds = new Set();
 const oldVisualBrand = /\b(?:shelby\s+store|shelbyios)\b/i;
 for (const file of files) {
   const name = relative(file);
-  if (!/\.(?:js|cjs|html|css|json|yaml)$/.test(name) || name === 'scripts/verify-source.cjs') continue;
+  if (!/\.(?:js|mjs|cjs|html|css|json|yaml)$/.test(name) || name === 'scripts/verify-source.cjs') continue;
   const content = fs.readFileSync(file, 'utf8');
   const withoutExplicitOldTiktok = content.replaceAll('https://www.tiktok.com/@shelbystorelive', '');
   if (oldVisualBrand.test(withoutExplicitOldTiktok)) failures.push(name + ': eski mağaza markası görünür kaynakta bulunuyor');

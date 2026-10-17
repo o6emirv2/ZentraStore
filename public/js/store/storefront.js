@@ -1,9 +1,9 @@
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v78';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v78';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v78';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v78';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v78';
-import { createRequestId, friendlyStoreError, storeApi } from './api.js?v=zentra-ui-v78';
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v79';
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v79';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v79';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v79';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v79';
+import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v79';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -17,12 +17,13 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v78';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v78';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v78';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v78';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v78';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v78';
+} from './auth.js?v=zentra-ui-v79';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v79';
+import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v79';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v79';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v79';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v79';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v79';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -35,19 +36,19 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v78';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v78';
+} from './customer-app.js?v=zentra-ui-v79';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v79';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v78';
+} from './customer-renderers.js?v=zentra-ui-v79';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v78';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v78';
-import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v78';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v79';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v79';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v79';
 
 const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
@@ -406,7 +407,7 @@ function filteredProducts() {
     return normalizeSearch([
       product.name,
       product.category,
-      product.game === 'pubg' ? 'PUBG MOBILE' : product.game === 'oxide' ? 'OXIDE OKSİDE' : '',
+      GAME_LABELS[product.game] || '',
       product.badge,
       ...(product.tags || []),
       product.platform,
@@ -537,7 +538,7 @@ function renderCategoryNavigation() {
   $$('#gameCategories .game-category').forEach((control) => {
     const key = control.dataset.filter;
     const platform = CATALOG_FILTERS[key]?.platform;
-    control.hidden = visibility[key] === false || (platform && visibility[platform] === false);
+    control.hidden = visibility[key] === false || (Boolean(platform) && visibility[platform] === false);
     const matches = products.filter((product) => productMatchesCatalogFilter(product, key, state.favorites, visibility)).length;
     control.hidden = control.hidden || (matches === 0 && !['all', 'favorites'].includes(key));
     const count = control.querySelector('[data-category-count]');
@@ -2768,6 +2769,7 @@ async function loadCatalog(force = false) {
   }
 
   try {
+    await loadStoreRuntimeConfig();
     state.catalog = await loadStoreCatalog(storeApi, { force });
     if ($('#catalogLoading')) $('#catalogLoading').hidden = true;
     renderCatalog();

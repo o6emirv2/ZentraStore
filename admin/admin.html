@@ -9,15 +9,15 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v79" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v78" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v78" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v78" />
-  <script src="./admin-browser-session.js?v=zentra-ui-v78"></script>
-  <script src="./admin-auth.js?v=zentra-ui-v78"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v78" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v79" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v79" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v79" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v79"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v79"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v79" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v79" />
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -78,7 +78,7 @@
 
       <section class="admin-panel" data-admin-panel="products" hidden inert>
         <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="primary-action" id="openProductCreate" type="button"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i><span>Yeni Ürün Ekle</span></button><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
-        <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="interface-toolbar" id="productListControls"><label for="adminProductSearch">Ürünlerde ara<input id="adminProductSearch" type="search" placeholder="Ürün adı veya kimliği" autocomplete="off" /></label><label for="adminProductCategory">Kategori<select id="adminProductCategory"><option value="all">Tüm kategoriler</option><option value="pubg-ios">PUBG iOS</option><option value="pubg-android">PUBG Android</option><option value="oxide-ios">Oxide iOS</option><option value="oxide-android">Oxide Android</option><option value="random-account">Random Hesaplar</option><option value="gbox">GBox</option></select></label><label for="adminProductStatus">Satış durumu<select id="adminProductStatus"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="archived">Arşiv</option></select></label><button type="button" class="secondary-action" id="clearProductFilters">Filtreleri temizle</button><output id="adminProductFilterCount" role="status" aria-live="polite"></output></div><div class="admin-empty" id="adminProductFilterEmpty" hidden><strong>Bu filtrelerle ürün bulunamadı.</strong><p>Filtreleri temizleyerek tüm ürünleri görüntüleyin.</p></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
+        <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="interface-toolbar" id="productListControls"><label for="adminProductSearch">Ürünlerde ara<input id="adminProductSearch" type="search" placeholder="Ürün adı veya kimliği" autocomplete="off" /></label><label for="adminProductCategory">Kategori<select id="adminProductCategory"><option value="all">Tüm kategoriler</option><option value="pubg-ios">PUBG iOS</option><option value="pubg-android">PUBG Android</option><option value="oxide-ios">Oxide iOS</option><option value="oxide-android">Oxide Android</option><option value="random-account">Random Hesaplar</option><option value="gbox">GBox</option><option value="delta-force">DELTA FORCE</option><option value="valorant">VALORANT</option><option value="codm">CODM</option><option value="bloodstrike">BLOODSTRIKE</option><option value="standoff-2">STANDOFF 2</option><option value="mobile-legends">MOBILE LEGENDS</option><option value="8ball-pool">8BALL POOL</option><option value="free-fire">FREE FIRE</option></select></label><label for="adminProductStatus">Satış durumu<select id="adminProductStatus"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="archived">Arşiv</option></select></label><button type="button" class="secondary-action" id="clearProductFilters">Filtreleri temizle</button><output id="adminProductFilterCount" role="status" aria-live="polite"></output></div><div class="admin-empty" id="adminProductFilterEmpty" hidden><strong>Bu filtrelerle ürün bulunamadı.</strong><p>Filtreleri temizleyerek tüm ürünleri görüntüleyin.</p></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
       </section>
 
       <section class="admin-panel" data-admin-panel="users" hidden inert>
@@ -112,6 +112,14 @@
             <label class="toggle-row"><input data-category-visibility="oxide-android" type="checkbox" /><span><strong>Oxide Android</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
             <label class="toggle-row"><input data-category-visibility="random-account" type="checkbox" /><span><strong>Random Hesaplar</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
             <label class="toggle-row"><input data-category-visibility="gbox" type="checkbox" /><span><strong>GBox</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="delta-force" type="checkbox" /><span><strong>DELTA FORCE</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="valorant" type="checkbox" /><span><strong>VALORANT</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="codm" type="checkbox" /><span><strong>CODM</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="bloodstrike" type="checkbox" /><span><strong>BLOODSTRIKE</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="standoff-2" type="checkbox" /><span><strong>STANDOFF 2</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="mobile-legends" type="checkbox" /><span><strong>MOBILE LEGENDS</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="8ball-pool" type="checkbox" /><span><strong>8BALL POOL</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="free-fire" type="checkbox" /><span><strong>FREE FIRE</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
           </div>
           <div class="form-grid"><label><span>Telegram kullanıcı adı</span><input id="contentTelegramUsername" maxlength="32" autocomplete="off" placeholder="ZENTRA_STORE" /></label><label><span>Ana sayfa başlığı</span><input id="contentHomeTitle" maxlength="80" placeholder="Premium erişimin en güçlü hali." /></label></div>
           <label><span>Ana sayfa açıklaması</span><textarea id="contentHomeMessage" maxlength="240" rows="3" placeholder="Ana sayfada gösterilecek güvenli bilgi metni."></textarea></label>
@@ -204,10 +212,10 @@
         <label><span>Ürün kimliği</span><input name="id" required minlength="3" maxlength="64" pattern="[a-z][a-z0-9-]{2,63}" autocomplete="off" placeholder="yeni-urun-ios" /><small>Küçük harf, sayı ve kısa çizgi; sonradan değiştirilemez.</small></label>
         <label><span>Ürün adı</span><input name="name" required minlength="3" maxlength="80" placeholder="Ürün adı" /></label>
         <label><span>Platform</span><select name="platform"><option value="android">Android</option><option value="ios">iOS</option></select></label>
-        <label><span>Oyun</span><select name="game"><option value="other">Diğer</option><option value="pubg">PUBG Mobile</option><option value="oxide">Oxide</option></select></label>
+        <label><span>Oyun</span><select name="game"><option value="other">Diğer</option><option value="pubg">PUBG Mobile</option><option value="oxide">Oxide</option><option value="delta-force">DELTA FORCE</option><option value="valorant">VALORANT</option><option value="codm">CODM</option><option value="bloodstrike">BLOODSTRIKE</option><option value="standoff-2">STANDOFF 2</option><option value="mobile-legends">MOBILE LEGENDS</option><option value="8ball-pool">8BALL POOL</option><option value="free-fire">FREE FIRE</option></select></label>
         <label><span>Stok biçimi</span><select name="inventoryType"><option value="license">Lisans / kod</option><option value="account">Random hesap</option></select></label>
         <label><span>Teslimat yöntemi</span><select name="fulfillmentMode"><option value="automatic">Otomatik stok + Telegram</option><option value="telegram_only">Yalnızca Telegram (manuel)</option></select></label>
-        <label><span>Hazır kategori</span><select id="newProductCategoryPreset" name="categoryPreset"><option value="pubg-android">PUBG Android</option><option value="pubg-ios">PUBG iOS</option><option value="gbox">GBox</option><option value="random-account">Random Hesap</option><option value="oxide-android">Oxide Android</option><option value="oxide-ios">Oxide iOS</option><option value="custom">Özel kategori</option></select></label><label><span>Kategori adı</span><input name="category" maxlength="50" placeholder="PUBG Android" required /></label>
+        <label><span>Hazır kategori</span><select id="newProductCategoryPreset" name="categoryPreset"><option value="pubg-android">PUBG Android</option><option value="pubg-ios">PUBG iOS</option><option value="gbox">GBox</option><option value="random-account">Random Hesap</option><option value="oxide-android">Oxide Android</option><option value="oxide-ios">Oxide iOS</option><option value="delta-force">DELTA FORCE</option><option value="valorant">VALORANT</option><option value="codm">CODM</option><option value="bloodstrike">BLOODSTRIKE</option><option value="standoff-2">STANDOFF 2</option><option value="mobile-legends">MOBILE LEGENDS</option><option value="8ball-pool">8BALL POOL</option><option value="free-fire">FREE FIRE</option><option value="custom">Özel kategori</option></select></label><label><span>Kategori adı</span><input name="category" maxlength="50" placeholder="PUBG Android" required /></label>
         <label><span>Satış etiketi</span><select name="badgeKey" id="newProductBadge"></select></label>
       </div>
       <label><span>Ürün açıklaması</span><textarea name="description" rows="3" required minlength="8" maxlength="240" placeholder="Ürün özelliklerini kısaca açıklayın."></textarea></label>
@@ -221,6 +229,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v78"></script>
+  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v79"></script>
 </body>
 </html>

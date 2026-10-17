@@ -1,12 +1,13 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v78';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v78';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v78';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v78';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v78';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v78';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v78';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v78';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v79';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v79';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v79';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v79';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v79';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v79';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v79';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v79';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v79';
+import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v79';
 
 installInteractionGuard();
 
@@ -932,8 +933,7 @@ function syncProductBadgePreview(select) {
 }
 
 function productCategoryField(product) {
-  const inferred = product.categoryKey || (product.category === 'GBox' || /^ios-gbox-/.test(product.id) ? 'gbox'
-    : product.inventoryType === 'account' ? 'random-account' : `${product.game}-${product.platform}`);
+  const inferred = productCategoryKey(product);
   const key = Object.hasOwn(PRODUCT_CATEGORY_PRESETS, inferred) ? inferred : 'custom';
   const options = [...Object.entries(PRODUCT_CATEGORY_PRESETS).map(([value, preset]) => [value, preset.category]), ['custom', 'Özel kategori']];
   return `<label><span>Hazır kategori</span><select data-product-category-key>${options.map(([value, label]) => `<option value="${value}" ${value === key ? 'selected' : ''} ${product.immutablePlatform && PRODUCT_CATEGORY_PRESETS[value]?.platform === 'android' ? 'disabled' : ''}>${escapeHtml(label)}</option>`).join('')}</select></label><label><span>Kategori adı</span><input data-product-category maxlength="50" value="${escapeHtml(product.category || '')}" ${key !== 'custom' ? 'readonly' : ''}/></label>`;
@@ -1035,15 +1035,6 @@ document.addEventListener('change', (event) => {
     if (preset.platform) $('[data-product-platform]', form).value = preset.platform;
   }
   markProductDirty(form);
-});
-
-const PRODUCT_CATEGORY_PRESETS = Object.freeze({
-  'pubg-android': { category: 'PUBG Android', platform: 'android', game: 'pubg', inventoryType: 'license' },
-  'pubg-ios': { category: 'PUBG iOS', platform: 'ios', game: 'pubg', inventoryType: 'license' },
-  gbox: { category: 'GBox', platform: 'ios', game: 'other', inventoryType: 'license', fulfillmentMode: 'telegram_only' },
-  'random-account': { category: 'Random Hesap', inventoryType: 'account' },
-  'oxide-android': { category: 'Oxide Android', platform: 'android', game: 'oxide', inventoryType: 'license' },
-  'oxide-ios': { category: 'Oxide iOS', platform: 'ios', game: 'oxide', inventoryType: 'license' }
 });
 
 function applyNewProductCategoryPreset() {

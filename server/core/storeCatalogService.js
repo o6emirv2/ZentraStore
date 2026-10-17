@@ -2,6 +2,7 @@
 const crypto = require('node:crypto');
 
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
+const { CATEGORY_VISIBILITY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -36,7 +37,7 @@ const DEFAULT_STOREFRONT = Object.freeze({
   support: Object.freeze({ telegramUsername: STORE_CATALOG.telegramUsername }),
   home: Object.freeze({ title: '', message: '' }),
   categoryVisibility: Object.freeze(Object.fromEntries(
-    ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account'].map((key) => [key, true])
+    CATEGORY_VISIBILITY_KEYS.map((key) => [key, true])
   )),
   quickLinks: DEFAULT_QUICK_LINKS
 });
@@ -151,7 +152,7 @@ function normalizeStorefront(source = {}) {
       message: safeText(home.message, 240)
     },
     categoryVisibility: Object.fromEntries(
-      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+      CATEGORY_VISIBILITY_KEYS
         .map((key) => [key, categoryVisibility[key] !== false])
     ),
     quickLinks: normalizeQuickLinks(source.quickLinks)

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const env = require('../config/env');
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
+const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const { normalizeBadgeKey, resolveBadge } = require('./storeBadgeCatalog');
 
 const PRODUCT_ID = /^[a-z][a-z0-9-]{2,63}$/;
@@ -60,7 +61,7 @@ function normalizeCreatedProduct(value) {
   const description = safeText(value.description, 240);
   if (name.length < 3 || description.length < 8) throw failure('STORE_PRODUCT_DETAILS_REQUIRED');
   if (!['android', 'ios'].includes(value.platform)) throw failure('STORE_PRODUCT_PLATFORM_INVALID');
-  if (!['pubg', 'oxide', 'other'].includes(value.game)) throw failure('STORE_PRODUCT_GAME_INVALID');
+  if (!GAME_KEYS.includes(value.game)) throw failure('STORE_PRODUCT_GAME_INVALID');
   if (!['license', 'account'].includes(value.inventoryType)) throw failure('STORE_PRODUCT_INVENTORY_TYPE_INVALID');
   if (!['automatic', 'telegram_only'].includes(value.fulfillmentMode)) throw failure('STORE_PRODUCT_FULFILLMENT_INVALID');
   const suppliedImage = typeof value.image === 'string' ? value.image.trim() : '';
