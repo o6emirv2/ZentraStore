@@ -33,3 +33,27 @@ test('browser redirect accepts only HTTPS Shopier hosts', async () => {
   const { verifiedShopierUrl } = await browserModule('public/js/store/shopier-checkout.js'); assert.equal(verifiedShopierUrl('https://www.shopier.com/123'), 'https://www.shopier.com/123');
   for (const url of ['https://shopier.com.evil.invalid/123', 'https://shopier.com@evil.invalid/123', 'http://www.shopier.com/123', 'javascript:alert(1)', 'https://www.shopier.com:444/123']) assert.throws(() => verifiedShopierUrl(url));
 });
+test('browser persists the selected topup amount before the wallet POST', async () => {
+  let fixture; fixture = await setup(async (path, options) => { assert.equal(fixture.map.size, 1); assert.equal(path, '/api/payments/shopier/topups'); assert.equal(options.body.amountKurus, 25000); assert.equal(options.body.items, undefined); return { order: { paymentState: 'pending' } }; });
+  await fixture.client.startTopup('member', 25000); assert.equal(fixture.client.pending('member').kind, 'wallet_topup');
+});
+test('browser topup retry cannot silently change an uncertain payment amount', async () => {
+  const sent = []; let first = true;
+  const { client } = await setup(async (_p, options) => { if (!options) return { found: false }; sent.push(structuredClone(options.body)); if (first) { first = false; throw new TypeError('lost response'); } return { order: { paymentState: 'pending' } }; });
+  await assert.rejects(client.startTopup('member', 25000)); await client.startTopup('member', 50000); assert.deepEqual(sent[0], sent[1]);
+});
+test('browser shares purchase and topup recovery without a second financial POST', async () => {
+  let posts = 0;
+  const { client } = await setup(async (_p, options) => options ? (posts++, { order: { paymentState: 'pending' } }) : { found: true, order: { id: 'saved-topup', orderType: 'wallet_topup', paymentState: 'pending' } });
+  await client.startTopup('member', 25000); const result = await client.start('member', items); assert.equal(posts, 1); assert.equal(result.order.id, 'saved-topup'); assert.deepEqual(result.attemptedItems, []);
+});
+test('browser Turkish amount parsing uses exact kurus and rejects ambiguous formats', async () => {
+  const { parseTopupAmount } = await browserModule('public/js/store/shopier-checkout.js');
+  assert.equal(parseTopupAmount('250,75'), 25075); assert.equal(parseTopupAmount('10000.00'), 1000000);
+  for (const value of ['99,99','10000,01','1.000,00','1e3','-250','250,001','','NaN']) assert.throws(() => parseTopupAmount(value), { code: 'SHOPIER_TOPUP_AMOUNT_INVALID' });
+});
+test('browser preserves topup availability independently from product stock readiness', async () => {
+  const { loadStoreCatalog } = await browserModule('public/js/store/products.js');
+  const catalog = await loadStoreCatalog(async () => ({ catalog: { payments: { shopier: { available: false, topupAvailable: true, topupLimits: { minKurus: 10000, maxKurus: 1000000 } } }, products: [] } }), { force: true });
+  assert.equal(catalog.payments.shopier.available, false); assert.equal(catalog.payments.shopier.topupAvailable, true); assert.deepEqual(catalog.payments.shopier.topupLimits, { minKurus: 10000, maxKurus: 1000000 });
+});

@@ -15,7 +15,7 @@ function overviewCan(policy, permission) {
 
 function redactUserFinance(user, policy) {
   if (!user || overviewCan(policy, 'store.wallet.read')) return user;
-  const { balanceKurus, totalSpendKurus, refundedKurus, walletLiabilityKurus, fundedAccounts, ...visible } = user;
+  const { balanceKurus, walletDebtKurus, totalSpendKurus, refundedKurus, walletLiabilityKurus, fundedAccounts, ...visible } = user;
   return visible;
 }
 

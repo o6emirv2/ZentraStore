@@ -1,15 +1,16 @@
-import { escapeViewText as text, viewIcon as icon, safeExternalLink } from './view-utils.js?v=zentra-ui-v80';
+import { escapeViewText as text, viewIcon as icon, safeExternalLink } from './view-utils.js?v=zentra-ui-v81r1';
 
 export function renderOrderCardView(order = {}, context = {}) {
   const items = Array.isArray(order.items) ? order.items : [];
-  const status = context.status || { label: 'Durum bekleniyor', icon: 'fa-clock' };
+  const topup = order.orderType === 'wallet_topup';
+  const status = topup && order.status === 'delivered' ? { label: 'Bakiye yüklendi', icon: 'fa-wallet' } : context.status || { label: 'Durum bekleniyor', icon: 'fa-clock' };
   const price = (value) => text(context.formatPrice?.(value) || '—');
   const closed = ['cancelled', 'payment_rejected', 'refunded'].includes(order.status);
   const delivered = order.status === 'delivered';
   const approved = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(order.status);
   const steps = closed
     ? [{ label: 'Sipariş alındı', done: true }, { label: status.label, done: true }]
-    : [{ label: 'Sipariş alındı', done: true }, { label: 'Ödeme onaylandı', done: approved }, { label: 'Teslim edildi', done: delivered }];
+    : [{ label: topup ? 'Yükleme başlatıldı' : 'Sipariş alındı', done: true }, { label: 'Ödeme onaylandı', done: approved }, { label: topup ? 'Bakiye hesaba işlendi' : 'Teslim edildi', done: delivered }];
   const timeline = `<ol class="order-card__timeline" aria-label="Sipariş aşamaları">${steps.map((step) => `<li${step.done ? ' class="is-complete"' : ''}>${icon(step.done ? 'fa-check' : 'fa-circle')}<span>${text(step.label)}</span></li>`).join('')}</ol>`;
   const delivery = order.deliveryVisible === true
     ? `<button class="screen-button screen-button--primary" type="button" data-order-delivery="${text(order.id)}">${icon('fa-box-open')}<span>${delivered ? 'Teslimatı aç' : 'Teslimat durumu'}</span></button>` : '';
@@ -25,7 +26,7 @@ export function renderOrderCardView(order = {}, context = {}) {
   const rows = items.map((item, index) => `<li>${index === 0 ? `<span class="order-card__image">${context.mediaHtml || icon('fa-box')}</span>` : `<span class="order-card__image">${icon('fa-box')}</span>`}<span class="order-card__item-copy"><strong>${text(item.productName || 'Dijital ürün')}</strong><small>${text(item.planLabel || 'Paket')} · ${Math.max(1, Math.trunc(Number(item.quantity) || 1))} adet</small></span><b>${price(item.lineTotalKurus)}</b></li>`).join('');
   return `<article class="order-card" data-order-card="${text(order.id)}">
     <header class="order-card__header"><div><small>Sipariş numarası</small><strong>#${text(order.orderNumber || '—')}</strong></div><span class="order-card__status${closed ? ' is-closed' : delivered ? ' is-delivered' : ' is-pending'}">${icon(status.icon)}${text(status.label)}</span></header>
-    <ul class="order-card__items" aria-label="Sipariş ürünleri">${rows}</ul>
+    <ul class="order-card__items" aria-label="Sipariş ürünleri">${topup ? `<li><span class="order-card__image">${icon('fa-wallet')}</span><span class="order-card__item-copy"><strong>Mağaza bakiyesi yüklemesi</strong><small>Ürün satın alımı ayrı yapılır</small></span><b>${price(order.totalKurus)}</b></li>` : rows}</ul>
     <dl class="order-card__facts"><div><dt>Tarih</dt><dd>${text(context.formatDate?.(order.createdAt) || '—')}</dd></div><div><dt>Ödeme yöntemi</dt><dd>${order.paymentMethod === 'shopier' ? 'Shopier' : order.paymentMethod === 'wallet' ? 'Mağaza bakiyesi' : order.paymentMethod === 'telegram' ? 'Telegram' : '—'}</dd></div></dl>
     ${Number(order.discountKurus) > 0 ? `<p class="order-card__discount">${icon('fa-ticket')} ${text(order.promotion?.code || 'İndirim')} · −${price(order.discountKurus)}</p>` : ''}
     <div class="order-card__total"><span>Sipariş tutarı</span><strong>${price(order.totalKurus)}</strong></div>

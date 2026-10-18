@@ -1,21 +1,17 @@
 {
   "project": "WEQ / ZENTRA STORE",
-  "version": "80.0.0",
-  "checkedAt": "2026-10-17T20:08:56.126972+00:00",
-  "environment": "isolated Firebase/Shopier boundaries; no live account access",
+  "version": "81.0.1",
+  "checkedAt": "2026-10-18T11:20:17.581973+00:00",
   "node": {
     "command": "npm run build",
     "summary": {
-      "tests": 302,
-      "pass": 302,
+      "tests": 349,
+      "pass": 349,
       "fail": 0,
       "cancelled": 0,
       "skipped": 0,
       "todo": 0
     },
-    "newShopierTests": 64,
-    "existingRegressionTests": 238,
-    "durationMs": 7090.011769,
     "cases": [
       "action proof binds actor, session, auth time, method, path and exact financial body",
       "parallel use and module reload keep a proof single-use in durable storage",
@@ -235,6 +231,11 @@
       "browser attempts are scoped to the current identity",
       "browser clears terminal attempts only after reading an authoritative result",
       "browser redirect accepts only HTTPS Shopier hosts",
+      "browser persists the selected topup amount before the wallet POST",
+      "browser topup retry cannot silently change an uncertain payment amount",
+      "browser shares purchase and topup recovery without a second financial POST",
+      "browser Turkish amount parsing uses exact kurus and rejects ambiguous formats",
+      "browser preserves topup availability independently from product stock readiness",
       "01 authenticated HTTP checkout creates one digital custom listing and pending order, no delivery",
       "02 valid daily/weekly/monthly plans use server prices and preserve package metadata",
       "03 forged expected price is rejected before remote calls",
@@ -292,6 +293,48 @@
       "55 refund signing key is mandatory and must differ from order signing key",
       "56 failed-job retry endpoint requires admin identity and an action-bound password proof",
       "57 payment creation is rate limited while stable retries never create a second remote listing",
+      "topup HTTP creates explicit store credit with zero stock and no premature credit or delivery",
+      "topup rejects invalid amount undefined",
+      "topup rejects invalid amount 9999",
+      "topup rejects invalid amount 1000001",
+      "topup rejects invalid amount -1",
+      "topup rejects invalid amount 0",
+      "topup rejects invalid amount 10000.5",
+      "topup rejects invalid amount 25000",
+      "topup rejects invalid amount null",
+      "topup schema rejects forged identity, totals, currency, coupon and product fields",
+      "topup requires authentication and rejects foreign origins",
+      "signed callback is durable before API verification and credits once without product delivery",
+      "forged and wrong-subscription signatures never credit",
+      "successful-looking return URL is not payment evidence",
+      "unpaid provider order stays pending and never credits",
+      "amount, currency and customer mismatches fail without financial writes",
+      "concurrent duplicate confirmations credit exactly once",
+      "concurrent different topups preserve both credits",
+      "same-key creation is idempotent and cannot change the requested amount",
+      "lost remote creation response recovers the original listing",
+      "different provider payments cannot credit the same topup twice",
+      "full refund before first settlement never credits",
+      "partial refund before settlement credits only verified remaining funds",
+      "pending refund holds initial credit until a verified outcome",
+      "partial completed plus additional pending refund cannot prematurely credit",
+      "concurrent repeated full refunds reverse the credit once",
+      "stale callbacks cannot undo verified partial refunds",
+      "refund after funds are spent records debt, blocks spending and never produces negative balance",
+      "later topup settles refund debt before adding spendable funds",
+      "administrator-blocked and suspended accounts cannot initiate new topups",
+      "payment is credited to its owner even if the account is suspended after link creation",
+      "disabled or incomplete configuration blocks new topups",
+      "existing links still settle when new payment creation is disabled",
+      "wallet capacity is checked before requesting card payment",
+      "topup cannot enter product inventory delivery",
+      "topup records are visible to their owner and authorized admin only",
+      "zero-stock catalog separately advertises topup availability and limits",
+      "wallet funding is excluded from product revenue and purchase totals",
+      "funding immediately invalidates admin wallet summaries",
+      "staff without wallet read permission cannot see refund debt",
+      "same resource id across order and refund events remains separately deduplicated",
+      "durable reconciliation continues after finding an unpaid provider order",
       "real encrypted stock and wallet checkout commit together; delivery opens only for its owner",
       "corrupt ciphertext is rejected before debit, stock assignment, order or ledger writes",
       "wrong ciphertext context, plan and stock summary fail before financial writes",
@@ -321,17 +364,6 @@
       "attempt cancellation returns an already committed order rather than cancelling or charging it again"
     ]
   },
-  "sourceChecks": {
-    "syntaxFiles": 129,
-    "cssStructureFiles": 15,
-    "htmlPages": 6,
-    "localReferences": 140,
-    "literalDomReferences": 310,
-    "products": 34,
-    "officialLinks": 7,
-    "viewport": "0.80 initial / minimum / maximum",
-    "result": "PASS"
-  },
   "browser": {
     "livePayments": 0,
     "liveRefunds": 0,
@@ -347,14 +379,14 @@
           "viewport": 1440,
           "width": 1440,
           "button": {
-            "x": 913,
-            "y": 880.140625,
-            "width": 314,
+            "x": 243,
+            "y": 1052.734375,
+            "width": 954,
             "height": 52,
-            "top": 880.140625,
-            "right": 1227,
-            "bottom": 932.140625,
-            "left": 913
+            "top": 1052.734375,
+            "right": 1197,
+            "bottom": 1104.734375,
+            "left": 243
           }
         }
       },
@@ -369,14 +401,14 @@
           "viewport": 487,
           "width": 487,
           "button": {
-            "x": 29,
-            "y": 1262.6875,
-            "width": 429,
-            "height": 52,
-            "top": 1262.6875,
-            "right": 458,
-            "bottom": 1314.6875,
-            "left": 29
+            "x": 39,
+            "y": 1456.078125,
+            "width": 409,
+            "height": 56,
+            "top": 1456.078125,
+            "right": 448,
+            "bottom": 1512.078125,
+            "left": 39
           }
         }
       },
@@ -393,96 +425,140 @@
         "paymentStatusReadOnly": true
       },
       {
+        "name": "desktop-wallet",
+        "stockInsufficientCheckoutAvailable": true,
+        "invalidAmountBlocked": true,
+        "exactlyOnceCredit": true,
+        "returnRefreshesBalanceAndClearsPending": true,
+        "layout": {
+          "viewport": 1440,
+          "width": 1440,
+          "button": {
+            "x": 245,
+            "y": 811.71875,
+            "width": 950,
+            "height": 52,
+            "top": 811.71875,
+            "right": 1195,
+            "bottom": 863.71875,
+            "left": 245
+          }
+        }
+      },
+      {
+        "name": "mobile-wallet",
+        "stockInsufficientCheckoutAvailable": true,
+        "invalidAmountBlocked": true,
+        "exactlyOnceCredit": true,
+        "returnRefreshesBalanceAndClearsPending": true,
+        "layout": {
+          "viewport": 487,
+          "width": 487,
+          "button": {
+            "x": 33,
+            "y": 778.171875,
+            "width": 421,
+            "height": 56,
+            "top": 778.171875,
+            "right": 454,
+            "bottom": 834.171875,
+            "left": 33
+          }
+        }
+      },
+      {
+        "name": "wallet-admin",
+        "topupSearch": true,
+        "creditStatusVisible": true,
+        "productDeliveryUnavailable": true
+      },
+      {
         "name": "disabled",
         "cardCheckoutDisabled": true,
         "existingMethodsPreserved": true
+      },
+      {
+        "name": "zero-stock-empty-cart",
+        "shopierVisibleAndEnabled": true,
+        "opensAccountTopup": true
       }
     ],
     "pageErrors": [],
-    "passed": 5,
+    "passed": 9,
     "failed": 0
   },
-  "runtimeDependencyAudit": {
-    "command": "npm audit --omit=dev --audit-level=moderate",
-    "vulnerabilities": 0,
-    "exitCode": 0
+  "sourceChecks": {
+    "syntaxFiles": 131,
+    "cssStructureFiles": 15,
+    "htmlPages": 6,
+    "localReferences": 140,
+    "literalDomReferences": 315,
+    "products": 34,
+    "officialLinks": 7,
+    "viewport": "0.80 initial / minimum / maximum",
+    "result": "PASS"
   },
-  "staticBuild": {
-    "command": "node scripts/build-pages.cjs",
-    "resultPagesIncluded": true,
-    "backendExcluded": true
-  },
-  "live": {
-    "checkedAt": "2026-10-17T19:58:04.530250+00:00",
-    "observations": [
-      {
-        "url": "https://zentrastore.com.tr",
-        "status": 200,
-        "finalUrl": "https://zentrastore.com.tr",
-        "contentType": "text/html; charset=utf-8",
-        "tlsVerified": true
-      },
-      {
-        "url": "https://emirhan-siye.onrender.com/api/healthz",
-        "status": 200,
-        "finalUrl": "https://emirhan-siye.onrender.com/api/healthz",
-        "contentType": "application/json; charset=utf-8",
-        "tlsVerified": true
-      },
-      {
-        "url": "https://zentrastore.com.tr/public/assets/images/apple-touch-icon.png",
-        "status": 200,
-        "finalUrl": "https://zentrastore.com.tr/public/assets/images/apple-touch-icon.png",
-        "contentType": "image/png",
-        "tlsVerified": true
-      }
-    ],
-    "newRoutesDeployed": false,
-    "realCharges": 0,
-    "realRefunds": 0
-  },
-  "notRun": [
-    "Real Shopier PAT authentication and account permissions",
-    "Real Shopier product create/payment/refund",
-    "Real subscription registration and signed callback over public deployed endpoint",
-    "Production Firestore concurrency and IAM",
-    "Actual Render deployment, region, plan or dedicated outbound IP verification"
-  ],
   "cleanInstall": {
-    "command": "npm ci --no-fund",
-    "packagesInstalled": 247,
+    "command": "npm ci --omit=dev --no-audit --no-fund",
+    "packagesInstalled": 246,
     "exitCode": 0
   },
   "cleanBuild": {
-    "command": "npm run build",
+    "exitCode": 0,
     "summary": {
-      "tests": 302,
-      "pass": 302,
+      "tests": 349,
+      "pass": 349,
       "fail": 0,
       "cancelled": 0,
       "skipped": 0,
       "todo": 0
     },
-    "durationMs": 7110.759034,
+    "runtimeSourcesIdenticalToDelivery": true
+  },
+  "runtimeDependencyAudit": {
+    "command": "npm audit --omit=dev --audit-level=moderate --json",
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
     "exitCode": 0
   },
-  "cleanBrowser": {
-    "command": "npm run test:shopier:browser",
-    "installedPlaywrightCore": "1.62.1",
-    "chromium": "153",
-    "passed": 5,
-    "failed": 0,
-    "exitCode": 0
+  "staticBuild": {
+    "command": "node scripts/build-pages.cjs",
+    "accountFormIncluded": true,
+    "resultPagesIncluded": true,
+    "backendAndPrivateConfigExcluded": true
   },
+  "live": {
+    "deployed": false,
+    "realCharges": 0,
+    "realRefunds": 0,
+    "newPublicRoutesVerified": false
+  },
+  "notRun": [
+    "Real merchant eligibility for store-credit sales",
+    "Real PAT and signed webhook on the deployed backend",
+    "Live payment/refund acceptance",
+    "Production Firestore contention and IAM",
+    "Render deployment and uninterrupted worker execution"
+  ],
+  "preservedFiles": [
+    "public/data/store-products.json",
+    "public/js/store/catalog-schema.mjs",
+    "firestore.rules",
+    "firestore.indexes.json",
+    "render.yaml",
+    "CNAME",
+    ".env.example"
+  ],
+  "dependencyGraphUnchanged": true,
   "deliveryFiles": {
-    "modifiedSourceFiles": 45,
-    "addedSourceFiles": 23,
-    "deletedSourceFiles": 0,
-    "baselineUnchanged": [
-      "public/data/store-products.json",
-      "public/js/store/catalog-schema.mjs",
-      "firestore.rules",
-      "CNAME"
-    ]
+    "modified": 52,
+    "added": 2,
+    "deleted": 0
   }
 }

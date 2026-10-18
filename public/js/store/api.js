@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v80';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v81r1';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -8,6 +8,9 @@ let appCheckTokenProvider = null;
 let runtimePromise = null;
 
 const USER_MESSAGES = Object.freeze({
+  SHOPIER_TOPUP_AMOUNT_INVALID: 'Tek işlemde 100 TL ile 10.000 TL arasında bakiye yükleyebilirsiniz. Tutarı en fazla iki ondalık basamakla girin.',
+  SHOPIER_TOPUP_RECONCILE_REQUIRED: 'Bakiye yükleme durumu Shopier kaydı doğrulanarak güncellenir.',
+  SHOPIER_WALLET_ACCOUNT_MISSING: 'Bakiye yüklenecek hesap bulunamadı. İşlem numaranızla destek alın.',
   SHOPIER_DISABLED: 'Kartla ödeme şu anda kapalı. Diğer sipariş yöntemlerini kullanabilirsiniz.',
   SHOPIER_CONFIGURATION_INVALID: 'Kartla ödeme bağlantısı şu anda hazır değil. Siparişinizin durumunu kontrol edin veya destek alın.',
   SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. Aynı işlemi kontrol ederek devam edin; yeni sipariş başlatmayın.',

@@ -92,7 +92,9 @@ function normalizeAvatarId(value, allowed, fallback = '1') {
 function normalizeStoreProfile(profile = {}, authUser = {}) {
   const storeProfile = profile.storeProfile && typeof profile.storeProfile === 'object' ? profile.storeProfile : {};
   const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'ZENTRA STORE Üyesi', 40);
-  const accountStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
+  const storedStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
+  const walletDebtKurus = checkedBalance(profile.storeWalletDebtKurus || 0);
+  const accountStatus = storedStatus === 'active' && walletDebtKurus > 0 ? 'purchase_blocked' : storedStatus;
   const avatarId = normalizeAvatarId(storeProfile.avatarId || profile.storeAvatarId, AVATAR_IDS);
   const avatar = getAvatarById(avatarId);
   const changes = profile.profileChangeCounts && typeof profile.profileChangeCounts === 'object'
@@ -116,6 +118,7 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
     avatarId,
     avatarUrl: avatar?.image || '',
     balanceKurus: clampBalance(profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0),
+    walletDebtKurus, walletTopupAllowed: storedStatus === 'active',
     accountStatus,
     profileChanges: {
       username: changeStatus('username', 3),
@@ -282,6 +285,11 @@ function publicOrder(data = {}, id = '') {
     orderNumber: safeText(data.orderNumber, 40),
     status,
     paymentMethod: ['wallet', 'shopier'].includes(data.paymentMethod) ? data.paymentMethod : 'telegram',
+    orderType: data.orderType === 'wallet_topup' ? 'wallet_topup' : 'purchase',
+    ...(data.orderType === 'wallet_topup' ? { walletTopup: {
+      requestedKurus: clampBalance(data.walletTopup?.requestedKurus), netAppliedKurus: clampBalance(data.walletTopup?.netAppliedKurus),
+      balanceAddedKurus: clampBalance(data.walletTopup?.balanceAddedKurus), debtSettledKurus: clampBalance(data.walletTopup?.debtSettledKurus),
+      settledAt: Math.max(0, Number(data.walletTopup?.settledAt || 0)) } } : {}),
     items: Array.isArray(data.items) ? data.items.map((item) => ({
       productId: safeText(item.productId, 80),
       productName: safeText(item.productName, 80),
@@ -1054,7 +1062,9 @@ async function publicCatalog() {
     telegramUsername: safeText(stocked.telegramUsername, 40).replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, ''),
     storefront,
     payments: { shopier: { available: require('../config/shopier').shopierReadiness().available && deliveryReady
-      && configuredServices.automaticDelivery !== false && stocked.storefront?.maintenance !== true } },
+      && configuredServices.automaticDelivery !== false && stocked.storefront?.maintenance !== true,
+      topupAvailable: require('../config/shopier').shopierReadiness().available && stocked.storefront?.maintenance !== true,
+      topupLimits: require('./shopierWallet').TOPUP_LIMITS } },
     stockVerified,
     badgeOptions: (Array.isArray(stocked.badgeOptions) ? stocked.badgeOptions : []).map((badge) => ({
       key: safeText(badge.key, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''),

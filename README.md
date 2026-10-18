@@ -1,6 +1,6 @@
 # WEQ / ZENTRA STORE — Shopier entegrasyonu
 
-Sürüm **80.0.0**, son `ZENTRA-STORE-YATAY-KATEGORILER.zip` kaynakları üzerine hazırlanmıştır. Shopier canlıya açılmadan teslim edilir. Kurulumun tamamı [RENDER_ENV_KURULUM.txt](RENDER_ENV_KURULUM.txt) içindedir; gerçek anahtarlar pakette bulunmaz.
+Sürüm **81.0.1**, mevcut Shopier entegrasyonu üzerine bakiye yükleme ve stoktan bağımsız sepet alanı eklenerek yeniden paketlenmiştir. Shopier canlıya açılmadan teslim edilir. Kurulumun tamamı [RENDER_ENV_KURULUM.txt](RENDER_ENV_KURULUM.txt) içindedir; gerçek anahtarlar pakette bulunmaz.
 
 ## Çalıştırma ve doğrulama
 
@@ -37,6 +37,18 @@ Statik frontend ayrı hosting'deyse yalnızca `dist-pages` içeriğini yayınlay
 Sipariş başlatma anahtarı önce tarayıcı oturumunda saklanır. Yanıt kaybolursa önce `GET /api/payments/shopier/attempt` ile kontrol edilir. Açık yeniden deneme aynı gövde/anahtarı kullanır. Sonucu belirsiz ürün oluşturma POST'u backend'de yeniden gönderilmez; ürünler resmî listeleme API'sinden siparişe özgü başlık/manifest ile aranır. Bulunamazsa yönetici incelemesi gerekir.
 
 Mağaza hesabı ile Shopier ödeme e-postasının aynı olması otomatik teslimat koşuludur. Farklı e-posta, beklenmeyen Shopier indirimi veya tutar uyuşmazlığı otomatik teslimatı durdurur. Sonuç ve iptal sayfaları yalnızca yetkili kullanıcının sunucudaki siparişini okur; URL'deki `status=paid` gibi alanlara güvenmez.
+
+## Shopier ile mağaza bakiyesi yükleme
+
+Hesabım bölümündeki formda 100 TL–10.000 TL tutar girilir; 250, 500, 1.000 ve 1.500 TL hazır seçenekleri vardır. `POST /api/payments/shopier/topups` oturum, Origin/App Check ve dar gövde şemasıyla korunur. Sunucu tutarı tam sayı kuruş olarak doğrular; kullanıcı kimliği yalnızca oturumdan alınır. Ürün ödemesinden ayrı `orderType=wallet_topup` kaydı oluşturulur.
+
+Sepet boşken veya otomatik stok uygun değilken de Shopier alanı görünür. Sağlayıcı ayarları hazır/açık ise alan bakiye yükleme formunu açar; bu işlem ürün satın almaz ve stok ayırmaz. Stok uygun ürünlerde önceki Shopier ürün ödemesi korunur. Gerçek stok bilgileri değiştirilmez.
+
+Bakiye, imzalı bildirimin kalıcı kuyruğa yazılması ve siparişin Shopier API ile doğrulanması sonrasında kullanıcı bakiyesi, ödeme makbuzu, sabit ledger ve audit kaydıyla aynı Firestore transaction'ında güncellenir. Tekrar bildirim ikinci kredi veya ürün teslimatı yapmaz. Sonuç ve geçmiş ekranları bakiye yüklemesini açıkça ayırır. Ürün cirosu ve müşteri ürün harcaması yüklemeyi ikinci kez saymaz.
+
+Doğrulanmış iade net krediyi bir kez geri alır. Harcanmış bakiye nedeniyle tamamı düşülemiyorsa bakiye negatif yapılmaz; kalan `storeWalletDebtKurus` olarak kaydedilir ve satın alma geçici engellenir. Yeni doğrulanmış yükleme önce bu tutarı kapatır; adminin ayrıca koyduğu hesap engeli kaldırılmaz. Bu durum hesap ve yetkili admin ekranında açıklanır.
+
+Ek ENV, koleksiyon veya indeks gerekmez. Aynı yeni PAT ve iki webhook aboneliği kullanılır. Shopier hesabının mağaza bakiyesi satış biçimine uygunluğu ve gerçek ödeme/iade akışı canlı kabulde doğrulanmalıdır. Sağlayıcıya özgü cüzdan API'si icat edilmez; bakiye mağazanın kendi veritabanında tutulur.
 
 ## Admin ve işletim
 

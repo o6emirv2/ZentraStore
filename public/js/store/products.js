@@ -1,6 +1,6 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v80';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v80';
-import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v80';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v81r1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v81r1';
+import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v81r1';
 
 export { CATALOG_FILTERS };
 
@@ -185,7 +185,9 @@ function normalizeCatalog(source = {}) {
     currency: 'TRY',
     telegramUsername: String(value.telegramUsername || 'ZENTRA_STORE').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
-    payments: Object.freeze({ shopier: Object.freeze({ available: value.payments?.shopier?.available === true }) }),
+    payments: Object.freeze({ shopier: Object.freeze({ available: value.payments?.shopier?.available === true,
+      topupAvailable: value.payments?.shopier?.topupAvailable === true,
+      topupLimits: Object.freeze({ minKurus: 10000, maxKurus: 1000000 }) }) }),
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),
     avatars: Object.freeze((Array.isArray(value.avatars) ? value.avatars : []).map(normalizeAvatar).filter(Boolean).slice(0, 25)),

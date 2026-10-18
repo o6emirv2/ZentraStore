@@ -23,9 +23,9 @@ async function processShopierJob(db, ref) {
     if (job.kind === 'delivery') await deliverShopierOrder(job.orderId);
     else if (job.kind === 'recover') await recoverShopierProduct(job.orderId);
     else if (job.kind === 'reconcile') {
-      const found = await reconcileShopierOrder(job.orderId);
+      await reconcileShopierOrder(job.orderId);
       const order = (await db.collection('storeOrders').doc(job.orderId).get()).data();
-      repeat = !found && order?.shopierOpen === true;
+      repeat = order?.shopierOpen === true;
     } else {
       const client = createShopierClient();
       let orderId = providerId(job.resourceId), refund = null;

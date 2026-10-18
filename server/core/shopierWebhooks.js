@@ -35,7 +35,7 @@ async function receiveShopierWebhook(raw, signature, eventHeader) {
   const tokenKind = authenticateWebhook(raw, signature), event = notification(raw, tokenKind, eventHeader);
   const { db } = initFirebaseAdmin();
   if (!db) throw shopierError('STORE_STORAGE_UNAVAILABLE');
-  const id = hash(raw), ref = db.collection('shopierWebhookReceipts').doc(id);
+  const id = hash(Buffer.concat([Buffer.from(event.event + '\0'), raw])), ref = db.collection('shopierWebhookReceipts').doc(id);
   await db.runTransaction(async (tx) => {
     const previous = await tx.get(ref);
     if (previous.exists) return;

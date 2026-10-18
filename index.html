@@ -38,18 +38,18 @@
   <meta name="twitter:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
 
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v81r1" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
   <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v76" fetchpriority="high" />
-  <link rel="stylesheet" href="/style.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v80" />
-  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v80" />
+  <link rel="stylesheet" href="/style.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v81r1" />
 </head>
 <body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
@@ -346,9 +346,10 @@
                 <label><input type="radio" name="paymentMethod" value="shopier" disabled /><span><i class="fa-solid fa-credit-card" aria-hidden="true"></i><strong>Shopier ile öde</strong><small>Güvenli kart ödemesi</small></span></label>
               </fieldset>
               <section class="customer-summary" aria-labelledby="cartSummaryTitle"><h3 id="cartSummaryTitle">Sipariş özeti</h3><dl><div><dt>Ürün adedi</dt><dd id="cartLineCount">0</dd></div><div><dt>Ara toplam</dt><dd id="cartSubtotal">0,00 ₺</dd></div><div id="cartDiscountRow" hidden><dt>Kupon indirimi</dt><dd id="cartDiscount">−0,00 ₺</dd></div><div><dt>Ödenecek toplam</dt><dd id="cartTotal">0,00 ₺</dd></div></dl></section>
-              <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="button button--shopier button--large button--full" id="shopierCheckoutButton" type="button" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile öde</span></button><p class="shopier-checkout-status" id="shopierCheckoutStatus" role="status" aria-live="polite">Kartla ödeme durumu kontrol ediliyor.</p><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
+              <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
             </aside>
           </div>
+          <section class="cart-shopier-panel" aria-labelledby="cartShopierTitle"><header><i class="fa-solid fa-credit-card" aria-hidden="true"></i><div><h3 id="cartShopierTitle">Shopier ile güvenli ödeme</h3><p>Ürün ödemenizi yapın veya hesabınıza mağaza bakiyesi yükleyin.</p></div></header><button class="button button--shopier button--large button--full" id="shopierCheckoutButton" type="button" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile öde</span></button><p class="shopier-checkout-status" id="shopierCheckoutStatus" role="status" aria-live="polite">Kartla ödeme durumu kontrol ediliyor.</p></section>
         </section>
 
         <section class="orders-page" id="customerViewOrders" data-customer-view="orders" aria-labelledby="customerTitle" hidden inert>
@@ -378,7 +379,7 @@
 
         <section class="account-page is-active" id="customerViewProfile" data-customer-view="profile" aria-labelledby="customerTitle">
           <article class="account-page__identity"><button class="account-page__avatar" type="button" data-account-action-open="avatar" aria-label="Profil avatarını değiştir"><span class="avatar-shell" id="accountAvatar" data-avatar-id="1"><span class="avatar-core"><i class="fa-solid fa-user" aria-hidden="true"></i></span></span><span class="account-page__avatar-edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></span></button><div><span class="screen-eyebrow">Size özel alan</span><h2 id="accountUsername">—</h2><p id="accountEmail">—</p><span class="account-page__status" id="accountStatusLabel">Hesap yükleniyor…</span></div></article>
-          <article class="account-page__wallet"><div class="account-page__wallet-heading"><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Mağaza bakiyeniz</span><i class="fa-solid fa-lock" aria-hidden="true"></i></div><strong id="accountBalance">—</strong><p id="accountBalanceDescription">Bakiyeniz yükleniyor…</p><div class="account-page__shortcuts"><button type="button" data-customer-nav-target="orders"><i class="fa-solid fa-box" aria-hidden="true"></i>Siparişlerim</button><button type="button" data-customer-nav-target="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i>Kuponlarım</button><button type="button" data-customer-nav-target="cart"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>Sepetim</button></div></article>
+          <article class="account-page__wallet"><div class="account-page__wallet-heading"><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Mağaza bakiyeniz</span><i class="fa-solid fa-lock" aria-hidden="true"></i></div><strong id="accountBalance">—</strong><p id="accountBalanceDescription">Bakiyeniz yükleniyor…</p><form class="account-topup" id="accountTopupForm" novalidate aria-labelledby="accountTopupTitle"><header><h3 id="accountTopupTitle">Shopier ile Bakiye Yükle</h3><p>Ödemeniz onaylandığında tutar hesabınıza eklenir. Ürün satın alımını ayrıca tamamlayabilirsiniz.</p></header><label for="accountTopupAmount">Yüklenecek tutar (TL)</label><div class="account-topup__amount"><input id="accountTopupAmount" name="amount" type="text" inputmode="decimal" autocomplete="off" maxlength="8" value="500" aria-describedby="accountTopupLimits accountTopupSummary" required /><span>TL</span></div><div class="account-topup__presets" role="group" aria-label="Hazır yükleme tutarları"><button type="button" data-topup-amount="250">250 TL</button><button type="button" data-topup-amount="500">500 TL</button><button type="button" data-topup-amount="1000">1.000 TL</button><button type="button" data-topup-amount="1500">1.500 TL</button></div><small id="accountTopupLimits">Tek işlemde 100 TL – 10.000 TL yükleyebilirsiniz.</small><p id="accountTopupSummary" aria-live="polite">500,00 TL mağaza bakiyesi yüklenecek.</p><button class="button button--shopier button--full" id="accountTopupButton" type="submit" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile bakiye yükle</span></button><p class="shopier-checkout-status" id="accountTopupStatus" role="status" aria-live="polite">Bakiye yükleme durumu kontrol ediliyor.</p></form><div class="account-page__shortcuts"><button type="button" data-customer-nav-target="orders"><i class="fa-solid fa-box" aria-hidden="true"></i>Siparişlerim</button><button type="button" data-customer-nav-target="coupons"><i class="fa-solid fa-ticket" aria-hidden="true"></i>Kuponlarım</button><button type="button" data-customer-nav-target="cart"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i>Sepetim</button></div></article>
           <aside class="account-email-pending" id="accountEmailPending" hidden><i class="fa-solid fa-envelope-circle-check" aria-hidden="true"></i><div><strong>E-posta doğrulaması bekleniyor</strong><p id="accountPendingEmailText"></p><button class="screen-button" type="button" id="accountRefreshIdentity">Doğrulama durumunu kontrol et</button></div></aside><button class="notice-sound-control" type="button" data-notice-sound-toggle aria-pressed="true"><i class="fa-solid fa-volume-low" aria-hidden="true"></i><span data-notice-sound-label>Bildirim sesi açık</span></button><section class="account-page__section" aria-labelledby="accountDetailsHeading"><header><h3 id="accountDetailsHeading">Hesap bilgileri</h3><p>Bilgilerinizi görüntüleyin ve güncelleyin.</p></header><div class="account-page__rows">
             <button class="account-row" id="accountUsernameActionButton" type="button" data-account-action-open="username"><i class="fa-solid fa-at" aria-hidden="true"></i><span><strong>Kullanıcı adı</strong><small id="accountUsernameDetail">—</small><em id="accountUsernameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
             <button class="account-row" id="accountNameActionButton" type="button" data-account-action-open="name"><i class="fa-regular fa-address-card" aria-hidden="true"></i><span><strong>Ad ve soyad</strong><small id="accountFullNameDetail">—</small><em id="accountNameRemaining">—</em></span><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
@@ -430,6 +431,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-ui-v80"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v81r1"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 'use strict';
-const { readStoredBalance } = require('./storeMoney');
+const { readStoredBalance, checkedBalance } = require('./storeMoney');
 
 const crypto = require('crypto');
 const { findUsernameProfiles } = require('./storeUsername');
@@ -110,6 +110,7 @@ function publicAdminUser(authUser = {}, profile = {}, commerce = {}) {
     disabled: authUser.disabled === true,
     accountStatus: status,
     balanceKurus: balance(profile),
+    walletDebtKurus: checkedBalance(profile.storeWalletDebtKurus || 0),
     createdAt: maxTimestamp(profile.createdAt, profile.storeCreatedAt, authCreatedAt),
     lastActiveAt: maxTimestamp(profile.storeUpdatedAt, profile.updatedAt, authLastSignInAt, commerce.lastOrderAt),
     lastSignInAt: authLastSignInAt,
@@ -129,6 +130,7 @@ async function profileForUid(db, uid) {
 function commerceAggregate(rows = []) {
   const result = { totalOrders: 0, totalSpendKurus: 0, refundedKurus: 0, lastOrderAt: 0 };
   for (const order of rows) {
+    if (order.orderType === 'wallet_topup') continue;
     result.totalOrders += 1;
     const amount = Math.max(0, Math.trunc(Number(order.totalKurus) || 0));
     const status = safeText(order.status, 40).toLowerCase();
@@ -473,19 +475,20 @@ async function getAdminOverview(policy = null) {
   const orders = ordersSnapshot.docs.map((doc) => doc.data() || {});
   const totalOrders = Math.max(orders.length, Number(ordersCount?.data()?.count || 0));
   const today = turkeyDateKey();
-  const confirmed = orders.filter((order) => Number(order.approvedAt || 0) > 0 || ['paid', 'processing', 'delivery_pending', 'delivered', 'refunded'].includes(order.status));
-  const delivered = orders.filter((order) => order.status === 'delivered');
+  const purchases = orders.filter((order) => order.orderType !== 'wallet_topup');
+  const confirmed = purchases.filter((order) => Number(order.approvedAt || 0) > 0 || ['paid', 'processing', 'delivery_pending', 'delivered', 'refunded'].includes(order.status));
+  const delivered = purchases.filter((order) => order.status === 'delivered');
   const awaiting = orders.filter((order) => ['awaiting_payment', 'payment_review'].includes(order.status)).length;
   const processing = orders.filter((order) => ['paid', 'processing', 'delivery_pending'].includes(order.status)).length;
-  const refunded = orders.filter((order) => order.status === 'refunded' || Number(order.walletRefundedAt || 0) > 0);
+  const refunded = purchases.filter((order) => order.status === 'refunded' || Number(order.walletRefundedAt || 0) > 0 || Number(order.shopier?.refundedKurus || 0) > 0);
   const cancelled = orders.filter((order) => order.status === 'cancelled').length;
   const paymentRejected = orders.filter((order) => order.status === 'payment_rejected').length;
   const deliveryFailures = orders.filter((order) => order.delivery?.status === 'failed').length;
   const grossRevenueKurus = confirmed.reduce((sum, order) => sum + Math.max(0, Number(order.totalKurus) || 0), 0);
   const deliveredRevenueKurus = delivered.reduce((sum, order) => sum + Math.max(0, Number(order.totalKurus) || 0), 0);
-  const refundedKurus = refunded.reduce((sum, order) => sum + Math.max(0, Number(order.walletRefundedKurus || (order.status === 'refunded' ? order.totalKurus : 0)) || 0), 0);
+  const refundedKurus = refunded.reduce((sum, order) => sum + Math.max(0, Number(order.shopier?.refundedKurus || order.walletRefundedKurus || (order.status === 'refunded' ? order.totalKurus : 0)) || 0), 0);
   const telegramOrders = orders.filter((order) => order.salesChannel === 'telegram' || order.paymentMethod === 'telegram').length;
-  const automaticOrders = orders.filter((order) => !(order.salesChannel === 'telegram' || order.paymentMethod === 'telegram')).length;
+  const automaticOrders = purchases.filter((order) => !(order.salesChannel === 'telegram' || order.paymentMethod === 'telegram')).length;
   const configuration = env.configurationReport();
   const inventory = inventoryReadiness();
   const activeProducts = catalog.products.filter((product) => product.active !== false && product.archived !== true);

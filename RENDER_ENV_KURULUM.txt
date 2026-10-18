@@ -1,5 +1,5 @@
 WEQ / ZENTRA STORE — SHOPIER / RENDER KURULUMU
-Kaynak sürümü: 80.0.0 | İnceleme tarihi: 17.10.2026 UTC
+Kaynak sürümü: 81.0.1 | İnceleme tarihi: 18.10.2026 UTC
 
 KOD HAZIRDIR; CANLI ENTEGRASYON BU ÇALIŞMADA YAYINLANMADI / ETKİNLEŞTİRİLMEDİ.
 SHOPIER_ENABLED=false olarak teslim edilir. Gerçek tahsilat veya iade yapılmadı.
@@ -16,6 +16,7 @@ Backend adı render.yaml içindeki emirhan-siye Web Service ile eşleşir.
 
 Yeni kodun sağlayacağı URL'ler:
 POST https://emirhan-siye.onrender.com/api/payments/shopier/create
+POST https://emirhan-siye.onrender.com/api/payments/shopier/topups
 POST https://emirhan-siye.onrender.com/api/payments/shopier/webhook
 GET  https://emirhan-siye.onrender.com/api/payments/shopier/orders/SIPARIS_ID
      SIPARIS_ID yalnızca kullanıcının kendi gerçek sipariş kimliğiyle değiştirilir.
@@ -209,3 +210,16 @@ https://developer.shopier.com/reference/the-webhook-model
 https://developer.shopier.com/reference/webhook-configuration
 https://developer.shopier.com/recipes/webhook-handler-nodejs-1
 https://render.com/docs/outbound-ip-addresses
+
+8) BAKİYE YÜKLEME — 81.0.1
+Ek ENV anahtarı gerekmez. Aynı yeni PAT ile order.created ve refund.updated
+aboneliklerinin ayrı token'ları kullanılır. Sohbette paylaşılmış token kullanılmaz.
+Yeni /api/payments/shopier/topups yolu backend yayınıyla açılır; bu çalışmada
+canlıya dağıtım yapılmadı. Frontend ve backend birlikte güncellenmelidir.
+SHOPIER_ENABLED=false korunur; gerçek kabul testleri tamamlanmadan açmayın.
+Hesabım formu tek işlemde 100 TL–10.000 TL kabul eder. Stok bulunmasa da Shopier
+alanı görünür. Bakiye yükleme ürün alımı ve stok rezervasyonu değildir.
+Shopier hesabınızda bu satış biçiminin uygunluğunu sağlayıcıyla teyit edin.
+users.storeWalletDebtKurus eski kayıtta yoksa sıfır kabul edilir; toplu veri göçü yoktur.
+İadede harcanmış bakiye açığı oluşursa satın alma engellenir; sonraki doğrulanmış
+bakiye yüklemesi önce açığı kapatır. Adminin ayrıca koyduğu engel korunur.

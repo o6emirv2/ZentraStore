@@ -9,6 +9,8 @@ const { getEffectiveCatalog, catalogRevision } = require('./storeCatalogService'
 const { allocateInventoryInTransaction, releaseShopierReservationInTransaction, invalidateStockCache } = require('./storeInventoryService');
 const { readPromotionInTransaction, applyPromotionInTransaction, readPromotionReleaseInTransaction, releasePromotionInTransaction } = require('./storePromotionService');
 const { invalidateCreatedAtPageCache } = require('./firestorePagination');
+const { topupAmount, readWalletSettlement, applyWalletSettlement } = require('./shopierWallet');
+const { checkedBalance } = require('./storeMoney');
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const FINAL_TIME = 8640000000000000;
 function database() {
@@ -29,7 +31,7 @@ function attemptId(uid, key) {
   if (typeof key !== 'string' || !/^[A-Za-z0-9_.:-]{12,160}$/.test(key)) throw shopierError('IDEMPOTENCY_KEY_REQUIRED', 400);
   return hash(`shopier:${uid}:${key}`);
 }
-function refresh() { invalidateStockCache(); invalidateCreatedAtPageCache('storeOrders'); }
+function refresh() { invalidateStockCache(); invalidateCreatedAtPageCache('storeOrders'); invalidateCreatedAtPageCache('storeWalletLedger'); require('./adminStoreService').invalidateAdminStoreCaches(); }
 function audit(tx, db, order, type, extra = {}) {
   tx.create(db.collection('audit').doc(), { type, orderId: order.id, orderNumber: order.orderNumber,
     uid: order.uid, paymentMethod: 'shopier', at: Date.now(), ...extra });
@@ -40,6 +42,11 @@ function queueJob(tx, db, { id, kind, resourceId = '', orderId = '', availableAt
 }
 function listingTitle(order) { return `ZENTRA STORE ${order.orderNumber} ${order.id}`; }
 function listingDescription(order) {
+  if (order.orderType === 'wallet_topup') return [`WEQ:${order.id}:${order.manifestHash}`, `İşlem: ${order.orderNumber}`,
+    `ZENTRA STORE hesabına ${money(order.totalKurus)} TRY mağaza bakiyesi yükleme.`,
+    'Bu işlem ürün satın almaz veya stok ayırmaz. Ürün satın alımı mağazada ayrıca yapılır.',
+    'Bakiye yalnızca doğrulanmış ödeme sonrasında işlemi başlatan hesaba eklenir.',
+    'Shopier ödeme e-postanız mağaza hesabınızla aynı olmalıdır.'].join('\n');
   return [`WEQ:${order.id}:${order.manifestHash}`, `Sipariş: ${order.orderNumber}`,
     ...order.items.map((item) => `${item.productName} | ${item.platform} | ${item.planLabel} (${item.duration}) | ${item.quantity} adet | ${item.productId}:${item.planKey}`),
     'Dijital teslimat yalnızca bu siparişin ZENTRA STORE hesabına yapılır. Shopier ödeme e-postanız mağaza hesabınızla aynı olmalıdır.',
@@ -98,12 +105,15 @@ async function rejectCreation(orderId, error) {
   });
   refresh();
 }
-async function createShopierPayment({ uid, authUser = {}, items = [], idempotencyKey, promotionCode = '' }) {
+async function createShopierPayment({ uid, authUser = {}, items = [], idempotencyKey, promotionCode = '', purpose = 'purchase', amountKurus }) {
   const config = requireShopierConfig({ creating: true });
+  if (!['purchase', 'wallet_topup'].includes(purpose)) throw shopierError('SHOPIER_PURPOSE_INVALID', 400);
+  const topup = purpose === 'wallet_topup';
+  if (topup) topupAmount(amountKurus);
   const safeUid = customerUid(uid), id = attemptId(safeUid, idempotencyKey);
   const { db, admin } = database(), attemptRef = db.collection('shopierCheckoutAttempts').doc(id);
-  const intent = normalizeCartIntent(items);
-  const requestHash = hash(JSON.stringify({ intent, promotionCode: String(promotionCode).trim().toUpperCase() }));
+  const intent = topup ? [] : normalizeCartIntent(items);
+  const requestHash = hash(JSON.stringify(topup ? { purpose, amountKurus } : { intent, promotionCode: String(promotionCode).trim().toUpperCase() }));
   const previous = await attemptRef.get();
   if (previous.exists) {
     if (previous.data().requestHash !== requestHash) throw shopierError('STORE_ORDER_CONFLICT', 409);
@@ -111,9 +121,9 @@ async function createShopierPayment({ uid, authUser = {}, items = [], idempotenc
   }
   const catalog = await getEffectiveCatalog({ includeInactive: false, fresh: true });
   if (catalog.storefront?.maintenance) throw shopierError('STORE_MAINTENANCE', 503);
-  if (catalog.storefront?.services?.automaticDelivery === false) throw shopierError('STORE_AUTOMATIC_DELIVERY_DISABLED', 409);
-  const cart = normalizeCart(items, catalog);
-  if (cart.items.some((item) => item.fulfillmentMode === 'telegram_only' || !item.automaticEnabled)) throw shopierError('STORE_AUTOMATIC_DELIVERY_DISABLED', 409);
+  if (!topup && catalog.storefront?.services?.automaticDelivery === false) throw shopierError('STORE_AUTOMATIC_DELIVERY_DISABLED', 409);
+  const cart = topup ? { items: [], totalKurus: amountKurus } : normalizeCart(items, catalog);
+  if (!topup && cart.items.some((item) => item.fulfillmentMode === 'telegram_only' || !item.automaticEnabled)) throw shopierError('STORE_AUTOMATIC_DELIVERY_DISABLED', 409);
   await readAccount(safeUid, authUser);
   const ref = db.collection('storeOrders').doc();
   let orderId = '', created = false, order;
@@ -127,22 +137,25 @@ async function createShopierPayment({ uid, authUser = {}, items = [], idempotenc
     if (catalog.revision && catalogRevision(settings.data() || {}) !== catalog.revision) throw shopierError('STORE_CATALOG_CHANGED', 409);
     const userRef = db.collection('users').doc(safeUid), user = await tx.get(userRef);
     const account = normalizeStoreProfile(user.data() || {}, authUser);
-    if (account.accountStatus !== 'active') throw shopierError('STORE_PURCHASE_BLOCKED', 403);
+    if (topup ? !account.walletTopupAllowed : account.accountStatus !== 'active') throw shopierError('STORE_PURCHASE_BLOCKED', 403);
+    if (topup) checkedBalance(account.balanceKurus + Math.max(0, amountKurus - account.walletDebtKurus));
     const open = await tx.get(db.collection('storeOrders').where('uid', '==', safeUid).where('shopierOpen', '==', true).limit(2));
     if (open.size >= 2) throw shopierError('SHOPIER_PENDING_LIMIT', 409);
-    const promotion = await readPromotionInTransaction({ transaction: tx, db, uid: safeUid, code: promotionCode, cart });
+    const promotion = topup ? null : await readPromotionInTransaction({ transaction: tx, db, uid: safeUid, code: promotionCode, cart });
     const totalKurus = promotion?.result.totalKurus ?? cart.totalKurus;
     if (!Number.isSafeInteger(totalKurus) || totalKurus < 1) throw shopierError('STORE_ORDER_TOTAL_INVALID', 409);
     const now = Date.now();
-    const inventoryReservations = await allocateInventoryInTransaction({ tx, db, admin, items: cart.items, orderId: ref.id, uid: safeUid, now, reserveOnly: true });
+    const inventoryReservations = topup ? [] : await allocateInventoryInTransaction({ tx, db, admin, items: cart.items, orderId: ref.id, uid: safeUid, now, reserveOnly: true });
     order = { id: ref.id, uid: safeUid, email: account.email, username: account.username, orderNumber: orderNumber(),
       status: 'awaiting_payment', paymentMethod: 'shopier', paymentState: 'pending', currency: 'TRY',
+      orderType: topup ? 'wallet_topup' : 'purchase',
+      ...(topup ? { walletTopup: { requestedKurus: amountKurus, netAppliedKurus: 0, balanceAddedKurus: 0, debtSettledKurus: 0, settledAt: 0 } } : {}),
       salesChannel: 'automatic', fulfillmentStatus: 'ODEME_BEKLIYOR', items: cart.items,
       subtotalKurus: cart.totalKurus, totalKurus, discountKurus: promotion?.result.discountKurus || 0,
       promotion: promotion ? { code: promotion.result.code, title: promotion.result.title, discountKurus: promotion.result.discountKurus } : null,
       inventoryReservations, manifestHash: hash(JSON.stringify({ items: cart.items, totalKurus, currency: 'TRY' })),
       shopierOpen: true, shopier: { state: 'creating', productId: '', orderId: '', lastError: '', createdAt: now },
-      delivery: { status: 'locked', itemCount: 0, deliveredAt: 0, automatic: true },
+      delivery: { status: 'locked', itemCount: 0, deliveredAt: 0, automatic: !topup },
       approvedAt: 0, paidAt: 0, createdAt: now, updatedAt: now, catalogVersion: catalog.version };
     applyPromotionInTransaction({ transaction: tx, promotion, uid: safeUid, orderId: ref.id, now });
     tx.create(ref, order);
@@ -221,7 +234,7 @@ function validateProviderOrder(remote, local) {
     if (refund.status === 'failed') failedRefund = true;
   }
   if (refundedKurus > local.totalKurus) throw shopierError('SHOPIER_AMOUNT_MISMATCH', 409);
-  return { refundedKurus, refundStatus: refundedKurus === local.totalKurus ? 'full' : refundedKurus ? 'partial' : pendingRefund ? 'pending' : failedRefund ? 'failed' : 'none' };
+  return { refundedKurus, refundPending: pendingRefund, refundStatus: refundedKurus === local.totalKurus ? 'full' : refundedKurus ? 'partial' : pendingRefund ? 'pending' : failedRefund ? 'failed' : 'none' };
 }
 async function applyShopierOrder(remote) {
   const { db } = database();
@@ -241,20 +254,24 @@ async function applyShopierOrder(remote) {
     const fullRefund = refund.refundStatus === 'full';
     const late = order.paymentState === 'cancelled' || order.shopier.state === 'creation_failed' || order.shopier.state === 'paid_review' || !!order.cancelledAt;
     const paymentState = fullRefund ? 'refunded' : 'paid';
-    const status = fullRefund ? 'refunded' : order.status === 'delivered' ? 'delivered' : 'paid';
+    const walletSettlement = await readWalletSettlement({ tx, db, order, refund, late, now });
+    const walletReady = walletSettlement?.settled && walletSettlement.wallet.netAppliedKurus > 0;
+    const status = fullRefund ? 'refunded' : walletReady || order.status === 'delivered' ? 'delivered' : 'paid';
     const release = fullRefund && !order.promotion?.releasedAt ? await readPromotionReleaseInTransaction({ transaction: tx, db, order, orderId: snap.id }) : null;
     const shouldRelease = fullRefund && order.inventoryReservations?.length && !order.delivery?.itemCount;
     if (shouldRelease) await releaseShopierReservationInTransaction({ tx, db, order, now });
     const promotionReleased = releasePromotionInTransaction({ transaction: tx, release, reason: 'shopier-refunded', now });
     const shopier = { ...order.shopier, orderId: remote.id, state: fullRefund ? 'refunded' : late ? 'paid_review' : 'paid',
       verifiedAt: now, lastError: late ? 'SHOPIER_LATE_PAYMENT_REVIEW' : '', ...refund };
+    applyWalletSettlement({ tx, db, order, settlement: walletSettlement });
     tx.set(receiptRef, { orderId: snap.id, providerOrderId: remote.id, productId, amountKurus: order.totalKurus, currency: 'TRY', verifiedAt: now }, { merge: true });
     tx.update(orderRef, { status, paymentState, shopierOpen: false, shopier, approvedAt: order.approvedAt || now,
       approvedBy: { uid: 'system', source: 'shopier-api-verified' }, paidAt: order.paidAt || now,
       ...(shouldRelease ? { inventoryReservations: [] } : {}), ...(fullRefund ? { refundedAt: order.refundedAt || now } : {}),
+      ...(walletSettlement ? { walletTopup: walletSettlement.wallet, fulfillmentStatus: fullRefund ? 'BAKIYE_IADE_EDILDI' : walletReady ? 'BAKIYE_YUKLENDI' : 'BAKIYE_ONAY_BEKLIYOR' } : {}),
       ...(promotionReleased ? { promotion: { ...order.promotion, releasedAt: now } } : {}), updatedAt: now });
     if (!alreadyPaid || refund.refundStatus !== order.shopier.refundStatus) audit(tx, db, order, fullRefund ? 'shopier.payment.refunded' : 'shopier.payment.verified', { providerOrderId: remote.id, ...refund });
-    if (!fullRefund && !late && !['partial', 'pending'].includes(refund.refundStatus) && !order.delivery?.itemCount) {
+    if (!walletSettlement && !fullRefund && !late && !['partial', 'pending'].includes(refund.refundStatus) && !order.delivery?.itemCount) {
       queueJob(tx, db, { id: `delivery_${snap.id}`, kind: 'delivery', orderId: snap.id });
     }
   });
@@ -267,6 +284,7 @@ async function deliverShopierOrder(orderId, { actor = { uid: 'system', source: '
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref), order = snap.data();
       if (!order || order.paymentMethod !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
+      if (order.orderType === 'wallet_topup') throw shopierError('SHOPIER_TOPUP_RECONCILE_REQUIRED', 409);
       const payment = order.shopier.orderId ? await tx.get(db.collection('shopierPayments').doc(hash(order.shopier.orderId))) : null;
       if (!payment?.exists || payment.data().orderId !== orderId || order.paymentState !== 'paid' || !order.paidAt) throw shopierError('SHOPIER_PAYMENT_NOT_VERIFIED', 409);
       if (order.delivery?.itemCount > 0 || order.status === 'delivered') return;

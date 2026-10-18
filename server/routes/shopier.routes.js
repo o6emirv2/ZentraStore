@@ -9,9 +9,14 @@ const { wakeShopierWorker } = require('../core/shopierJobs');
 const router = express.Router(), webhookRouter = express.Router();
 const asyncRoute = (fn) => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
 router.post('/payments/shopier/create', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
-  const result = await createShopierPayment({ uid: req.user.uid, authUser: req.user, ...(req.body || {}) });
+  const result = await createShopierPayment({ ...(req.body || {}), uid: req.user.uid, authUser: req.user });
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true, ...result }); wakeShopierWorker();
+}));
+router.post('/payments/shopier/topups', requireAuth, strictLimiter, asyncRoute(async (req, res) => {
+  const result = await createShopierPayment({ uid: req.user.uid, authUser: req.user, purpose: 'wallet_topup',
+    amountKurus: req.body?.amountKurus, idempotencyKey: req.body?.idempotencyKey });
+  res.setHeader('Cache-Control', 'no-store'); res.json({ ok: true, ...result }); wakeShopierWorker();
 }));
 router.get('/payments/shopier/attempt', requireAuth, asyncRoute(async (req, res) => {
   const result = await getShopierPayment({ uid: req.user.uid, idempotencyKey: req.query.idempotencyKey });
