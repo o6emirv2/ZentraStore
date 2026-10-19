@@ -1,13 +1,13 @@
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v81r1';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v81r1';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v81r1';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v81r1';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v81r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v81r1';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v81r1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v81r1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v81r1';
-import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v81r1';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v82r2';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v82r2';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v82r2';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v82r2';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v82r2';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v82r2';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v82r2';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v82r2';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v82r2';
+import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v82r2';
 
 installInteractionGuard();
 
@@ -22,7 +22,7 @@ const state = {
   inventoryReadiness: null, inventoryImportAttempt: null, inventoryImportBusy: false, walletAdjustmentAttempt: null, secureActionReturnFocus: null,
   usersSummary: null, walletSummary: null, securityRuntime: null, adminPolicy: null, productDirty: new Set(), productBulkBusy: false,
   chromeFrame: 0, chromeObserver: null, promotions: [], promotionEditingCode: '', quickLinks: [], quickLinksBusy: false, orderNextCursor: '', orderPageLoading: false,
-  panelLoads: new Map(), panelLoadedAt: new Map(), panelScroll: new Map()
+  staff: [], panelLoads: new Map(), panelLoadedAt: new Map(), panelScroll: new Map()
 };
 
 const STATUS = Object.freeze({
@@ -46,7 +46,6 @@ function panelAllowed(name = '') {
   if (name === 'promocodes') return !!state.adminPolicy;
   const permission = PANEL_PERMISSIONS[name];
   if (!permission) return false;
-  if (name === 'staff' && state.adminPolicy?.systemOwner !== true) return false;
   return hasPermission(permission);
 }
 
@@ -100,7 +99,7 @@ function applyAdminPermissions() {
     if (!panelAllowed(name)) { panel.hidden = true; panel.inert = true; }
   });
   const roleLabel = $('#adminRoleLabel');
-  if (roleLabel) roleLabel.textContent = String(state.adminPolicy?.role || 'admin').toLocaleUpperCase('tr-TR') + ' OTURUMU';
+  if (roleLabel) roleLabel.textContent = String((state.adminPolicy?.role === 'admin' ? 'Tam yetkili yönetici' : state.adminPolicy?.role) || 'admin').toLocaleUpperCase('tr-TR') + ' OTURUMU';
   const staticWriteControls = [
     ['#inventoryKeys, #inventoryImportForm button[type="submit"], #inventoryMigrateShared, #inventoryRotateKeys', 'store.inventory.write'],
     ['#openProductCreate', 'store.catalog.write'],
@@ -110,8 +109,7 @@ function applyAdminPermissions() {
   ];
   staticWriteControls.forEach(([selector, permission]) => {
     $$(selector).forEach((node) => {
-      const ownerOnly = permission === 'store.staff.write';
-      const enabled = hasPermission(permission) && (!ownerOnly || state.adminPolicy?.systemOwner === true);
+      const enabled = hasPermission(permission);
       node.disabled = !enabled;
       node.setAttribute('aria-disabled', enabled ? 'false' : 'true');
     });
@@ -1094,7 +1092,7 @@ function addProductPlanRow() {
   if (!host || host.children.length >= 12) return;
   const row = document.createElement('div');
   row.className = 'product-create-plan';
-  row.innerHTML = '<label><span>Paket kodu</span><input name="key" pattern="[a-z][a-z0-9-]{0,39}" maxlength="40" placeholder="aylik" required></label>'
+  row.innerHTML = '<label><span>Paket kodu</span><input name="key" autocapitalize="none" autocorrect="off" spellcheck="false" pattern="[a-z][a-z0-9\\-]{0,39}" maxlength="40" placeholder="aylik" required></label>'
     + '<label><span>Paket adı</span><input name="label" maxlength="50" placeholder="1 Aylık" required></label>'
     + '<label><span>Süre</span><input name="duration" maxlength="50" placeholder="30 Gün" required></label>'
     + '<label><span>Fiyat (₺)</span><input name="price" type="text" inputmode="decimal" placeholder="299,90" required></label>'
@@ -1157,16 +1155,26 @@ function markProductFormError(form, error) {
 function readNewProduct() {
   const form = $('#productCreateForm');
   const field = (name) => String(form.elements.namedItem(name)?.value || '').trim();
+  const idField = form.querySelector('[name="id"]');
+  const id = normalizeProductId(idField.value);
+  idField.value = id;
+  if (!validProductId(id)) throw Object.assign(new Error('Ürün kimliği 3–64 karakter olmalı, harfle başlamalı ve yalnızca küçük harf, sayı, tire içermelidir.'), { field: idField });
+  if (field('name').length < 3 || field('description').length < 8) throw Object.assign(new Error('Ürün adı en az 3, açıklama en az 8 karakter olmalıdır.'), { field: form.querySelector(field('name').length < 3 ? '[name="name"]' : '[name="description"]') });
+  if (!field('category')) throw Object.assign(new Error('Ürün kategorisini doldurun.'), { field: form.querySelector('[name="category"]') });
   const plans = [...$('#newProductPlans').children].map((row) => {
     const value = (name) => String(row.querySelector(`[name="${name}"]`)?.value || '').trim();
     const rawPrice = parseMoneyInput(value('price'));
     if (!Number.isFinite(rawPrice) || rawPrice <= 0 || rawPrice > 1_000_000) throw Object.assign(new Error('Paket fiyatı 0 ile 1.000.000 ₺ arasında olmalıdır.'), { field: row.querySelector('[name="price"]') });
-    return { key: value('key').toLowerCase(), label: value('label'), duration: value('duration'), priceKurus: Math.round(rawPrice * 100) };
+    const key = normalizeProductId(value('key'));
+    row.querySelector('[name="key"]').value = key;
+    if (!/^[a-z][a-z0-9-]{0,39}$/.test(key)) throw Object.assign(new Error('Paket kodu 1–40 karakter olmalı; harfle başlamalı ve yalnızca harf, sayı, tire içermelidir.'), { field: row.querySelector('[name="key"]') });
+    if (!value('label') || !value('duration')) throw Object.assign(new Error('Paket adını ve süresini doldurun.'), { field: row.querySelector(value('label') ? '[name="duration"]' : '[name="label"]') });
+    return { key, label: value('label'), duration: value('duration'), priceKurus: Math.round(rawPrice * 100) };
   });
   if (!plans.length) throw new Error('En az bir paket tanımlamalısınız.');
   if (new Set(plans.map((item) => item.key)).size !== plans.length) throw new Error('Paket kodları benzersiz olmalıdır.');
   return {
-    id: field('id').toLowerCase(), name: field('name'), platform: field('platform'), game: field('game'),
+    id, name: field('name'), platform: field('platform'), game: field('game'),
     inventoryType: field('inventoryType'), fulfillmentMode: field('fulfillmentMode'),
     category: field('category'), categoryKey: field('categoryPreset'), features: field('features'),
     ...(field('image') ? { image: field('image') } : {}), badgeKey: field('badgeKey'), description: field('description'),
@@ -1824,14 +1832,14 @@ async function loadAudit() {
 }
 
 async function loadStaff() {
-  $('#staffList').innerHTML = loadingMarkup('Yetki kayıtları yükleniyor'); renderLiveStatus('#staffMetrics', { icon: 'fa-spinner fa-spin', title: 'Yetki politikaları denetleniyor', detail: 'Mağaza sahibi ve personel rol kayıtları okunuyor.', tone: 'checking' }); const payload = await adminFetch('/api/admin/store/staff'); const rows = payload.staff || []; state.loaded.add('staff');
+  $('#staffList').innerHTML = loadingMarkup('Yetki kayıtları yükleniyor'); renderLiveStatus('#staffMetrics', { icon: 'fa-spinner fa-spin', title: 'Yetki politikaları denetleniyor', detail: 'Mağaza sahibi ve personel rol kayıtları okunuyor.', tone: 'checking' }); const payload = await adminFetch('/api/admin/store/staff'); const rows = payload.staff || []; state.staff = rows; state.loaded.add('staff');
   const active = rows.filter((row) => row.active).length; const owners = rows.filter((row) => row.systemOwner).length;
   renderLiveStatus('#staffMetrics', { icon: 'fa-user-shield', title: `${active} aktif yetki politikası`, detail: `${owners} korumalı mağaza sahibi · ${Math.max(0, rows.length - owners)} personel politikası · roller yalnızca gerekli izinleri taşır`, tone: owners === 1 ? 'ok' : 'warning', meta: owners === 1 ? 'SAHİP KORUNUYOR' : 'KONTROL' });
-  $('#staffList').innerHTML = rows.map((row) => `<div><span><strong>${escapeHtml(row.email || row.uid)}</strong><small>${escapeHtml(row.role.toLocaleUpperCase('tr-TR'))} · ${row.active ? 'Aktif' : 'Kapalı'}${row.systemOwner ? ' · Mağaza sahibi' : ''} · ${(row.permissions || []).includes('*') ? 'Tüm mağaza sahibi izinleri' : `${(row.permissions || []).length} izin`}</small></span><b class="account-state ${row.active ? 'is-active' : 'is-suspended'}">${row.active ? 'AKTİF' : 'KAPALI'}</b></div>`).join('') || emptyMarkup('Yetkili hesap yok', 'Mağaza sahibi kaydı yapılandırılmalıdır.', 'fa-user-lock');
+  $('#staffList').innerHTML = rows.map((row) => `<div><span><strong>${escapeHtml(row.email || row.uid)}</strong><small>${escapeHtml(row.role === 'admin' ? 'TAM YETKİLİ YÖNETİCİ' : row.role.toLocaleUpperCase('tr-TR'))} · ${row.active ? 'Aktif' : 'Kapalı'}${row.systemOwner ? ' · Mağaza sahibi' : ''} · ${(row.permissions || []).includes('*') ? 'Tüm yönetim izinleri' : `${(row.permissions || []).length} izin`}</small></span><b class="account-state ${row.active ? 'is-active' : 'is-suspended'}">${row.active ? 'AKTİF' : 'KAPALI'}</b>${!row.systemOwner && row.uid !== state.adminPolicy?.uid && hasPermission('store.staff.write') ? `<button type="button" class="secondary-action" data-edit-staff="${escapeHtml(row.uid)}">Düzenle</button>` : ''}</div>`).join('') || emptyMarkup('Yetkili hesap yok', 'Mağaza sahibi kaydı yapılandırılmalıdır.', 'fa-user-lock');
 }
 
 async function saveStaff(event) {
-  if (!requirePermission('store.staff.write', 'Yetki politikası güncelleme') || state.adminPolicy?.systemOwner !== true) { event.preventDefault(); return; }
+  if (!requirePermission('store.staff.write', 'Yetki politikası güncelleme')) { event.preventDefault(); return; }
   event.preventDefault(); const form = event.currentTarget; if (!(await requestAdminReauth())) return;
   try { await adminFetch(`/api/admin/store/staff/${encodeURIComponent($('#staffUid').value.trim())}`, { method: 'PUT', timeoutMs: 30_000, body: { email: $('#staffEmail').value.trim(), role: $('#staffRole').value, active: $('#staffActive').checked } }); toast('success', 'Yetki ayarları kaydedildi', 'Personel rolü ve aktiflik durumu güvenle güncellendi.'); form.reset(); $('#staffActive').checked = true; await loadStaff(); }
   catch (error) { setFieldError($('#staffUid'), error.message); toast('error', 'Yetki ayarlarını kaydedemedik', error.message); }
@@ -2028,6 +2036,12 @@ function bind() {
   $('#openProductCreate')?.addEventListener('click', openProductCreate);
   bindAction($('#productCreateForm'), 'submit', submitNewProduct, 'Ürün kaydediliyor…');
   $('#newProductCategoryPreset')?.addEventListener('change', applyNewProductCategoryPreset);
+  $('#newProductId')?.addEventListener('blur', (event) => { event.currentTarget.value = normalizeProductId(event.currentTarget.value); });
+  $('#suggestProductId')?.addEventListener('click', () => {
+    const form = $('#productCreateForm'), field = $('#newProductId');
+    field.value = suggestProductId(form.querySelector('[name="name"]').value, form.querySelector('[name="categoryPreset"]').value === 'custom' ? form.querySelector('[name="platform"]').value : form.querySelector('[name="categoryPreset"]').value);
+    clearFieldError(field); field.focus();
+  });
   $('#addProductPlan')?.addEventListener('click', addProductPlanRow);
   $$('[data-product-create-close]').forEach((button) => button.addEventListener('click', closeProductCreate));
   $('#newProductPlans')?.addEventListener('click', (event) => {
@@ -2059,6 +2073,15 @@ function bind() {
   $('#resetCouponForm')?.addEventListener('click', resetCouponForm);
   $('#refreshPromotions')?.addEventListener('click', () => loadPromotions().catch((error) => toast('error', 'Kuponlar yenilenemedi', error.message)));
   bindAction($('#staffForm'), 'submit', saveStaff, 'Yetki kaydediliyor…');
+  $('#staffList')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-edit-staff]');
+    if (!button || !hasPermission('store.staff.write')) return;
+    const row = state.staff.find(item => item.uid === button.dataset.editStaff);
+    if (!row || row.systemOwner || row.uid === state.adminPolicy?.uid) return;
+    $('#staffUid').value = row.uid; $('#staffEmail').value = row.email;
+    $('#staffRole').value = row.role; $('#staffActive').checked = row.active === true;
+    $('#staffForm').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#staffRole').focus({ preventScroll: true });
+  });
 }
 
 async function confirmedAdminStatus() {

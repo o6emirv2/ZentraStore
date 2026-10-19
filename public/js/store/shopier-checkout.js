@@ -1,3 +1,4 @@
+import { SHOPIER_TOPUP_LIMITS } from './shopier-availability.js?v=zentra-ui-v82r2';
 export function verifiedShopierUrl(value) {
   const url = new URL(value);
   if (url.protocol !== 'https:' || !['shopier.com', 'www.shopier.com'].includes(url.hostname)
@@ -5,7 +6,7 @@ export function verifiedShopierUrl(value) {
   return url.href;
 }
 
-export function parseTopupAmount(value, { minKurus = 10000, maxKurus = 1000000 } = {}) {
+export function parseTopupAmount(value, { minKurus = SHOPIER_TOPUP_LIMITS.minKurus, maxKurus = SHOPIER_TOPUP_LIMITS.maxKurus } = {}) {
   const raw = String(value || '').trim();
   if (!/^\d{1,5}(?:[.,]\d{1,2})?$/.test(raw)) throw Object.assign(new Error('Yüklenecek tutarı TL olarak girin.'), { code: 'SHOPIER_TOPUP_AMOUNT_INVALID' });
   const [whole, fraction = ''] = raw.replace(',', '.').split('.');

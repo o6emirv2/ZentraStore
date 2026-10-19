@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v81r1';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v82r2';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -16,7 +16,9 @@ const USER_MESSAGES = Object.freeze({
   SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. Aynı işlemi kontrol ederek devam edin; yeni sipariş başlatmayın.',
   SHOPIER_CONNECTION_FAILED: 'Ödeme bağlantısı kurulamadı. Aynı işlemi tekrar kontrol edin.',
   SHOPIER_PENDING_LIMIT: 'İki Shopier siparişiniz ödeme bekliyor. Önce bu siparişleri kontrol edin.',
-  SHOPIER_API_ERROR: 'Shopier işlemi şu anda tamamlanamıyor. Sipariş durumunu kontrol edip yeniden deneyin.',
+  SHOPIER_AUTH_FAILED: 'Shopier bağlantı yetkisi doğrulanamadı. Mağaza desteğine başvurun.',
+    SHOPIER_REQUEST_REJECTED: 'Shopier ödeme bağlantısını kabul etmedi. Bu denemede ödeme bağlantısı oluşturulmadı.',
+    SHOPIER_API_ERROR: 'Shopier işlemi şu anda tamamlanamıyor. Sipariş durumunu kontrol edip yeniden deneyin.',
   SHOPIER_RATE_LIMITED: 'Ödeme hizmeti yoğun. Kısa bir süre sonra aynı işlemi kontrol edin.',
   SHOPIER_PAYMENT_URL_INVALID: 'Ödeme bağlantısı güvenli biçimde doğrulanamadı. Sipariş numaranızla destek alın.',
   STORE_PRICE_CHANGED: 'Ürünün fiyatı değişti. İşlem uygulanmadı; güncel sepetinizi kontrol edin.',

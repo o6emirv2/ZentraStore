@@ -4,10 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const env = require('../config/env');
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
-const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
+const { GAME_KEYS, normalizeProductId, validProductId } = require('../../public/js/store/catalog-schema.mjs');
 const { normalizeBadgeKey, resolveBadge } = require('./storeBadgeCatalog');
 
-const PRODUCT_ID = /^[a-z][a-z0-9-]{2,63}$/;
 const PLAN_ID = /^[a-z][a-z0-9-]{0,39}$/;
 const LOCAL_IMAGE = /^\/public\/assets\/(?:products|images)\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?:jpe?g|png|svg|webp|gif|avif|bmp|ico)$/i;
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
@@ -55,8 +54,8 @@ function productImage(value = '', fallback = DEFAULT_IMAGE) {
 
 function normalizeCreatedProduct(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw failure('STORE_PRODUCT_CREATE_INVALID');
-  const id = String(value.id || '').trim().toLowerCase();
-  if (!PRODUCT_ID.test(id)) throw failure('STORE_PRODUCT_ID_INVALID');
+  const id = normalizeProductId(value.id);
+  if (!validProductId(id)) throw failure('STORE_PRODUCT_ID_INVALID');
   const name = safeText(value.name, 80);
   const description = safeText(value.description, 240);
   if (name.length < 3 || description.length < 8) throw failure('STORE_PRODUCT_DETAILS_REQUIRED');
@@ -70,7 +69,7 @@ function normalizeCreatedProduct(value) {
   if (!Array.isArray(value.plans) || value.plans.length < 1 || value.plans.length > 12) throw failure('STORE_PRODUCT_PLANS_INVALID');
   const seen = new Set();
   const plans = value.plans.map((entry) => {
-    const key = String(entry?.key || '').trim().toLowerCase();
+    const key = normalizeProductId(entry?.key);
     const priceKurus = Number(entry?.priceKurus);
     if (!PLAN_ID.test(key) || seen.has(key) || !Number.isSafeInteger(priceKurus) || priceKurus < 1 || priceKurus > 100_000_000) {
       throw failure('STORE_PRODUCT_PLAN_INVALID');

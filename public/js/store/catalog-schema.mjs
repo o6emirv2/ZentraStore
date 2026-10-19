@@ -86,3 +86,16 @@ export function categoryKey(product = {}) {
   const inferred = `${product.game}-${product.platform}`;
   return Object.hasOwn(CATEGORY_PRESETS, inferred) ? inferred : 'custom';
 }
+
+export function normalizeProductId(value) {
+  if (typeof value !== 'string') return '';
+  return value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/ı/g, 'i').trim().replace(/[\u2010-\u2015\u2212]/g, '-');
+}
+export function validProductId(value) {
+  return typeof value === 'string' && /^[a-z][a-z0-9-]{2,63}$/.test(value);
+}
+export function suggestProductId(name = '', category = '') {
+  return normalizeProductId(`${category}-${name}`).replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-').replace(/^-+|-+$/g, '').replace(/^[^a-z]+/, '').slice(0, 64).replace(/-+$/, '');
+}

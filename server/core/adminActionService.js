@@ -34,7 +34,7 @@ async function createAdminAction(req, input = {}) {
     || !/^[a-f0-9]{64}$/.test(String(input.bodyHash))) failure('ADMIN_ACTION_INPUT_INVALID', 400);
   const permission = permissionFor(input.method, input.path);
   if (!permission || !staffHasPermission(req.adminPolicy, permission)) failure('ADMIN_PERMISSION_REQUIRED', 403);
-  if (permission === 'store.staff.write' && req.adminPolicy?.systemOwner !== true) failure('ADMIN_OWNER_REQUIRED', 403);
+  if (permission === 'store.staff.write' && req.adminPolicy?.systemOwner !== true && req.adminPolicy?.role !== 'admin') failure('ADMIN_OWNER_REQUIRED', 403);
   if (!req.adminAccess?.gateSession || !req.user?.uid || !req.adminReauth?.ok) failure('ADMIN_REAUTH_REQUIRED', 401);
   if (typeof input.password !== 'string' || input.password.length < 6 || input.password.length > 4096) failure('ADMIN_REAUTH_REQUIRED', 401);
   await verifyFirebasePassword({ uid: req.user.uid, email: String(req.user.email || '').toLowerCase() }, input.password);

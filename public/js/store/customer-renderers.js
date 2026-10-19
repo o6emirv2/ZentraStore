@@ -1,4 +1,4 @@
-import { escapeViewText as escapeCustomerHtml, viewIcon as customerIcon } from './view-utils.js?v=zentra-ui-v81r1';
+import { escapeViewText as escapeCustomerHtml, viewIcon as customerIcon } from './view-utils.js?v=zentra-ui-v82r2';
 
 function renderCustomerEmpty({ icon = 'fa-inbox', title = 'Kayıt bulunamadı', message = '' } = {}) {
   return `<div class="customer-empty">${customerIcon(icon)}<strong>${escapeCustomerHtml(title)}</strong><p>${escapeCustomerHtml(message)}</p></div>`;

@@ -3,7 +3,7 @@
 const crypto = require('node:crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { requireShopierConfig } = require('../config/shopier');
-const { createShopierClient, shopierError, providerId, decimalKurus, money, paymentUrl } = require('./shopierClient');
+const { definitiveCreationRejection, createShopierClient, shopierError, providerId, decimalKurus, money, paymentUrl } = require('./shopierClient');
 const { normalizeCartIntent, normalizeCart, orderNumber, publicOrder, normalizeStoreProfile, readAccount } = require('./storeService');
 const { getEffectiveCatalog, catalogRevision } = require('./storeCatalogService');
 const { allocateInventoryInTransaction, releaseShopierReservationInTransaction, invalidateStockCache } = require('./storeInventoryService');
@@ -91,7 +91,7 @@ async function rejectCreation(orderId, error) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref), order = snap.data();
     if (!order || order.shopier.productId || order.shopier.state !== 'creating') return;
-    const uncertain = error.uncertain === true || ![400, 401, 402, 403, 404, 429].includes(error.providerStatus);
+    const uncertain = !definitiveCreationRejection(error);
     const now = Date.now();
     const release = uncertain ? null : await readPromotionReleaseInTransaction({ transaction: tx, db, order, orderId });
     if (!uncertain) await releaseShopierReservationInTransaction({ tx, db, order, now });

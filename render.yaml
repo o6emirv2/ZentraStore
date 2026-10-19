@@ -38,6 +38,8 @@ services:
         sync: false
       - key: ADMIN_GATE_SIGNING_SECRET
         sync: false
+      - key: ADMIN_TOTP_MODE
+        value: required
       - key: ADMIN_TOTP_SECRET_BASE32
         sync: false
       - key: STORE_KEY_ACTIVE_KEY_ID
@@ -49,7 +51,7 @@ services:
       - key: STORE_KEY_DECRYPTION_KEYS_JSON
         sync: false
       - key: SHOPIER_ENABLED
-        value: "false"
+        sync: false
       - key: SHOPIER_API_BASE_URL
         value: https://api.shopier.com/v1
       - key: SHOPIER_PAT

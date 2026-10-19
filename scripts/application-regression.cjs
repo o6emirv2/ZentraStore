@@ -41,7 +41,7 @@ test('public admin shell carries no private data and protected API still require
   const mismatch = await fixture.request('/api/admin/store/balance-codes', { token: fixture.idToken('member'), cookie });
   assert.equal(mismatch.status, 403);
 });
-test('five-step gate, TOTP and content-bound password proof create a separate credit campaign', async () => {
+test('six-step gate, TOTP and content-bound password proof create a separate credit campaign', async () => {
   assert.equal((await fixture.adminWrite(owner, '/api/admin/store/balance-codes/ZENTRASTORE200', 'PUT', credit)).status, 200);
   assert.equal(fixture.db.records.get('storePromotions/ZENTRASTORE200').type, 'balance');
   assert.equal((await fixture.request('/api/admin/store/balance-codes', owner)).body.codes[0].code, 'ZENTRASTORE200');

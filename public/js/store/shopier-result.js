@@ -1,6 +1,6 @@
-import { initStoreAuth, getStoreAuthSnapshot } from './auth.js?v=zentra-ui-v81r1';
-import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v81r1';
-import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v81r1';
+import { initStoreAuth, getStoreAuthSnapshot } from './auth.js?v=zentra-ui-v82r2';
+import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v82r2';
+import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v82r2';
 
 const $ = (id) => document.getElementById(id);
 const orderId = new URLSearchParams(location.search).get('order') || '';

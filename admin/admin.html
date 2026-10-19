@@ -9,15 +9,15 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v82r2" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v81r1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v81r1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v81r1" />
-  <script src="./admin-browser-session.js?v=zentra-ui-v81r1"></script>
-  <script src="./admin-auth.js?v=zentra-ui-v81r1"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v81r1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v81r1" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v82r2" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v82r2" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v82r2" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v82r2"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v82r2"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v82r2" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v82r2" />
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -189,8 +189,8 @@
       </section>
 
       <section class="admin-panel" data-admin-panel="staff" hidden inert>
-        <header class="panel-title"><div><span>EN AZ YETKİ</span><h1>Rol ve yetkilendirme</h1><p>Owner dışındaki personel hesaplarını görev kapsamına göre hazırlayın. Owner kaydı değiştirilemez.</p></div><button class="primary-action" type="button" data-refresh="staff"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
-        <div class="panel-live-status" id="staffMetrics" aria-live="polite"></div><div class="dashboard-columns"><form class="admin-card admin-form" id="staffForm"><header><div><small>PERSONEL KAYDI</small><h2>Rol tanımla</h2></div><i class="fa-solid fa-user-lock"></i></header><label><span>Hesap UID’si</span><input id="staffUid" maxlength="160" required /></label><label><span>Hesap e-postası</span><input id="staffEmail" type="email" maxlength="254" required /></label><label><span>Rol</span><select id="staffRole"><option value="finance">Finans</option><option value="inventory">Stok</option><option value="orders">Sipariş</option><option value="support">Destek</option><option value="viewer">Sadece görüntüleme</option></select></label><label class="toggle-row"><input id="staffActive" type="checkbox" checked /><span><strong>Yetki aktif</strong><small>Kapalıysa yönetici izin listesine alınmaz.</small></span></label><button class="primary-action" type="submit">Parolayla Kaydet</button></form><article class="admin-card"><header><div><small>AKTİF POLİTİKALAR</small><h2>Yetkili hesaplar</h2></div><i class="fa-solid fa-users-gear"></i></header><div id="staffList" class="compact-list"></div></article></div>
+        <header class="panel-title"><div><span>ERİŞİM YÖNETİMİ</span><h1>Rol ve yetkilendirme</h1><p>Tam yetkili yönetici tüm yönetim bölümlerini ve yetkilendirmeyi kullanır. Korunan mağaza sahibi ve kendi rolünüz bu formdan değiştirilemez.</p></div><button class="primary-action" type="button" data-refresh="staff"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
+        <div class="panel-live-status" id="staffMetrics" aria-live="polite"></div><div class="dashboard-columns"><form class="admin-card admin-form" id="staffForm"><header><div><small>PERSONEL KAYDI</small><h2>Rol tanımla</h2></div><i class="fa-solid fa-user-lock"></i></header><label><span>Hesap UID’si</span><input id="staffUid" maxlength="160" required /></label><label><span>Hesap e-postası</span><input id="staffEmail" type="email" maxlength="254" required /></label><label><span>Rol</span><select id="staffRole"><option value="admin">Tam yetkili yönetici (tüm izinler)</option><option value="finance">Finans</option><option value="inventory">Stok</option><option value="orders">Sipariş</option><option value="support">Destek</option><option value="viewer" selected>Sadece görüntüleme</option></select></label><label class="toggle-row"><input id="staffActive" type="checkbox" checked /><span><strong>Yetki aktif</strong><small>Rol veya aktiflik değişince mevcut yönetim oturumları geçersiz kalır. Yeniden altı adımlı giriş gerekir.</small></span></label><button class="primary-action" type="submit">Parolayla Kaydet</button></form><article class="admin-card"><header><div><small>AKTİF POLİTİKALAR</small><h2>Yetkili hesaplar</h2></div><i class="fa-solid fa-users-gear"></i></header><div id="staffList" class="compact-list"></div></article></div>
       </section>
 
       <section class="admin-panel" data-admin-panel="audit" hidden inert>
@@ -211,13 +211,14 @@
 
   <div class="reauth-layer product-create-layer" id="productCreateLayer" hidden>
     <div class="reauth-backdrop" data-product-create-close></div>
-    <form class="reauth-card product-create-card" id="productCreateForm" role="dialog" aria-modal="true" aria-labelledby="productCreateTitle">
+    <form class="reauth-card product-create-card" id="productCreateForm" novalidate role="dialog" aria-modal="true" aria-labelledby="productCreateTitle">
       <button class="reauth-close" type="button" data-product-create-close aria-label="Yeni ürün penceresini kapat"><i class="fa-solid fa-xmark"></i></button>
+      <div class="product-create-body">
       <span class="reauth-kicker">ZENTRA STORE · KATALOG</span>
       <h2 id="productCreateTitle">Yeni ürün oluştur</h2>
       <p>Ürün bilgileri güvenli sunucuda doğrulanır ve Firebase kataloğuna kaydedilir. Mevcut ürünlere dokunulmaz.</p>
       <div class="product-create-fields">
-        <label><span>Ürün kimliği</span><input name="id" required minlength="3" maxlength="64" pattern="[a-z][a-z0-9-]{2,63}" autocomplete="off" placeholder="yeni-urun-ios" /><small>Küçük harf, sayı ve kısa çizgi; sonradan değiştirilemez.</small></label>
+        <label><span>Ürün kimliği</span><input id="newProductId" name="id" required minlength="3" maxlength="64" pattern="[a-z][a-z0-9\-]{2,63}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="yeni-urun-ios" /><button type="button" class="secondary-action" id="suggestProductId">Addan kimlik oluştur</button><small>3–64 karakter: ilk karakter harf; küçük harf, sayı ve tire. Türkçe harfler standartlaştırılır. Kayıttan sonra değiştirilemez.</small></label>
         <label><span>Ürün adı</span><input name="name" required minlength="3" maxlength="80" placeholder="Ürün adı" /></label>
         <label><span>Platform</span><select name="platform"><option value="android">Android</option><option value="ios">iOS</option></select></label>
         <label><span>Oyun</span><select name="game"><option value="other">Diğer</option><option value="pubg">PUBG Mobile</option><option value="oxide">Oxide</option><option value="delta-force">DELTA FORCE</option><option value="valorant">VALORANT</option><option value="codm">CODM</option><option value="bloodstrike">BLOODSTRIKE</option><option value="standoff-2">STANDOFF 2</option><option value="mobile-legends">MOBILE LEGENDS</option><option value="8ball-pool">8BALL POOL</option><option value="free-fire">FREE FIRE</option></select></label>
@@ -233,10 +234,11 @@
       <div id="newProductPlans" class="product-create-plans"></div>
       <label class="toggle-row"><input name="featured" type="checkbox" /><span><strong>Öne çıkan ürün</strong><small>Anasayfada öne çıkar.</small></span></label>
       <p id="productCreateStatus" class="form-hint" role="status" aria-live="polite">Ürün önce kaydedilir; otomatik satışta stok yükleyene kadar stok dışı görünür.</p>
+      </div>
       <div class="reauth-actions"><button type="button" data-product-create-close>Vazgeç</button><button type="submit" id="productCreateSubmit"><i class="fa-solid fa-shield-halved"></i> Güvenli Şekilde Ürün Ekle</button></div>
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v81r1"></script>
+  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v82r2"></script>
 </body>
 </html>

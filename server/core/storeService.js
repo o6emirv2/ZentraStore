@@ -989,6 +989,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
 }
 
 async function publicCatalog() {
+  const shopierReadiness = require('../config/shopier').shopierReadiness();
   const catalog = await getEffectiveCatalog({ includeInactive: false });
   const firebase = initFirebaseAdmin();
   let stockVerified = true;
@@ -1061,9 +1062,10 @@ async function publicCatalog() {
     currency: 'TRY',
     telegramUsername: safeText(stocked.telegramUsername, 40).replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, ''),
     storefront,
-    payments: { shopier: { available: require('../config/shopier').shopierReadiness().available && deliveryReady
+    payments: { shopier: { status: stocked.storefront?.maintenance === true ? 'maintenance' : !shopierReadiness.enabled ? 'disabled' : !shopierReadiness.configured ? 'unavailable' : 'ready',
+      available: shopierReadiness.available && deliveryReady
       && configuredServices.automaticDelivery !== false && stocked.storefront?.maintenance !== true,
-      topupAvailable: require('../config/shopier').shopierReadiness().available && stocked.storefront?.maintenance !== true,
+      topupAvailable: shopierReadiness.available && stocked.storefront?.maintenance !== true,
       topupLimits: require('./shopierWallet').TOPUP_LIMITS } },
     stockVerified,
     badgeOptions: (Array.isArray(stocked.badgeOptions) ? stocked.badgeOptions : []).map((badge) => ({

@@ -96,3 +96,37 @@ test('funding immediately invalidates admin wallet summaries',async()=>{const s=
 test('staff without wallet read permission cannot see refund debt',()=>{const {redactUserFinance}=require('../server/core/adminOverviewPolicy');assert.deepEqual(redactUserFinance({uid:'member',balanceKurus:100,walletDebtKurus:200},{permissions:['store.users.read']}),{uid:'member'});});
 test('same resource id across order and refund events remains separately deduplicated',async()=>{assert.equal((await webhook('order.created',{id:'same-id'})).status,200);assert.equal((await webhook('refund.updated',{id:'same-id'})).status,200);assert.equal(rows('shopierWebhookReceipts/').length,2);});
 test('durable reconciliation continues after finding an unpaid provider order',async()=>{const r=await pending();provider.paid(r.order.shopier.productId,{paymentStatus:'unpaid'});const ref=app.db.collection('shopierJobs').doc('reconcile_'+r.order.id);app.db.records.get(ref.path).availableAt=0;await jobs.processShopierJob(app.db,ref);const job=app.db.records.get(ref.path);assert.equal(job.completedAt,0);assert(job.availableAt>Date.now());assert.equal(balance(),50000);});
+
+test('current Shopier capability is returned without cache and never exposes secrets',async()=>{
+ let r=await app.request('/api/store/catalog');assert.equal(r.headers.get('cache-control'),'no-store');assert.equal(r.body.catalog.payments.shopier.status,'ready');
+ process.env.SHOPIER_ENABLED='false';r=await app.request('/api/store/catalog');assert.equal(r.body.catalog.payments.shopier.status,'disabled');assert.equal(r.body.catalog.payments.shopier.topupAvailable,false);
+ const raw=JSON.stringify(r.body);assert(!raw.includes(process.env.SHOPIER_PAT));assert(!raw.includes(process.env.SHOPIER_WEBHOOK_TOKEN));
+});
+test('repeated definitive 422 link rejections never exhaust the pending limit',async()=>{
+ for(let i=0;i<4;i++){provider.failNext(()=>provider.response({privateProviderMessage:'do-not-forward'},422));const r=await pending();assert.equal(r.order.paymentState,'failed');assert.equal(r.order.shopier.lastError,'SHOPIER_REQUEST_REJECTED');assert.equal(local(r).shopierOpen,false);assert.equal(r.paymentUrl,'');}
+ assert((await pending()).paymentUrl);assert.equal(balance(),50000);
+});
+test('401 and 403 provider failures never credit balance or leak provider details',async()=>{
+ for(const status of [401,403]){provider.failNext(()=>provider.response({error:'private-auth-details'},status));const r=await pending();assert.equal(r.order.paymentState,'failed');assert.equal(r.order.shopier.lastError,'SHOPIER_AUTH_FAILED');assert(!JSON.stringify(r).includes('private-auth-details'));assert.equal(local(r).shopierOpen,false);}
+ assert.equal(balance(),50000);assert.equal(rows('storeWalletLedger/').length,0);
+});
+test('408 and 409 after product POST stay uncertain and are never POSTed twice',async()=>{
+ for(const status of [408,409]){const req=input();provider.failNext(()=>provider.response({},status));const r=await service.createShopierPayment(req);assert.equal(r.order.shopier.state,'creation_uncertain');const count=provider.calls.filter(v=>v.method==='POST').length;const replay=await service.createShopierPayment(req);assert.equal(replay.order.id,r.order.id);assert.equal(provider.calls.filter(v=>v.method==='POST').length,count);}
+ assert.equal(balance(),50000);
+});
+test('renewed order token rejects the old signature and credits a new notification exactly once',async()=>{
+ const r=await pending(),remote=provider.paid(r.order.shopier.productId),old=process.env.SHOPIER_WEBHOOK_TOKEN;process.env.SHOPIER_WEBHOOK_TOKEN=crypto.randomBytes(32).toString('hex');
+ assert.equal((await webhook('order.created',remote,old)).status,401);assert.equal((await webhook('order.created',remote)).status,200);assert.equal((await webhook('order.created',remote)).status,200);
+ for(const [path,job] of rows('shopierJobs/'))if(job.kind==='order.created')await jobs.processShopierJob(app.db,app.db.doc(path));
+ assert.equal(balance(),75000);assert.equal(rows('storeWalletLedger/').length,1);
+});
+test('422 on an already settled order lookup never becomes a false no-charge creation failure',async()=>{
+ const r=await pending();await verified(r);provider.failNext(()=>provider.response({},422));await assert.rejects(service.reconcileShopierOrder(r.order.id),{code:'SHOPIER_API_ERROR'});assert.equal(local(r).paymentState,'paid');assert.equal(balance(),75000);
+});
+test('renewed refund token is separate from the order token and queues one refund job',async()=>{
+ const old=process.env.SHOPIER_REFUND_WEBHOOK_TOKEN;process.env.SHOPIER_REFUND_WEBHOOK_TOKEN=crypto.randomBytes(32).toString('hex');
+ assert.equal((await webhook('refund.updated',{id:'rotated-refund'},old)).status,401);
+ assert.equal((await webhook('refund.updated',{id:'rotated-refund'},process.env.SHOPIER_WEBHOOK_TOKEN)).status,400);
+ assert.equal((await webhook('refund.updated',{id:'rotated-refund'})).status,200);assert.equal((await webhook('refund.updated',{id:'rotated-refund'})).status,200);
+ assert.equal(rows('shopierJobs/').filter(([,job])=>job.kind==='refund.updated').length,1);assert.equal(balance(),50000);assert.equal(rows('storeWalletLedger/').length,0);
+});

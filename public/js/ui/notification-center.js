@@ -1,4 +1,4 @@
-import { installNoticeSound, playNoticeSound } from './notice-sound.js?v=zentra-ui-v81r1';
+import { installNoticeSound, playNoticeSound } from './notice-sound.js?v=zentra-ui-v82r2';
 
 const NOTICE_TYPES = new Set(['success', 'error', 'warning', 'info']);
 

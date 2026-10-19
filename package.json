@@ -1,6 +1,6 @@
 {
   "name": "zentra-store-production",
-  "version": "81.0.1",
+  "version": "82.0.1",
   "private": true,
   "type": "commonjs",
   "description": "ZENTRA STORE digital storefront with protected sessions, transaction-safe wallet and encrypted digital-delivery vault",
@@ -22,7 +22,9 @@
     "build:pages": "npm run build && node scripts/build-pages.cjs",
     "test:shopier": "node --test scripts/shopier*-regression.cjs",
     "test:shopier:browser": "node scripts/shopier-browser.cjs",
-    "shopier:webhooks": "node scripts/shopier-webhooks.cjs"
+    "shopier:webhooks": "node scripts/shopier-webhooks.cjs",
+    "admin:passwords": "node scripts/hash-admin-factors.cjs",
+    "test:admin:browser": "node scripts/admin-browser.cjs"
   },
   "dependencies": {
     "compression": "^1.8.2",

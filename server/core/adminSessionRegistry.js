@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { currentSessionPolicy, sessionPolicyMatches } = require('./adminSessionPolicy');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 
 const cache = new Map();
@@ -22,12 +23,17 @@ function sessionReference(value) {
   return db.collection('storeAdminSessions').doc(sessionId(value));
 }
 
-async function registerAdminSession({ uid = '', email = '', session = '', expiresAt = 0, browserKey = null } = {}) {
+async function registerAdminSession({ uid = '', email = '', session = '', expiresAt = 0, browserKey = null, expectedPolicyVersion, expectedCredentialRevision } = {}) {
   const now = Date.now();
   const expiry = Math.max(0, Number(expiresAt || 0));
   if (expiry <= now) throw sessionError('ADMIN_GATE_ACCESS_INVALID', 401);
   const reference = sessionReference(session);
+  const policy = await currentSessionPolicy(uid, email);
+  if (!policy) throw sessionError('ADMIN_REQUIRED', 403);
+  if ((expectedPolicyVersion !== undefined && expectedPolicyVersion !== policy.policyVersion)
+    || (expectedCredentialRevision !== undefined && expectedCredentialRevision !== policy.credentialRevision)) throw sessionError('ADMIN_STEP_SESSION_INVALID', 401);
   const row = {
+    ...policy,
     uid: String(uid || '').trim().slice(0, 160),
     email: String(email || '').trim().toLowerCase().slice(0, 254),
     expiresAt: expiry,
@@ -53,7 +59,7 @@ async function isAdminSessionActive({ uid = '', email = '', session = '' } = {})
     const row = cached && cached.until > Date.now()
       ? cached.value
       : await reference.get().then((snapshot) => snapshot.exists ? snapshot.data() : null);
-    if (!row || row.revokedAt || Number(row.expiresAt || 0) <= Date.now()) return false;
+    if (!row || row.revokedAt || Number(row.expiresAt || 0) <= Date.now() || !(await sessionPolicyMatches(row))) return false;
     const matches = row.uid === String(uid || '').trim()
       && row.email === String(email || '').trim().toLowerCase();
     if (matches) cache.set(reference.id, { value: row, until: Date.now() + CACHE_TTL_MS });

@@ -4,6 +4,9 @@
 const { requireShopierConfig } = require('../config/shopier');
 const MAX_BODY = 1_048_576;
 function shopierError(code, statusCode = 503, extra = {}) { return Object.assign(new Error(code), { code, statusCode, ...extra }); }
+function definitiveCreationRejection(error) {
+  return error?.uncertain !== true && [400, 401, 402, 403, 404, 405, 410, 413, 414, 415, 422, 429].includes(error?.providerStatus);
+}
 function providerId(value) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(value)) throw shopierError('SHOPIER_RESPONSE_INVALID', 502);
   return value;
@@ -42,8 +45,10 @@ function createShopierClient({ config = requireShopierConfig(), transport = glob
           const retryAfter = Math.min(3600, Math.max(1, Number(response.headers.get('retry-after')) || 30));
           // Provider bodies may contain personal data or credentials. Never pass them to logs/clients.
           await response.body?.cancel?.();
-          throw shopierError(response.status === 429 ? 'SHOPIER_RATE_LIMITED' : 'SHOPIER_API_ERROR', 503,
-            { providerStatus: response.status, retryAfter, uncertain: method === 'POST' && response.status >= 500 });
+          const code = response.status === 429 ? 'SHOPIER_RATE_LIMITED' : [401, 403].includes(response.status) ? 'SHOPIER_AUTH_FAILED'
+            : method === 'POST' && path === '/products' && [400, 422].includes(response.status) ? 'SHOPIER_REQUEST_REJECTED' : 'SHOPIER_API_ERROR';
+          throw shopierError(code, 503, { providerStatus: response.status, retryAfter,
+            uncertain: method === 'POST' && (response.status >= 500 || [408, 409].includes(response.status)) });
         }
         const contentType = response.headers.get('content-type') || '';
         if (!/^application\/json\b/i.test(contentType)) throw shopierError('SHOPIER_RESPONSE_INVALID', 502, { uncertain: method === 'POST' });
@@ -78,4 +83,4 @@ function createShopierClient({ config = requireShopierConfig(), transport = glob
     createWebhook: (body) => request('POST', '/webhooks', body)
   };
 }
-module.exports = { createShopierClient, shopierError, providerId, decimalKurus, money, paymentUrl };
+module.exports = { definitiveCreationRejection, createShopierClient, shopierError, providerId, decimalKurus, money, paymentUrl };

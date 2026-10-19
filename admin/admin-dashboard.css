@@ -1798,3 +1798,9 @@ img {
 .shopier-failed-job{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #35405c;margin-top:12px;padding-top:12px}
 .shopier-failed-job small{display:block;color:#9cabc2}
 @media(max-width:600px){.shopier-failed-job{align-items:stretch;flex-direction:column}}
+
+.product-create-card { height:min(90dvh,920px); overflow:hidden; grid-template-rows:minmax(0,1fr) auto; }
+.product-create-body { min-height:0; overflow-y:auto; overscroll-behavior:contain; display:grid; align-content:start; gap:14px; padding:0 5px 6px 0; scroll-padding-block:16px; }
+.product-create-body>h2,.product-create-body>p { margin:0; }
+.product-create-card .reauth-actions { position:static; padding:14px 0 0; border-top:1px solid rgba(130,166,209,.2); background:none; margin:0; }
+@media(max-width:690px) { .product-create-card { height:94dvh; } }

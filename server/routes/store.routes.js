@@ -103,7 +103,8 @@ router.post('/admin/action-proof', ...adminChain, requireAdminReauth, adminActio
   res.json({ ok: true, proof });
 }));
 
-function requireOwner(req, res, next) {
+function requireStaffAdministrator(req, res, next) {
+  if (req.adminPolicy?.active === true && req.adminPolicy?.role === 'admin') return next();
   const uid = String(req.user?.uid || '').trim();
   const email = String(req.user?.email || '').trim().toLowerCase();
   if (uid && email && env.adminUids.length === 1 && env.adminEmails.length === 1
@@ -157,7 +158,7 @@ function initFirebaseReady() {
 }
 
 router.get('/store/catalog', asyncRoute(async (_req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true, catalog: await publicCatalog() });
 }));
 
@@ -573,12 +574,12 @@ router.get('/admin/store/audit', ...adminChain, requireStorePermission('store.au
   res.json({ ok: true, audit: await listAuditLogs(req.query.limit, req.query.uid) });
 }));
 
-router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireOwner, asyncRoute(async (_req, res) => {
+router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireStaffAdministrator, asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, staff: await listStaff() });
 }));
 
-router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireOwner, asyncRoute(async (req, res) => {
+router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireStaffAdministrator, asyncRoute(async (req, res) => {
   const staff = await upsertStaff({ uid: req.params.uid, email: req.body?.email, role: req.body?.role, active: req.body?.active, actor: req.user });
   await writeSupplementalAdminAudit(req, 'store.staff.update', { targetUid: staff.uid, role: staff.role, active: staff.active });
   noStore(res);

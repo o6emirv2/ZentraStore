@@ -65,7 +65,7 @@ test('create input validates IDs, product types, prices and plan collisions', ()
   assert.equal(row.id, valid.id);
   assert.equal(row.plans[0].priceKurus, 14990);
   for (const override of [
-    { id: '__proto__' }, { id: 'kötü-ürün' }, { platform: 'web' },
+    { id: '__proto__' }, { id: 'invalid/product' }, { platform: 'web' },
     { inventoryType: 'unknown' }, { game: 'not-a-game' },
     { description: '<div>' },
     { plans: [{ key: 'month', label: 'Aylık', duration: '30 Gün', priceKurus: -1 }] },
@@ -293,3 +293,21 @@ test('legacy visibility writes update both platforms and separate writes only ch
   }
 });
 
+
+test('screenshot key and Turkish keyboard variants create a single canonical ID',async()=>{
+ const canonical='oxide-android-magic-yeni',schema=require('../public/js/store/catalog-schema.mjs');
+ for(const id of [canonical,'OXİDE-ANDROİD-MAGİC-YENİ','oxıde-androıd-magıc-yenı','oxide–andROid—magic-yeni']){
+  assert.equal(schema.normalizeProductId(id),canonical);assert.equal(images.normalizeCreatedProduct({...valid,id}).id,canonical);
+ }
+ const created=await service.createProduct({...valid,id:'OXİDE-ANDROİD-MAGİC-YENİ',name:'MAGİC',platform:'android',game:'oxide',categoryKey:'oxide-android'},actor);
+ assert.equal(created.id,canonical);assert.equal(created.categoryKey,'oxide-android');
+ await assert.rejects(service.createProduct({...valid,id:canonical},actor),{code:'STORE_PRODUCT_ID_EXISTS'});
+ for(const id of ['../magic','magic/other','__proto__','3-start','ab','a'.repeat(65),'bad\u200bname','bad\u0000name','hello.world','🧙-product'])assert.throws(()=>images.normalizeCreatedProduct({...valid,id}),{code:'STORE_PRODUCT_ID_INVALID'});
+ assert.equal(schema.suggestProductId('MAGİC YENİ','oxide-android'),canonical);
+});
+test('plan normalization rejects collisions and unsupported path syntax',()=>{
+ const first={key:'GÜNLÜK',label:'Günlük',duration:'24 Saat',priceKurus:25000};
+ assert.equal(images.normalizeCreatedProduct({...valid,plans:[first]}).plans[0].key,'gunluk');
+ assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[first,{...first,key:'gunluk'}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
+ for(const key of ['bad/key','ab'.repeat(21),'3day'])assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[{...first,key}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
+});
