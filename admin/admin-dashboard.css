@@ -1790,17 +1790,3 @@ img {
 
 
 #productCreateSubmit,#reauthForm button[type="submit"]{background:linear-gradient(135deg,#3975ec,#6446d7);border-color:rgba(116,161,255,.4)}
-
-.shopier-admin-actions{display:flex;flex-wrap:wrap;gap:10px;padding:16px;border-top:1px solid var(--border,#30364a)}
-.shopier-admin-actions p{flex-basis:100%;color:var(--muted,#aeb8cd);font-size:12px;line-height:1.7;margin:0}
-.shopier-order-meta strong{overflow-wrap:anywhere}
-.shopier-operations{padding:16px 18px;margin:0 0 18px;border:1px solid #35405c;border-radius:14px;color:#bec8dc;background:#111a2a;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
-.shopier-failed-job{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #35405c;margin-top:12px;padding-top:12px}
-.shopier-failed-job small{display:block;color:#9cabc2}
-@media(max-width:600px){.shopier-failed-job{align-items:stretch;flex-direction:column}}
-
-.product-create-card { height:min(90dvh,920px); overflow:hidden; grid-template-rows:minmax(0,1fr) auto; }
-.product-create-body { min-height:0; overflow-y:auto; overscroll-behavior:contain; display:grid; align-content:start; gap:14px; padding:0 5px 6px 0; scroll-padding-block:16px; }
-.product-create-body>h2,.product-create-body>p { margin:0; }
-.product-create-card .reauth-actions { position:static; padding:14px 0 0; border-top:1px solid rgba(130,166,209,.2); background:none; margin:0; }
-@media(max-width:690px) { .product-create-card { height:94dvh; } }

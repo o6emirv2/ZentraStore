@@ -1,7 +1,7 @@
-import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v82r2';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v82r2';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v82r2';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v82r2';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v78';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v78';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v78';
 
 installInteractionGuard();
 installAppUI();
@@ -91,7 +91,7 @@ function securityView(security = {}) {
 
 function activateStep(step) {
   state.step = step;
-  $('#stepTrack').dataset.step = String(Math.min(6, step));
+  $('#stepTrack').dataset.step = String(Math.min(5, step));
   $$('.gate-step').forEach((section) => {
     const active = Number(section.dataset.step) === step;
     section.classList.toggle('is-active', active);
@@ -99,7 +99,7 @@ function activateStep(step) {
     section.inert = !active;
     if (active) animateView(section);
   });
-  const focusTargets = { 3: '#firebasePassword', 4: '#fourthFactor', 5: '#fifthFactor', 6: '#adminTotpCode' };
+  const focusTargets = { 3: '#firebasePassword', 4: '#fourthFactor', 5: '#fifthFactor' };
   const focus = $(focusTargets[step]);
   setTimeout(() => focus?.focus({ preventScroll: true }), 90);
 }
@@ -221,7 +221,7 @@ async function submitFourthFactor(event) {
     if (!state.ticket) throw new Error('Beşinci doğrulama adımı hazırlanamadı.');
     securityView(response.security);
     activateStep(5);
-    setStatus('#fifthStatus', 'Dördüncü şifre doğrulandı. Beşinci adım şifresini girin.', 'success');
+    setStatus('#fifthStatus', 'Dördüncü şifre doğrulandı. Google Authenticator’daki kodu girin.', 'success');
   } catch (error) {
     $('#fourthFactor').value = '';
     if (['ADMIN_GATE_FACTOR_REQUIRED', 'ADMIN_STEP_SESSION_INVALID'].includes(String(error?.code || ''))) state.ticket = '';
@@ -232,53 +232,39 @@ async function submitFourthFactor(event) {
 }
 
 async function submitFifthFactor(event) {
-  event.preventDefault(); if (state.busy) return;
-  const form = event.currentTarget, password = String($('#fifthFactor').value || '');
-  if (password.length < 12) return setStatus('#fifthStatus', 'Beşinci adım şifresini eksiksiz yazın.', 'error');
-  setBusy(form, true, 'Beşinci adım doğrulanıyor…');
-  try {
-    const response = await adminFetch('/api/auth/admin/gate/step-five', { method: 'POST', body: { ticket: state.ticket, password } });
-    if (!response.ticket) throw new Error('Altıncı doğrulama adımı hazırlanamadı.');
-    state.ticket = response.ticket; $('#fifthFactor').value = '';
-    securityView(response.security); activateStep(6);
-    setStatus('#sixthStatus', 'Şifreler doğrulandı. Güncel Google kodunu girin.', 'success');
-  } catch (error) {
-    $('#fifthFactor').value = '';
-    if (['ADMIN_GATE_FACTOR_REQUIRED', 'ADMIN_STEP_SESSION_INVALID'].includes(String(error?.code || ''))) state.ticket = '';
-    setStatus('#fifthStatus', error.message || 'Erişim şifresi doğrulanamadı.', 'error');
-  } finally { setBusy(form, false); }
-}
-
-async function submitSixthFactor(event) {
   event.preventDefault();
   if (state.busy) return;
   const form = event.currentTarget;
+  const password = String($('#fifthFactor').value || '');
   const totpCode = googleAuthenticatorCode($('#adminTotpCode')?.value);
-  if (!/^\d{6}$/.test(totpCode)) return setStatus('#sixthStatus', 'Google Authenticator’daki 6 haneli kodu yazın.', 'error');
+  if (password.length < 12) return setStatus('#fifthStatus', 'Beşinci adım şifresini eksiksiz yazın.', 'error');
+  if (!/^\d{6}$/.test(totpCode)) return setStatus('#fifthStatus', 'Google Authenticator’daki 6 haneli kodu yazın.', 'error');
   setBusy(form, true, 'Güvenli erişim oluşturuluyor…');
   try {
-    const response = await adminFetch('/api/auth/admin/gate/step-six', {
+    const response = await adminFetch('/api/auth/admin/gate/step-five', {
       method: 'POST',
-      body: { ticket: state.ticket, totpCode }
+      body: { ticket: state.ticket, password, totpCode }
     });
     if (response.ok !== true || response.redirectTo !== '/admin/') {
       const invalid = new Error('Yönetim merkezi için güvenli yönlendirme hazırlanamadı.');
       invalid.code = 'ADMIN_GATE_ACCESS_INVALID';
       throw invalid;
     }
-    if (!response.browserSession) throw Object.assign(new Error('Mağazanın ve yönetim sunucusunun güncel dosyalarla yayımlandığını kontrol edin.'), { code: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED' });
+    if (!response.browserSession) throw Object.assign(new Error('Sunucunun V78 yönetim oturumunu desteklediğini kontrol edin.'), { code: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED' });
     await window.ZENTRA_ADMIN_AUTH.acceptBrowserSession(response.browserSession);
     await verifyCompletedAdminAccess();
+    $('#fifthFactor').value = '';
     $('#adminTotpCode').value = '';
     securityView(response.security);
-    activateStep(7);
-    setStatus('#sixthStatus', 'Tüm güvenlik katmanları doğrulandı. Güvenli yönetim merkezi açılıyor.', 'success');
+    activateStep(6);
+    setStatus('#fifthStatus', 'Tüm güvenlik katmanları doğrulandı. Güvenli yönetim merkezi açılıyor.', 'success');
     state.ticket = '';
     window.dispatchEvent(new CustomEvent('zentra:admin-unlocked'));
   } catch (error) {
-    if (state.step === 7) activateStep(6);
+    $('#fifthFactor').value = '';
+    if (state.step === 6) activateStep(5);
     if (['ADMIN_GATE_FACTOR_REQUIRED', 'ADMIN_STEP_SESSION_INVALID'].includes(String(error?.code || ''))) state.ticket = '';
-    setStatus('#sixthStatus', error.message || 'Son güvenlik doğrulaması tamamlanamadı.', 'error');
+    setStatus('#fifthStatus', error.message || 'Son güvenlik doğrulaması tamamlanamadı.', 'error');
   } finally {
     setBusy(form, false);
   }
@@ -291,11 +277,9 @@ async function resetGate() {
   $('#firebasePasswordForm')?.reset();
   $('#fourthFactorForm')?.reset();
   $('#fifthFactorForm')?.reset();
-  $('#sixthFactorForm')?.reset();
   setStatus('#firebaseStatus', '');
   setStatus('#fourthStatus', '');
   setStatus('#fifthStatus', '');
-  setStatus('#sixthStatus', '');
   await runAutomaticVerification();
 }
 
@@ -321,7 +305,6 @@ async function boot() {
   $('#firebasePasswordForm').addEventListener('submit', submitFirebasePassword);
   $('#fourthFactorForm').addEventListener('submit', submitFourthFactor);
   $('#fifthFactorForm').addEventListener('submit', submitFifthFactor);
-  $('#sixthFactorForm').addEventListener('submit', submitSixthFactor);
   $('#adminTotpCode').addEventListener('input', (event) => {
     const normalized = googleAuthenticatorCode(event.currentTarget.value);
     if (event.currentTarget.value !== normalized) event.currentTarget.value = normalized;
@@ -335,7 +318,7 @@ async function boot() {
     const status = await adminFetch('/api/auth/admin/gate/status');
     securityView(status.security);
     if (status.authenticated && window.ZENTRA_ADMIN_AUTH.activeSession()) {
-          activateStep(7);
+          activateStep(6);
       window.dispatchEvent(new CustomEvent('zentra:admin-unlocked')); return;
     }
   } catch (error) {

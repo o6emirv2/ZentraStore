@@ -35,13 +35,3 @@ test('nested configuration, prototype keys and malformed action hashes are rejec
   assert(!validateApiBody('POST', '/api/admin/action-proof', { method: 'POST', path: '/api/admin/store/wallet/adjust', bodyHash: 'not-a-hash' }));
   assert(validateApiBody('GET', '/api/store/catalog', undefined));
 });
-
-test('every category visibility flag accepts booleans and rejects unknown or malformed settings', () => {
-  const { CATEGORY_VISIBILITY_KEYS } = require('../public/js/store/catalog-schema.mjs');
-  const categoryVisibility = Object.fromEntries(CATEGORY_VISIBILITY_KEYS.map((key) => [key, false]));
-  assert(validateApiBody('PATCH', '/api/admin/store/content', { categoryVisibility }));
-  for (const key of CATEGORY_VISIBILITY_KEYS) {
-    assert(!validateApiBody('PATCH', '/api/admin/store/content', { categoryVisibility: { [key]: 'false' } }));
-  }
-  assert(!validateApiBody('PATCH', '/api/admin/store/content', { categoryVisibility: { unknown: false } }));
-});

@@ -21,13 +21,13 @@ async function request(path, method = 'GET', body, options = {}) {
   return fixture.request(path, { token: options.token || token, method, body,
     headers: { origin: options.origin || origin, 'x-zentra-admin-proof': options.header || await proof(path, method, body, options) } });
 }
-test('all six gate stages complete without any cookie and return no handoff or bearer admin token', async () => {
+test('all five gate stages complete without any cookie and return no handoff or bearer admin token', async () => {
   let ticket = '';
-  for (const [step, extra] of [['email', { browserKey }], ['uid', {}], ['firebase-password', { password: fixture.password }], ['four', { password: fixture.four }], ['five', { password: fixture.five }], ['six', { totpCode: fixture.totp() }]]) {
+  for (const [step, extra] of [['email', { browserKey }], ['uid', {}], ['firebase-password', { password: fixture.password }], ['four', { password: fixture.four }], ['five', { password: fixture.five, totpCode: fixture.totp() }]]) {
     const body = { ...(ticket ? { ticket } : {}), ...extra };
     const result = await request('/api/auth/admin/gate/step-' + step, 'POST', body, { session: '' });
     assert.equal(result.status, 200, step + ' ' + JSON.stringify(result.body)); ticket = result.body.ticket || ticket;
-    if (step === 'six') { assert.equal(result.body.handoff, undefined); assert.equal(result.body.accessToken, undefined); assert.equal(result.body.redirectTo, '/admin/'); assert.equal(result.body.browserSession.keyId, keyId); session = result.body.browserSession.session; }
+    if (step === 'five') { assert.equal(result.body.handoff, undefined); assert.equal(result.body.accessToken, undefined); assert.equal(result.body.redirectTo, '/admin/'); assert.equal(result.body.browserSession.keyId, keyId); session = result.body.browserSession.session; }
   }
   assert.equal((await request('/api/auth/admin/gate/status')).body.access.mode, 'browser-key');
 });

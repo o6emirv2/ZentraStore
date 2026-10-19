@@ -1,5 +1,4 @@
 'use strict';
-const { sessionPolicyMatches } = require('./adminSessionPolicy');
 const crypto = require('node:crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -73,7 +72,7 @@ async function resolveBrowserAccess(req) {
   let row;
   try { row = await readAdminSession(proof.session); } catch (_) { fail('ADMIN_SESSION_UNAVAILABLE', 503); }
   if (!row || row.revokedAt || row.expiresAt <= Date.now() || row.uid !== req.user?.uid
-    || row.email !== String(req.user?.email || '').trim().toLowerCase() || !row.browserKey || !(await sessionPolicyMatches(row))) fail('ADMIN_GATE_ACCESS_INVALID');
+    || row.email !== String(req.user?.email || '').trim().toLowerCase() || !row.browserKey) fail('ADMIN_GATE_ACCESS_INVALID');
   await verifyProof(req, row.browserKey, proof.session);
   return { mode: 'browser-key', uid: row.uid, email: row.email, expiresAt: row.expiresAt, gateSession: proof.session };
 }

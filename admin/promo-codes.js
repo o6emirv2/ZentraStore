@@ -1,4 +1,4 @@
-import { runAction, setFieldError, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v82r2';
+import { runAction, setFieldError, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v78';
 
 export function createPromoCodeManager(ui) {
   const $ = (id) => document.getElementById(id);

@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs'), path = require('node:path');
 const root = path.resolve(__dirname, '..'), output = path.join(root, 'dist-pages');
-const allowed = ['index.html', 'style.css', 'script.js', 'CNAME', 'admin', 'public', 'odeme'];
+const allowed = ['index.html', 'style.css', 'script.js', 'CNAME', 'admin', 'public'];
 function copy(source, destination) {
   const stat = fs.lstatSync(source);
   if (stat.isSymbolicLink()) throw new Error('Static publish refuses symbolic links: ' + path.relative(root, source));

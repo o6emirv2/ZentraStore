@@ -9,14 +9,14 @@
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Güvenli Yönetici Girişi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v82r2" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v78" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-gate.css?v=zentra-ui-v82r2" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v82r2" />
-  <script src="./admin-browser-session.js?v=zentra-ui-v82r2"></script>
-  <script src="./admin-auth.js?v=zentra-ui-v82r2"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v82r2" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v82r2" />
+  <link rel="stylesheet" href="./admin-gate.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v78" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v78"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v78"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v78" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v78" />
 </head>
 <body>
   <div id="adminGateRoot">
@@ -34,7 +34,7 @@
         <div class="security-meter__bar"><span id="securityBar"></span></div>
       </section>
 
-      <div class="step-track" id="stepTrack" data-step="1" aria-label="Altı adımlı giriş ilerlemesi"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+      <div class="step-track" id="stepTrack" data-step="1" aria-label="Beş adımlı giriş ilerlemesi"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
 
       <div class="gate-viewport">
         <section class="gate-step is-active gate-step--automatic" data-step="1" aria-labelledby="gateTitle">
@@ -81,28 +81,20 @@
         </section>
 
         <section class="gate-step" data-step="5" aria-labelledby="fifthTitle" hidden inert>
-          <span class="step-kicker">ADIM 05 · ERİŞİM ŞİFRESİ</span><h2 id="fifthTitle">Beşinci güvenlik katmanı.</h2>
-          <p>Bağımsız erişim şifresini girin. Ardından Google Authenticator kodu istenir.</p>
+          <span class="step-kicker">ADIM 05 · ŞİFRE + GOOGLE AUTHENTICATOR</span>
+          <h2 id="fifthTitle">Google Authenticator ile doğrula.</h2>
+          <p>Yönetici şifreni ve Google Authenticator uygulamanda bu mağaza için tanımladığın hesabın güncel kodunu birlikte gir.</p>
           <form id="fifthFactorForm" novalidate>
-            <label><span>Erişim şifresi</span><div class="field-shell"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><input id="fifthFactor" type="password" autocomplete="off" maxlength="256" placeholder="Beşinci adım şifresi" required /><button class="field-toggle" type="button" data-password-toggle="fifthFactor" aria-label="Şifreyi göster"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div></label>
-            <div class="gate-status" id="fifthStatus" role="status" aria-live="polite"></div>
-            <button class="primary-btn" type="submit"><span>Beşinci Adımı Doğrula</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
-            <button class="ghost-btn" type="button" data-reset-gate>Baştan Başla</button>
-          </form>
-        </section>
-        <section class="gate-step" data-step="6" aria-labelledby="sixthTitle" hidden inert>
-          <span class="step-kicker">ADIM 06 · GOOGLE AUTHENTICATOR</span><h2 id="sixthTitle">Google kodunu doğrula.</h2>
-          <p>Mağaza yönetimi için tanımlı Google Authenticator hesabının güncel kodunu girin.</p>
-          <form id="sixthFactorForm" novalidate>
+            <label><span>Son erişim şifresi</span><div class="field-shell"><i class="fa-solid fa-user-lock" aria-hidden="true"></i><input id="fifthFactor" type="password" autocomplete="off" maxlength="256" placeholder="Beşinci adım şifresi" required /><button class="field-toggle" type="button" data-password-toggle="fifthFactor" aria-label="Şifreyi göster"><i class="fa-solid fa-eye" aria-hidden="true"></i></button></div></label>
             <label><span>Google Authenticator kodu</span><div class="field-shell"><i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i><input id="adminTotpCode" type="text" inputmode="numeric" autocomplete="one-time-code" autocapitalize="off" enterkeyhint="done" spellcheck="false" pattern="[0-9]{6}" minlength="6" maxlength="12" placeholder="6 haneli Google Authenticator kodu" required /></div></label>
             <div class="authenticator-hint" role="note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>iPhone’da Google Authenticator’a geçip <strong>mağaza yönetici hesabının</strong> güncel kodunu kopyalayabilirsin. Hesap adı değişse bile mevcut anahtarın çalışmaya devam eder.</span></div>
-            <div class="gate-status" id="sixthStatus" role="status" aria-live="polite"></div>
+            <div class="gate-status" id="fifthStatus" role="status" aria-live="polite"></div>
             <button class="primary-btn" type="submit"><span>Yönetim Merkezini Aç</span><i class="fa-solid fa-unlock-keyhole" aria-hidden="true"></i></button>
             <button class="ghost-btn" type="button" data-reset-gate>Baştan Başla</button>
           </form>
         </section>
 
-        <section class="gate-step gate-step--success" data-step="7" aria-labelledby="successTitle" hidden inert>
+        <section class="gate-step gate-step--success" data-step="6" aria-labelledby="successTitle" hidden inert>
           <span class="success-icon"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i></span>
           <h2 id="successTitle">Google Authenticator doğrulandı.</h2>
           <p>Güvenli yönetici oturumu oluşturuldu. Yönetim merkezi hazırlanıyor.</p>
@@ -113,6 +105,6 @@
     </section>
   </main>
   </div>
-  <script type="module" src="./admin-entry.js?v=zentra-ui-v82r2"></script>
+  <script type="module" src="./admin-entry.js?v=zentra-ui-v78"></script>
 </body>
 </html>

@@ -106,7 +106,7 @@ function verifyAdminGateFactorProof(req, { identity = {}, gateSession = '', tick
   const expiresAt = Math.max(0, Number(sealedStep?.expiresAt || 0) || 0);
   const stage = Number(sealedStep?.stage || 0);
   if (!sealedStep || !expectedUid || !expectedEmail || !/^[A-Za-z0-9_-]{32,80}$/.test(expectedSession)) return null;
-  if (![4, 5, 6].includes(stage) || !issuedAt || issuedAt > now + 30_000 || expiresAt <= now
+  if (![4, 5].includes(stage) || !issuedAt || issuedAt > now + 30_000 || expiresAt <= now
     || expiresAt - issuedAt > GATE_FACTOR_TTL_MS + 1_000) return null;
   if (String(sealedStep.uid || '') !== expectedUid
     || String(sealedStep.email || '').trim().toLowerCase() !== expectedEmail

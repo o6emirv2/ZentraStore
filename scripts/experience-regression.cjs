@@ -3,8 +3,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { browserModule } = require('./helpers/browser-module.cjs');
-const load = (file) => browserModule(`public/js/${file}`);
+const load = (file) => import('data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/', file)).toString('base64'));
 const storage = () => {
   const map = new Map();
   return { getItem: (key) => map.get(key) || null, setItem: (key, value) => map.set(key, value), removeItem: (key) => map.delete(key), entries: () => [...map.values()] };
@@ -93,7 +92,7 @@ test('external abort and request timeout remain distinct and listeners are clean
 
 test('store writes bind the initial identity and do not fall back to another account cookie', async () => {
   const utils = 'data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js')).toString('base64');
-  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v82r2'", JSON.stringify(utils));
+  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v78'", JSON.stringify(utils));
   const previous = { window: global.window, document: global.document, fetch: global.fetch };
   let fetches = 0;
   global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 78 } };
@@ -144,7 +143,13 @@ test('loaded order sorting preserves IDs and financial fields while ordering by 
 });
 
 test('forced catalog refresh after a mutation waits for an old read and then loads fresh prices', async () => {
-  const { loadStoreCatalog } = await browserModule('public/js/store/products.js');
+  const root = path.join(__dirname, '../public/js/store/');
+  let source = fs.readFileSync(root + 'products.js', 'utf8');
+  for (const file of ['product-fields.js', 'social-links.js']) {
+    const url = 'data:text/javascript;base64,' + fs.readFileSync(root + file).toString('base64');
+    source = source.replace(`'./${file}?v=zentra-ui-v78'`, JSON.stringify(url));
+  }
+  const { loadStoreCatalog } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
   const makeCatalog = (price) => ({ products: [{ id: 'demo-product', name: 'Demo', platform: 'android', image: '/public/assets/products/gbox.jpeg', plans: [{ key: 'm', label: 'Aylık', duration: '30 gün', priceKurus: price }] }] });
   let calls = 0, release;
   const api = async () => { calls++; if (calls === 1) return new Promise((resolve) => { release = resolve; }); return makeCatalog(20000); };

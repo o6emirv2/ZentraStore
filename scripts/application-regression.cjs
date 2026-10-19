@@ -5,23 +5,6 @@ let fixture, owner, finance, product;
 before(async () => { fixture = await applicationFixture(); owner = await fixture.openAdmin(); finance = await fixture.openAdmin('finance'); });
 after(async () => { await fixture?.close(); });
 const credit = { title: '200 TL balance credit', value: 20000, usageLimit: 10, perUserLimit: 1, startsAt: 0, endsAt: 0, active: true, createOnly: true };
-
-test('public catalog HTTP responses preserve every new game, category and exact plan price', async () => {
-  const result = await fixture.request('/api/store/catalog');
-  assert.equal(result.status, 200);
-  const products = result.body.catalog.products;
-  const additions = require('../public/data/store-products.json').products.slice(22);
-  assert.equal(additions.length, 12);
-  for (const source of additions) {
-    const product = products.find((entry) => entry.id === source.id);
-    assert.ok(product, source.id);
-    assert.equal(product.game, source.game);
-    assert.equal(product.categoryKey, source.categoryKey);
-    assert.equal(product.platform, source.platform);
-    assert.deepEqual(product.plans.map(({ key, priceKurus }) => ({ key, priceKurus })), source.plans.map(({ key, priceKurus }) => ({ key, priceKurus })));
-  }
-});
-
 test('real username login, supplementary cookie and account routes agree on the same owner', async () => {
   const login = await fixture.request('/api/auth/login', { method: 'POST', body: { identifier: 'EMIRHAN', password: fixture.password } });
   assert.equal(login.status, 200); assert.deepEqual(Object.keys(login.body).sort(), ['customToken', 'ok']);
@@ -41,7 +24,7 @@ test('public admin shell carries no private data and protected API still require
   const mismatch = await fixture.request('/api/admin/store/balance-codes', { token: fixture.idToken('member'), cookie });
   assert.equal(mismatch.status, 403);
 });
-test('six-step gate, TOTP and content-bound password proof create a separate credit campaign', async () => {
+test('five-step gate, TOTP and content-bound password proof create a separate credit campaign', async () => {
   assert.equal((await fixture.adminWrite(owner, '/api/admin/store/balance-codes/ZENTRASTORE200', 'PUT', credit)).status, 200);
   assert.equal(fixture.db.records.get('storePromotions/ZENTRASTORE200').type, 'balance');
   assert.equal((await fixture.request('/api/admin/store/balance-codes', owner)).body.codes[0].code, 'ZENTRASTORE200');

@@ -1,5 +1,3 @@
-import { categoryKey } from '../store/catalog-schema.mjs?v=zentra-ui-v82r2';
-
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 
 export function sortRecords(records, mode = 'newest') {
@@ -15,7 +13,7 @@ export function sortRecords(records, mode = 'newest') {
 export function matchesAdminProduct(product, { query = '', category = 'all', status = 'all' } = {}) {
   const text = `${product.name || ''} ${product.id || ''} ${product.category || ''}`.toLocaleLowerCase('tr-TR');
   if (query.trim() && !text.includes(query.trim().toLocaleLowerCase('tr-TR'))) return false;
-  const key = categoryKey(product);
+  const key = product.categoryKey || (product.category === 'GBox' || /^ios-gbox-/.test(product.id || '') ? 'gbox' : product.inventoryType === 'account' ? 'random-account' : `${product.game}-${product.platform}`);
   if (category !== 'all' && category !== key) return false;
   if (status === 'archived') return product.archived === true;
   if (status === 'active') return product.active !== false && product.archived !== true;

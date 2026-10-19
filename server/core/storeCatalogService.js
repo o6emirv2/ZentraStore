@@ -2,7 +2,6 @@
 const crypto = require('node:crypto');
 
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
-const { normalizeCategoryVisibility, expandCategoryVisibility } = require('../../public/js/store/catalog-schema.mjs');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -36,7 +35,9 @@ const DEFAULT_STOREFRONT = Object.freeze({
   services: Object.freeze({ automaticDelivery: true, telegramSupport: true, balancePayment: true }),
   support: Object.freeze({ telegramUsername: STORE_CATALOG.telegramUsername }),
   home: Object.freeze({ title: '', message: '' }),
-  categoryVisibility: Object.freeze(normalizeCategoryVisibility()),
+  categoryVisibility: Object.freeze(Object.fromEntries(
+    ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account'].map((key) => [key, true])
+  )),
   quickLinks: DEFAULT_QUICK_LINKS
 });
 
@@ -149,7 +150,10 @@ function normalizeStorefront(source = {}) {
       title: safeText(home.title, 80),
       message: safeText(home.message, 240)
     },
-    categoryVisibility: normalizeCategoryVisibility(categoryVisibility),
+    categoryVisibility: Object.fromEntries(
+      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+        .map((key) => [key, categoryVisibility[key] !== false])
+    ),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   };
 }
@@ -506,7 +510,7 @@ async function updateStorefrontSettings(input = {}, actor = {}) {
       services: { ...(effective.services || {}), ...(input.services || {}) },
       announcement: { ...(effective.announcement || {}), ...(input.announcement || {}) },
       home: { ...(effective.home || {}), ...(input.home || {}) },
-      categoryVisibility: { ...(effective.categoryVisibility || {}), ...expandCategoryVisibility(input.categoryVisibility || {}) },
+      categoryVisibility: { ...(effective.categoryVisibility || {}), ...(input.categoryVisibility || {}) },
       channelLinksRevision: CHANNEL_LINKS_REVISION,
       support: input.support === undefined ? effective.support : input.support,
       quickLinks: input.quickLinks === undefined ? effective.quickLinks : input.quickLinks

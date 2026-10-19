@@ -1,15 +1,23 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v82r2';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v82r2';
-import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v82r2';
-
-import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v82r2';
-
-export { CATALOG_FILTERS };
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v78';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v78';
 
 let catalogCache = null;
 let catalogCachedAt = 0;
 let catalogLoad = null;
 let catalogReload = null;
+
+export const CATALOG_FILTERS = Object.freeze({
+  all: Object.freeze({ label: 'Tüm Ürünler', platform: '', game: '' }),
+  android: Object.freeze({ label: 'Android Ürünleri', platform: 'android', game: '' }),
+  ios: Object.freeze({ label: 'iOS Ürünleri', platform: 'ios', game: '' }),
+  favorites: Object.freeze({ label: 'Favori Ürünlerin', platform: '', game: '' }),
+  'pubg-ios': Object.freeze({ label: 'PUBG İOS', platform: 'ios', game: 'pubg' }),
+  'pubg-android': Object.freeze({ label: 'PUBG ANDROİD', platform: 'android', game: 'pubg' }),
+  'oxide-ios': Object.freeze({ label: 'OXİDE İOS', platform: 'ios', game: 'oxide' }),
+  'oxide-android': Object.freeze({ label: 'OXİDE ANDROİD', platform: 'android', game: 'oxide' }),
+  gbox: Object.freeze({ label: 'GBOX', platform: 'ios', game: '' }),
+  'random-account': Object.freeze({ label: 'RANDOM HESAPLAR', platform: '', game: '' })
+});
 
 export function resolveCatalogFilter(value = 'all', visibility = {}) {
   const key = Object.prototype.hasOwnProperty.call(CATALOG_FILTERS, value) ? value : 'all';
@@ -115,7 +123,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   return Object.freeze({
     id,
     platform: source.platform === 'ios' ? 'ios' : 'android',
-    game: GAME_KEYS.includes(source.game) ? source.game : 'other',
+    game: ['pubg', 'oxide'].includes(source.game) ? source.game : 'other',
     inventoryType: source.inventoryType === 'account' ? 'account' : 'license',
     inventoryPoolId: String(source.inventoryPoolId || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 80),
     fulfillmentMode: source.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
@@ -126,7 +134,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     immutablePlatform: source.immutablePlatform === true,
     name,
     category: String(source.category || '').trim().slice(0, 50),
-    categoryKey: normalizeCategoryKey(source.categoryKey, source.platform).trim().slice(0, 40),
+    categoryKey: String(source.categoryKey || '').trim().slice(0, 40),
     features: Object.freeze(productFeatures(source.features)),
     badgeKey: badge.key,
     badge: badge.label,
@@ -138,7 +146,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     description,
     active: source.active !== false,
     featured: source.featured === true,
-    sortOrder: Math.max(0, Math.min(10000, Math.trunc(Number(source.sortOrder ?? 500) || 0))),
+    sortOrder: Math.max(0, Math.min(10000, Math.trunc(Number(source.sortOrder) || 500))),
     tags: Object.freeze((Array.isArray(source.tags) ? source.tags : []).map((tag) => String(tag || '').toLowerCase()).filter((tag) => ['new', 'popular', 'discounted'].includes(tag))),
     stock: normalizeStock(source.stock),
     plans: Object.freeze((Array.isArray(source.plans) ? source.plans : []).map(normalizePlan).filter((plan) => plan.active !== false && plan.key && plan.priceKurus > 0))
@@ -157,7 +165,10 @@ function normalizeStorefront(source = {}) {
     services: Object.freeze({ automaticDelivery: services.automaticDelivery !== false, telegramSupport: services.telegramSupport !== false, balancePayment: services.balancePayment !== false }),
     support: Object.freeze({ telegramUsername: String(support.telegramUsername || '').replace(/^@+/, '').replace(/[^a-z0-9_]/gi, '').slice(0, 32) }),
     home: Object.freeze({ title: String(home.title || '').slice(0, 80), message: String(home.message || '').slice(0, 240) }),
-    categoryVisibility: Object.freeze(normalizeCategoryVisibility(categoryVisibility)),
+    categoryVisibility: Object.freeze(Object.fromEntries(
+      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
+        .map((key) => [key, categoryVisibility[key] !== false])
+    )),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   });
 }
@@ -187,7 +198,6 @@ function normalizeCatalog(source = {}) {
     currency: 'TRY',
     telegramUsername: String(value.telegramUsername || 'ZENTRA_STORE').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
-    payments: Object.freeze({ shopier: normalizeShopierAvailability(value.payments?.shopier) }),
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),
     avatars: Object.freeze((Array.isArray(value.avatars) ? value.avatars : []).map(normalizeAvatar).filter(Boolean).slice(0, 25)),
@@ -210,11 +220,11 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {
-        source = await apiRequest('/api/store/catalog?v=13', { auth: false, timeoutMs: 6500 });
+        source = await apiRequest('/api/store/catalog?v=11', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {
-          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true, payments: Object.freeze({ shopier: normalizeShopierAvailability({ status: 'unavailable' }) }) });
+          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true });
           catalogCachedAt = 0;
           return catalogCache;
         }

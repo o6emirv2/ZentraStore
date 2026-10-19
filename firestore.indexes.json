@@ -73,20 +73,6 @@
           "order": "DESCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "storeOrders",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "uid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "shopierOpen",
-          "order": "ASCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": [

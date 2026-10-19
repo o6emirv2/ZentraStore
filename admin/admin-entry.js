@@ -1,4 +1,4 @@
-import { adminFetch } from './admin-core.js?v=zentra-ui-v82r2';
+import { adminFetch } from './admin-core.js?v=zentra-ui-v78';
 let mounting = null;
 function css(href) {
   if ([...document.querySelectorAll('link[rel=stylesheet]')].some(link => link.href === new URL(href, location.href).href)) return Promise.resolve();
@@ -34,7 +34,7 @@ async function mountDashboard() {
     document.querySelector('link[href*="admin-gate.css"]')?.remove();
     document.body.append(...[...parsed.body.childNodes].map(node => document.importNode(node, true)));
     history.replaceState(history.state, '', '/admin/' + (/^#panel\/[a-z]+$/.test(location.hash) ? location.hash : ''));
-    await import('./admin-dashboard.js?v=zentra-ui-v82r2');
+    await import('./admin-dashboard.js?v=zentra-ui-v78');
   })();
   try { await mounting; } catch (error) { mounting = null; throw error; }
 }
@@ -58,4 +58,4 @@ try {
   authenticated = (await adminFetch('/api/auth/admin/gate/status'))?.authenticated === true;
 } catch (_) {}
 if (authenticated) await mountDashboard().catch(showMountError);
-else await import('./admin-gate.js?v=zentra-ui-v82r2');
+else await import('./admin-gate.js?v=zentra-ui-v78');

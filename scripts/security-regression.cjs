@@ -118,7 +118,7 @@ test('user-provided links are complete, unique and limited to permitted platform
 });
 
 test('product catalog paths exist on case-sensitive Linux filesystems', () => {
-  assert.equal(catalog.products.length, 34);
+  assert.equal(catalog.products.length, 22);
   for (const product of catalog.products) {
     assert.ok(fs.existsSync(path.join(root, product.image)), `${product.id}: ${product.image}`);
     assert.ok(product.plans.every((plan) => Number.isSafeInteger(plan.priceKurus) && plan.priceKurus > 0), product.id);

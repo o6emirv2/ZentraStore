@@ -97,7 +97,7 @@ function readAdminStep(token = '') {
     decipher.setAuthTag(tag);
     const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
     const payload = JSON.parse(plaintext);
-    if (!payload || payload.type !== 'zentra-admin-step-v82' || Number(payload.expiresAt || 0) <= Date.now()) return null;
+    if (!payload || payload.type !== 'zentra-admin-step-v42' || Number(payload.expiresAt || 0) <= Date.now()) return null;
     return payload;
   } catch (_) {
     return null;
@@ -107,7 +107,7 @@ function readAdminStep(token = '') {
 function issueAdminAccess({ uid = '', email = '', gateSession = '' } = {}) {
   const issuedAt = Date.now();
   const claims = {
-    type: 'zentra-admin-access-v82',
+    type: 'zentra-admin-access-v42',
     uid: String(uid || '').trim().slice(0, 160),
     email: String(email || '').trim().toLowerCase().slice(0, 254),
     gateSession: String(gateSession || '').trim().slice(0, 120),
@@ -159,7 +159,7 @@ function getRequestAdminGateFactorToken(req) {
 
 function readAdminAccess(token = '') {
   const payload = verifySignedPayload(token);
-  return payload?.type === 'zentra-admin-access-v82' && payload.gateSession ? payload : null;
+  return payload?.type === 'zentra-admin-access-v42' && payload.gateSession ? payload : null;
 }
 
 function readAdminGateFactor(token = '') {

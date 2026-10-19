@@ -33,6 +33,3 @@ test('stock proof, import and automatic purchases still fail closed without thei
     const result = guard(path, body); assert.equal(result.called, false); assert.equal(result.status, 503); assert.equal(result.payload.error, 'SERVICE_NOT_READY');
   }
 });
-test('wallet topup requires identity but does not depend on product stock encryption',()=>{
- assert.equal(guard('/api/payments/shopier/topups').called,true);assert.equal(guard('/api/payments/shopier/create').called,false);
-});
