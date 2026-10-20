@@ -34,6 +34,7 @@ const {
 
 const router = createRouter();
 const STEP_TTL_MS = 7 * 60_000;
+const { credentialRevision } = require('../core/adminSessionPolicy');
 
 router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -56,8 +57,9 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
     throw Object.assign(new Error('ADMIN_GATE_FACTOR_REQUIRED'), { code: 'ADMIN_GATE_FACTOR_REQUIRED', statusCode: 401 });
   }
   return sealAdminStep({
-    type: 'zentra-admin-step-v42',
+    type: 'zentra-admin-step-v82',
     stage: Number(stage),
+    policyVersion: Number(identity.policyVersion || 0), credentialRevision: credentialRevision(),
     uid: String(identity.uid || '').trim(),
     email: String(identity.email || '').trim().toLowerCase(),
     ...(identity.browserKey ? { browserKey: identity.browserKey } : {}),
@@ -70,7 +72,9 @@ function createStepTicket(identity = {}, stage = 0, { gateSession = '', factorEx
 
 async function readStepTicket(raw = '', stage = 0, req) {
   const payload = readAdminStep(raw);
-  if (!payload || Number(payload.stage) !== Number(stage)) return null;
+  if (!payload || Number(payload.stage) !== Number(stage) || payload.credentialRevision !== credentialRevision()) return null;
+  const policy = await strictAdminPrincipal(payload.uid, payload.email);
+  if (!policy || Number(policy.policyVersion || 0) !== payload.policyVersion) return null;
   if (payload.browserKey) await verifyBrowserStep(req, payload.browserKey);
   return payload;
 }
@@ -95,7 +99,10 @@ async function activeAdminIdentity(req) {
   const { auth } = initFirebaseAdmin();
   if (!auth) throw Object.assign(new Error('AUTH_UNAVAILABLE'), { code: 'AUTH_UNAVAILABLE', statusCode: 503 });
   let user;
-  try { user = await auth.getUser(uid); } catch (_) { user = null; }
+  try { user = await auth.getUser(uid); } catch (error) {
+    if (error?.code !== 'auth/user-not-found') throw Object.assign(new Error('AUTH_UNAVAILABLE'), { code: 'AUTH_UNAVAILABLE', statusCode: 503 });
+    user = null;
+  }
   const liveEmail = String(user?.email || '').trim().toLowerCase();
   if (!user?.uid || user.uid !== uid || liveEmail !== email || user.disabled === true || user.emailVerified !== true) {
     throw Object.assign(new Error('ADMIN_ACTIVE_SESSION_MISMATCH'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH', statusCode: 403 });
@@ -110,6 +117,7 @@ async function activeAdminIdentity(req) {
     uid,
     email,
     role: policy.role,
+    policyVersion: Number(policy.policyVersion || 0),
     permissions: policy.permissions,
     systemOwner: policy.systemOwner === true
   };
@@ -152,6 +160,8 @@ async function gateFailure(req, res, error, stage = 'gate') {
     ADMIN_HANDOFF_INVALID: 'Güvenli yönetici geçişi doğrulanamadı. Lütfen son adımı yeniden deneyin.',
     ADMIN_HANDOFF_UNAVAILABLE: 'Güvenli yönetici geçişi şu anda hazırlanamadı.',
     ID_TOKEN_REQUIRED: 'Yönetici hesap oturumu doğrulanamadı. Lütfen sayfayı yenileyin.',
+    AUTH_PROVIDER_CONFIGURATION_INVALID: 'Hesap sağlayıcısı ayarları doğrulanamadı. Firebase giriş yöntemini ve sunucu API anahtarı kısıtlarını kontrol edin.',
+    TOO_MANY_REQUESTS: 'Çok fazla giriş denemesi yapıldı. Kısa süre bekleyip yeniden deneyin.',
     AUTH_UNAVAILABLE: 'Güvenli hesap hizmetine şu anda ulaşılamıyor.',
     ADMIN_ACTIVE_SESSION_MISMATCH: 'Ana sayfadaki aktif oturum yetkili yönetici hesabıyla eşleşmiyor.'
   };
@@ -324,19 +334,35 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       await writeAdminAudit(req, 'admin.gate.login.failure', { stage: 'step-five', error: 'ADMIN_GATE_FIVE_INVALID', status: 403 });
       return res.status(403).json({ ok: false, error: 'ADMIN_GATE_FIVE_INVALID', security });
     }
+    return res.json({ ok: true,
+      ticket: createStepTicket(payload, 6, { gateSession: factorProof.gateSession, factorExpiresAt: factorProof.expiresAt }),
+      verification: { step: 5, key: 'fifth-factor', label: 'Beşinci güvenlik şifresi', verified: true }, security });
+  } catch (error) { return gateFailure(req, res, error, 'step-five'); }
+});
+
+router.post('/auth/admin/gate/step-six', requireGateOrigin, adminAuthLimiter, requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const security = securityPosture();
+    const payload = await readStepTicket(req.body?.ticket, 6, req);
+    if (!payload || !principalMatches(req, payload) || !(await strictAdminPrincipal(payload.uid, payload.email))) {
+      return res.status(401).json({ ok: false, error: 'ADMIN_STEP_SESSION_INVALID', security });
+    }
+    const factorProof = verifyAdminGateFactorProof(req, { identity: payload, gateSession: payload.gateSession, ticket: req.body?.ticket });
+    if (!factorProof) return res.status(401).json({ ok: false, error: 'ADMIN_GATE_FACTOR_REQUIRED', security });
     if (!security.ready) {
-      return res.status(409).json({ ok: false, error: 'ADMIN_SECURITY_CONFIGURATION_INCOMPLETE', message: `Güvenlik skoru ${security.minimum}/100 eşiğinin altında.`, security });
+      return res.status(409).json({ ok: false, error: 'ADMIN_SECURITY_CONFIGURATION_INCOMPLETE', message: 'Zorunlu yönetici doğrulama ayarları tamamlanmamış.', security });
     }
 
     const sourceOrigin = env.normalizeOrigin(req.headers?.origin || '');
     if (!payload.browserKey && sourceOrigin !== env.serviceOrigin) {
-      return res.status(409).json({ ok: false, error: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED', message: 'Güncel V78 yönetim dosyalarını mağaza alanında yayınlayıp sayfayı yenileyin.' });
+      return res.status(409).json({ ok: false, error: 'ADMIN_BROWSER_SERVER_UPDATE_REQUIRED', message: 'Mağaza ve yönetim sunucusunu birlikte güncelleyin, ardından sayfayı yenileyin.' });
     }
     const totp = await verifyAdminTotp({
       uid: payload.uid,
       code: req.body?.totpCode,
       gateSession: factorProof.gateSession
     });
+    if (totp.verified !== true) throw Object.assign(new Error('ADMIN_TOTP_NOT_CONFIGURED'), { code: 'ADMIN_TOTP_NOT_CONFIGURED', statusCode: 503 });
     if (totp.replayed && !(await isAdminSessionActive({
       uid: payload.uid,
       email: payload.email,
@@ -345,7 +371,7 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       throw Object.assign(new Error('ADMIN_TOTP_REPLAY'), { code: 'ADMIN_TOTP_REPLAY', statusCode: 401 });
     }
     const cookieAccess = issueAdminAccess({ uid: payload.uid, email: payload.email, gateSession: factorProof.gateSession });
-    await registerAdminSession({ uid: payload.uid, email: payload.email, session: cookieAccess.gateSession, expiresAt: cookieAccess.expiresAt, browserKey: payload.browserKey || null });
+    await registerAdminSession({ uid: payload.uid, email: payload.email, session: cookieAccess.gateSession, expiresAt: cookieAccess.expiresAt, browserKey: payload.browserKey || null, expectedPolicyVersion: payload.policyVersion, expectedCredentialRevision: payload.credentialRevision });
     await writeAdminAudit(req, 'admin.gate.login.success', {
       stage: 'complete', accessModes: [payload.browserKey ? 'browser-key' : 'httpOnly-cookie'],
       possessionFactor: totp.verified === true ? 'totp' : 'not-configured',
@@ -364,7 +390,7 @@ router.post('/auth/admin/gate/step-five', requireGateOrigin, adminAuthLimiter, r
       security
     });
   } catch (error) {
-    return gateFailure(req, res, error, 'step-five');
+    return gateFailure(req, res, error, 'step-six');
   }
 });
 

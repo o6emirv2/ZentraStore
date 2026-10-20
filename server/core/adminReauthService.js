@@ -5,6 +5,7 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { purposeKey } = require('./adminAccessService');
 const { logError } = require('./errorLogger');
 
+const transient = require('./adminTransientStore');
 const RECENT_AUTH_MAX_AGE_SECONDS = 180;
 const CLOCK_SKEW_SECONDS = 30;
 const SECRET_KEY_PATTERN = /(token|secret|password|pass|private|key|authorization|cookie|serviceAccount|hash|salt|thirdFactor|firebase_key|admin_panel|session)/i;
@@ -82,8 +83,7 @@ function userAgentSummary(req) {
 
 async function writeAdminAudit(req, action, details = {}) {
   try {
-    const { db } = initFirebaseAdmin();
-    if (!db) throw Object.assign(new Error('ADMIN_AUDIT_UNAVAILABLE'), { code: 'ADMIN_AUDIT_UNAVAILABLE', statusCode: 503 });
+
     const id = `audit_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
     const row = {
       id,
@@ -103,6 +103,12 @@ async function writeAdminAudit(req, action, details = {}) {
       details: sanitizeAuditValue(details),
       createdAt: Date.now()
     };
+    if (transient.memory) {
+      transient.rememberAudit(row);
+      return { ok: true, firestore: false, transient: true, id };
+    }
+    const { db } = initFirebaseAdmin();
+    if (!db) throw Object.assign(new Error('ADMIN_AUDIT_UNAVAILABLE'), { code: 'ADMIN_AUDIT_UNAVAILABLE', statusCode: 503 });
     await db.collection('adminAudit').doc(id).set(row, { merge: false });
     return { ok: true, firestore: true, id };
   } catch (error) {

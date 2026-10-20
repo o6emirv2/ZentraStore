@@ -1,7 +1,7 @@
 'use strict';
 
 const { createRouter } = require('../core/asyncRouter');
-const env = require('../config/env');
+const { identityRequest: identityToolkit } = require('../core/firebaseIdentityClient');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readStoredBalance } = require('../core/storeMoney');
 const { authLoginLimiter, authAccountLimiter, resetAccountLimiter, passwordResetLimiter, requireAuth, strictLimiter } = require('../core/security');
@@ -76,27 +76,6 @@ async function resolvePrivateLogin(identifier = '') {
   return { email, expectedUid: doc.id };
 }
 
-async function identityToolkit(action = '', body = {}) {
-  const apiKey = String(env.firebase.publicConfig.apiKey || '').trim();
-  if (!apiKey) throw serviceError('AUTH_UNAVAILABLE', 503, 'Hesap hizmetine şu anda ulaşılamıyor. Lütfen kısa süre sonra tekrar dene.');
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8_000);
-  try {
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${action}?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
-    const payload = await response.json().catch(() => ({}));
-    return { ok: response.ok, status: response.status, payload };
-  } catch (_) {
-    throw serviceError('AUTH_UNAVAILABLE', 503, 'Hesap hizmetine şu anda ulaşılamıyor. Lütfen kısa süre sonra tekrar dene.');
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 router.post('/auth/login', authLoginLimiter, authAccountLimiter, async (req, res, next) => {
   try {
     if (!trustedOrigin(req)) throw serviceError('ORIGIN_NOT_ALLOWED', 403);
@@ -112,11 +91,12 @@ router.post('/auth/login', authLoginLimiter, authAccountLimiter, async (req, res
     if (result.status >= 500) throw serviceError('AUTH_UNAVAILABLE', 503);
     if (!result.ok || !uid || (expectedUid && uid !== expectedUid)) throw authInvalid();
     const { auth } = initFirebaseAdmin();
-    await activeIdentity(auth, uid);
+    const account = await activeIdentity(auth, uid);
+    if (validEmail(account.email) !== email || (result.payload.email && validEmail(result.payload.email) !== email)) throw authInvalid();
     const customToken = await auth.createCustomToken(uid, { zentraLogin: true });
     return res.json({ ok: true, customToken });
   } catch (error) {
-    if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'ORIGIN_NOT_ALLOWED', 'TOO_MANY_REQUESTS'].includes(String(error?.code || ''))) return next(error);
+    if (['LOGIN_CREDENTIALS_INVALID', 'AUTH_UNAVAILABLE', 'AUTH_PROVIDER_CONFIGURATION_INVALID', 'ORIGIN_NOT_ALLOWED', 'TOO_MANY_REQUESTS'].includes(String(error?.code || ''))) return next(error);
     return next(serviceError('AUTH_UNAVAILABLE', 503));
   }
 });

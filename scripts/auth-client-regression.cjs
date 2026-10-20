@@ -46,9 +46,9 @@ async function scenario(callback, source = 'public/js/store/auth.js', setup = ()
     if (path === '/api/store/account' && faults.wrongAccount) { const body = await result.json(); body.account.uid = 'other-user'; return response(body); }
     return result;
   };
-  const replacements = { 'import(FIREBASE_APP_URL)': 'Promise.resolve(globalThis.__authFixture.appSdk)', 'import(FIREBASE_AUTH_URL)': 'Promise.resolve(globalThis.__authFixture.sdk)', 'import(FIREBASE_APP_CHECK_URL)': 'Promise.resolve(globalThis.__authFixture.appCheckSdk)', 'const INITIALIZATION_TIMEOUT_MS = 15000;': 'const INITIALIZATION_TIMEOUT_MS = 15;' };
+  const replacements = { 'import(FIREBASE_APP_URL)': 'Promise.resolve(globalThis.__authFixture.appSdk)', 'import(FIREBASE_AUTH_URL)': 'Promise.resolve(globalThis.__authFixture.sdk)', 'import(FIREBASE_APP_CHECK_URL)': 'Promise.resolve(globalThis.__authFixture.appCheckSdk)', 'const INITIALIZATION_TIMEOUT_MS = 45000;': 'const INITIALIZATION_TIMEOUT_MS = 15;' };
   setup({ faults, auth, sdk, user, adapter: global.__authFixture });
-  replacements['const INITIALIZATION_TIMEOUT_MS = 15000;'] = `const INITIALIZATION_TIMEOUT_MS = ${faults.shortStartup ? 15 : 15000};`;
+  replacements['const INITIALIZATION_TIMEOUT_MS = 45000;'] = `const INITIALIZATION_TIMEOUT_MS = ${faults.shortStartup ? 15 : 15000};`;
   try { const module = await browserModule(source, replacements); await module.initStoreAuth(); return await callback({ module, faults, calls, counts, auth, sdk, user, changed }); }
   finally { global.window = previous.window; global.document = previous.document; global.fetch = previous.fetch; global.__authFixture = previous.adapter; }
 }

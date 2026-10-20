@@ -65,7 +65,7 @@ test('create input validates IDs, product types, prices and plan collisions', ()
   assert.equal(row.id, valid.id);
   assert.equal(row.plans[0].priceKurus, 14990);
   for (const override of [
-    { id: '__proto__' }, { id: 'kötü-ürün' }, { platform: 'web' },
+    { id: '__proto__' }, { id: 'invalid/product' }, { platform: 'web' },
     { inventoryType: 'unknown' }, { game: 'not-a-game' },
     { description: '<div>' },
     { plans: [{ key: 'month', label: 'Aylık', duration: '30 Gün', priceKurus: -1 }] },
@@ -114,9 +114,9 @@ test('newly created products can be edited through the existing bulk management 
   ], actor), (error) => error.code === 'STORE_PRODUCT_BULK_DUPLICATE');
 });
 
-test('server normalizes all six category visibility flags with backwards-compatible defaults', () => {
+test('server normalizes every category visibility flag with backwards-compatible defaults', () => {
   const defaults = service.normalizeStorefront({});
-  for (const key of ['pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'random-account', 'gbox']) {
+  for (const key of require('../public/js/store/catalog-schema.mjs').CATEGORY_VISIBILITY_KEYS) {
     assert.equal(defaults.categoryVisibility[key], true);
   }
   const changed = service.normalizeStorefront({ categoryVisibility: { gbox: false, 'random-account': false, ios: true } });
@@ -146,7 +146,7 @@ test('features survive create, bulk save and public serialization, and can be cl
   assert.deepEqual(catalog.products.find((row) => row.id === product.id).features, []);
 });
 
-test('all six category presets persist their membership and defaults', async () => {
+test('all category presets persist their membership and defaults', async () => {
   const { CATEGORY_PRESETS } = require('../server/core/storeProductSchema');
   for (const [key, preset] of Object.entries(CATEGORY_PRESETS)) {
     const created = await service.createProduct({ ...valid, id: `category-${key}`, categoryKey: key }, actor);
@@ -220,3 +220,94 @@ test('optional empty image paths use brand and category defaults without blockin
   }
 });
 
+test('catalog upgrades add every new product while preserving existing prices and retired settings', async () => {
+  const previous = structuredClone(stored);
+  try {
+    const added = require('../public/data/store-products.json').products.filter((product) => product.categoryKey);
+    assert.equal(added.length, 12);
+    for (const product of added) delete stored.catalog.products[product.id];
+    stored.catalog.sourceVersion = 11;
+    stored.catalog.products.kingmod.plans.daily.priceKurus = 77777;
+    stored.catalog.products['retired-example'] = { active: false, archived: true };
+    service.invalidateCatalogCache();
+    const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
+    for (const product of added) {
+      assert.equal(stored.catalog.products[product.id].categoryKey, product.categoryKey);
+      assert.ok(upgraded.products.some((row) => row.id === product.id));
+    }
+    assert.equal(upgraded.products.find((row) => row.id === 'kingmod').plans.find((plan) => plan.key === 'daily').priceKurus, 77777);
+    assert.deepEqual(stored.catalog.products['retired-example'], { active: false, archived: true });
+    assert.equal(stored.catalog.sourceVersion, require('../public/data/store-products.json').version);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+test('version twelve combined categories retain custom products, saved prices and platform visibility after upgrading', async () => {
+  const previous = structuredClone(stored);
+  try {
+    const added = require('../public/data/store-products.json').products.slice(22);
+    stored.catalog.sourceVersion = 12;
+    for (const product of added) {
+      stored.catalog.products[product.id].categoryKey = product.game;
+      stored.catalog.products[product.id].category = product.game;
+    }
+    stored.catalog.products['ios-cloud-codm'].plans.weekly.priceKurus = 87654;
+    const customId = 'category-codm-android';
+    stored.catalog.customProducts[customId].categoryKey = 'codm';
+    stored.catalog.products[customId].categoryKey = 'codm';
+    stored.categoryVisibility = { codm: false, 'codm-ios': true, 'free-fire': false };
+    service.invalidateCatalogCache();
+    const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
+    for (const source of added) {
+      const product = upgraded.products.find((row) => row.id === source.id);
+      assert.equal(product.categoryKey, source.categoryKey);
+      assert.equal(product.category, source.category);
+    }
+    assert.equal(upgraded.products.find((row) => row.id === customId).categoryKey, 'codm-android');
+    assert.equal(upgraded.products.find((row) => row.id === 'ios-cloud-codm').plans.find((row) => row.key === 'weekly').priceKurus, 87654);
+    assert.equal(upgraded.storefront.categoryVisibility['codm-ios'], true);
+    assert.equal(upgraded.storefront.categoryVisibility['codm-android'], false);
+    assert.equal(upgraded.storefront.categoryVisibility['free-fire-ios'], false);
+    assert.equal(upgraded.storefront.categoryVisibility['free-fire-android'], false);
+    assert.equal(stored.catalog.sourceVersion, 13);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+test('legacy visibility writes update both platforms and separate writes only change their own shortcut', async () => {
+  const previous = structuredClone(stored);
+  try {
+    await service.updateStorefrontSettings({ categoryVisibility: { codm: false } }, actor);
+    assert.equal(stored.categoryVisibility['codm-ios'], false);
+    assert.equal(stored.categoryVisibility['codm-android'], false);
+    await service.updateStorefrontSettings({ categoryVisibility: { 'codm-ios': true } }, actor);
+    assert.equal(stored.categoryVisibility['codm-ios'], true);
+    assert.equal(stored.categoryVisibility['codm-android'], false);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+
+test('screenshot key and Turkish keyboard variants create a single canonical ID',async()=>{
+ const canonical='oxide-android-magic-yeni',schema=require('../public/js/store/catalog-schema.mjs');
+ for(const id of [canonical,'OXİDE-ANDROİD-MAGİC-YENİ','oxıde-androıd-magıc-yenı','oxide–andROid—magic-yeni']){
+  assert.equal(schema.normalizeProductId(id),canonical);assert.equal(images.normalizeCreatedProduct({...valid,id}).id,canonical);
+ }
+ const created=await service.createProduct({...valid,id:'OXİDE-ANDROİD-MAGİC-YENİ',name:'MAGİC',platform:'android',game:'oxide',categoryKey:'oxide-android'},actor);
+ assert.equal(created.id,canonical);assert.equal(created.categoryKey,'oxide-android');
+ await assert.rejects(service.createProduct({...valid,id:canonical},actor),{code:'STORE_PRODUCT_ID_EXISTS'});
+ for(const id of ['../magic','magic/other','__proto__','3-start','ab','a'.repeat(65),'bad\u200bname','bad\u0000name','hello.world','🧙-product'])assert.throws(()=>images.normalizeCreatedProduct({...valid,id}),{code:'STORE_PRODUCT_ID_INVALID'});
+ assert.equal(schema.suggestProductId('MAGİC YENİ','oxide-android'),canonical);
+});
+test('plan normalization rejects collisions and unsupported path syntax',()=>{
+ const first={key:'GÜNLÜK',label:'Günlük',duration:'24 Saat',priceKurus:25000};
+ assert.equal(images.normalizeCreatedProduct({...valid,plans:[first]}).plans[0].key,'gunluk');
+ assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[first,{...first,key:'gunluk'}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
+ for(const key of ['bad/key','ab'.repeat(21),'3day'])assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[{...first,key}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
+});

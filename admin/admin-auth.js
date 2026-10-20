@@ -56,7 +56,7 @@ window.ZENTRA_ADMIN_AUTH = (() => {
     const bases = [...new Set(['', preferred].filter((base, index) => index === 0 || base))];
     for (const base of bases) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), base ? 6500 : 3200);
+      const timer = setTimeout(() => controller.abort(), base ? 30000 : 3200);
       try {
         const response = await fetch(`${base}/api/public/runtime-config`, {
           headers: { Accept: 'application/json', 'X-Zentra-Store-Client': 'secure-admin-bootstrap-v78' },

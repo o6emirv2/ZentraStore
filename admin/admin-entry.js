@@ -1,4 +1,4 @@
-import { adminFetch } from './admin-core.js?v=zentra-ui-v78';
+import { adminFetch } from './admin-core.js?v=zentra-ui-v83r1';
 let mounting = null;
 function css(href) {
   if ([...document.querySelectorAll('link[rel=stylesheet]')].some(link => link.href === new URL(href, location.href).href)) return Promise.resolve();
@@ -17,11 +17,11 @@ async function mountDashboard() {
     let response, html;
     try {
       response = await fetch('/admin/admin.html?view=v78', { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal });
-      if (!response.ok || !String(response.headers.get('content-type')).includes('text/html')) throw new Error('Yönetim dosyaları eksik. V78 admin klasörünü mağaza alanına birlikte yükleyin.');
+      if (!response.ok || !String(response.headers.get('content-type')).includes('text/html')) throw new Error('Yönetim dosyaları eksik. Güncel admin klasörünü mağaza alanına birlikte yükleyin.');
       html = await response.text();
     } finally { clearTimeout(timer); }
     const parsed = new DOMParser().parseFromString(html, 'text/html');
-    if (parsed.querySelector('meta[name=zentra-admin-release]')?.content !== '78' || !parsed.querySelector('#adminLoader') || !parsed.querySelector('#promoCodeForm') || !parsed.querySelector('#productCreateForm')) throw new Error('Yönetim görünümü sürümü eşleşmiyor. V78 admin klasörünü birlikte yayınlayın.');
+    if (parsed.querySelector('meta[name=zentra-admin-release]')?.content !== '78' || !parsed.querySelector('#adminLoader') || !parsed.querySelector('#promoCodeForm') || !parsed.querySelector('#productCreateForm')) throw new Error('Yönetim görünümü sürümü eşleşmiyor. Güncel admin klasörünü birlikte yayınlayın.');
     const styles = [...parsed.querySelectorAll('link[rel=stylesheet]')].map(link => new URL(link.getAttribute('href'), location.origin + '/admin/').href);
     await Promise.all(styles.map(css));
     for (const href of styles) {
@@ -34,7 +34,7 @@ async function mountDashboard() {
     document.querySelector('link[href*="admin-gate.css"]')?.remove();
     document.body.append(...[...parsed.body.childNodes].map(node => document.importNode(node, true)));
     history.replaceState(history.state, '', '/admin/' + (/^#panel\/[a-z]+$/.test(location.hash) ? location.hash : ''));
-    await import('./admin-dashboard.js?v=zentra-ui-v78');
+    await import('./admin-dashboard.js?v=zentra-ui-v83r1');
   })();
   try { await mounting; } catch (error) { mounting = null; throw error; }
 }
@@ -58,4 +58,4 @@ try {
   authenticated = (await adminFetch('/api/auth/admin/gate/status'))?.authenticated === true;
 } catch (_) {}
 if (authenticated) await mountDashboard().catch(showMountError);
-else await import('./admin-gate.js?v=zentra-ui-v78');
+else await import('./admin-gate.js?v=zentra-ui-v83r1');

@@ -2,6 +2,7 @@ services:
   - type: web
     name: emirhan-siye
     runtime: node
+    numInstances: 1
     buildCommand: npm ci --omit=dev --no-fund && npm run build
     startCommand: node server.js
     healthCheckPath: /readyz
@@ -22,6 +23,10 @@ services:
         sync: false
       - key: APP_CHECK_MODE
         value: monitor
+      - key: ADMIN_TRANSIENT_STORE
+        value: memory
+      - key: RATE_LIMIT_STORE
+        value: memory
       - key: FIREBASE_KEY
         sync: false
       - key: ADMIN_EMAILS
@@ -38,6 +43,8 @@ services:
         sync: false
       - key: ADMIN_GATE_SIGNING_SECRET
         sync: false
+      - key: ADMIN_TOTP_MODE
+        value: required
       - key: ADMIN_TOTP_SECRET_BASE32
         sync: false
       - key: STORE_KEY_ACTIVE_KEY_ID
@@ -48,3 +55,23 @@ services:
         sync: false
       - key: STORE_KEY_DECRYPTION_KEYS_JSON
         sync: false
+      - key: SHOPIER_ENABLED
+        sync: false
+      - key: SHOPIER_API_BASE_URL
+        value: https://api.shopier.com/v1
+      - key: SHOPIER_PAT
+        sync: false
+      - key: SHOPIER_WEBHOOK_TOKEN
+        sync: false
+      - key: SHOPIER_REFUND_WEBHOOK_TOKEN
+        sync: false
+      - key: SHOPIER_WEBHOOK_URL
+        value: https://emirhan-siye.onrender.com/api/payments/shopier/webhook
+      - key: WEQ_PUBLIC_BASE_URL
+        value: https://zentrastore.com.tr
+      - key: SHOPIER_SUCCESS_URL
+        value: https://zentrastore.com.tr/odeme/sonuc
+      - key: SHOPIER_CANCEL_URL
+        value: https://zentrastore.com.tr/odeme/iptal
+      - key: SHOPIER_HTTP_TIMEOUT_MS
+        value: "15000"

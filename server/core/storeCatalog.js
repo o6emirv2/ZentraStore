@@ -1,7 +1,8 @@
 'use strict';
 
 const rawCatalog = require('../../public/data/store-products.json');
-const { normalizeFeatures } = require('./storeProductSchema');
+const { normalizeFeatures, productCategory } = require('./storeProductSchema');
+const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const { resolveBadge } = require('./storeBadgeCatalog');
 
 const SAFE_ID = /^[a-z0-9][a-z0-9-]{1,79}$/;
@@ -18,7 +19,7 @@ function sanitizeCatalog() {
     const platform = String(source?.platform || '').trim().toLowerCase();
     if (platform !== 'android' && platform !== 'ios') throw new Error(`STORE_CATALOG_INVALID_PLATFORM:${id}`);
     const game = String(source?.game || 'other').trim().toLowerCase();
-    if (!['pubg', 'oxide', 'other'].includes(game)) throw new Error(`STORE_CATALOG_INVALID_GAME:${id}`);
+    if (!GAME_KEYS.includes(game)) throw new Error(`STORE_CATALOG_INVALID_GAME:${id}`);
     const inventoryType = String(source?.inventoryType || 'license').trim().toLowerCase();
     if (!['license', 'account'].includes(inventoryType)) throw new Error(`STORE_CATALOG_INVALID_INVENTORY_TYPE:${id}`);
     const inventoryPoolId = String(source?.inventoryPoolId || '').trim().toLowerCase();
@@ -52,7 +53,7 @@ function sanitizeCatalog() {
       inventoryPoolId: inventoryPoolId || '',
       fulfillmentMode,
       name: String(source?.name || '').trim().slice(0, 80),
-      category: String(source?.category || '').trim().slice(0, 50),
+      ...productCategory({ ...source, platform, game, inventoryType }),
       badgeKey: badge.key,
       badge: badge.label,
       badgeIcon: badge.icon,

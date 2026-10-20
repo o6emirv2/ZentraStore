@@ -95,7 +95,10 @@ async function resolveAuthenticatedUser(req) {
       req.authSource = 'firebase-bearer';
       req.firebaseIdToken = bearer;
       return { ...decoded, uid };
-    } catch (_) { return null; }
+    } catch (error) {
+      if (['auth/internal-error', 'auth/insufficient-permission', 'app/network-error', 'app/network-timeout'].includes(error?.code)) throw Object.assign(new Error('AUTH_UNAVAILABLE'), { code: 'AUTH_UNAVAILABLE', statusCode: 503 });
+      return null;
+    }
   }
   const session = await verifyUserSession(req, { checkRevoked: true });
   if (!validUid(session?.uid)) return null;
@@ -111,7 +114,8 @@ async function requireAuth(req, res, next) {
     if (!user?.uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
     req.user = user;
     return next();
-  } catch (_) {
+  } catch (error) {
+    if (error?.statusCode === 503) return res.status(503).json({ ok: false, error: 'AUTH_UNAVAILABLE' });
     return res.status(401).json({ ok: false, error: 'AUTH_INVALID' });
   }
 }
@@ -142,7 +146,8 @@ async function requireAdmin(req, res, next) {
       return next();
     }
     return res.status(403).json({ ok: false, error: 'ADMIN_REQUIRED' });
-  } catch (_) {
+  } catch (error) {
+    if (error?.statusCode === 503) return res.status(503).json({ ok: false, error: 'AUTH_UNAVAILABLE' });
     return res.status(403).json({ ok: false, error: 'ADMIN_REQUIRED' });
   }
 }

@@ -1,12 +1,12 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v78';
-import { createAccountReader } from './account-state.js?v=zentra-ui-v78';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v83r1';
+import { createAccountReader } from './account-state.js?v=zentra-ui-v83r1';
 
 const FIREBASE_VERSION = '12.17.1';
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
 const FIREBASE_AUTH_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-auth.js`;
 const FIREBASE_APP_CHECK_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app-check.js`;
 const REMEMBER_COOKIE = 'zentra_store_remember';
-const INITIALIZATION_TIMEOUT_MS = 15000;
+const INITIALIZATION_TIMEOUT_MS = 45000;
 const subscribers = new Set(), appChecks = new WeakMap();
 let initPromise = null, pendingRegistration = null, identityRevision = 0, unsubscribe = null;
 const state = { ready: false, available: true, busy: false, user: null, account: null, auth: null, sdk: null, error: '', warning: '', pendingEmail: '', accountLoading: false, accountStale: false, localSignedOut: false };

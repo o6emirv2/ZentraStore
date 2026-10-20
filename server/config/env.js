@@ -139,6 +139,7 @@ const env = {
     storageBucket: value(process.env.FIREBASE_STORAGE_BUCKET, firebasePublicConfig.storageBucket),
     serviceAccount,
     publicConfig: firebasePublicConfig,
+    identityApiKey: value(process.env.FIREBASE_SERVER_API_KEY, process.env.FIREBASE_AUTH_API_KEY, firebasePublicConfig.apiKey),
     appCheckSiteKey: value(process.env.PUBLIC_FIREBASE_APP_CHECK_SITE_KEY),
     appCheckMode,
     publicConfigSource: process.env.PUBLIC_FIREBASE_API_KEY ? 'environment' : (structuredFirebaseConfig.apiKey ? 'structured-environment' : 'missing')
@@ -149,7 +150,8 @@ const env = {
     adminMinimumScore: integer(process.env.ADMIN_SECURITY_MIN_SCORE, 90, 86, 100),
     adminSessionTtlMinutes: integer(process.env.ADMIN_SESSION_TTL_MINUTES, 120, 15, 720),
     strictCsp: process.env.SECURITY_CSP_STRICT !== '0',
-    rateLimitStore: process.env.RATE_LIMIT_STORE === 'memory' ? 'memory' : 'firestore',
+    rateLimitStore: process.env.RATE_LIMIT_STORE === 'firestore' ? 'firestore' : 'memory',
+    adminTransientStore: process.env.ADMIN_TRANSIENT_STORE === 'firestore' ? 'firestore' : 'memory',
     sensitiveActionRecentAuthSeconds: integer(process.env.SENSITIVE_ACTION_RECENT_AUTH_SECONDS, 180, 60, 600),
     adminTotp: Object.freeze({
       mode: adminTotpMode,
@@ -233,7 +235,7 @@ function configurationReport() {
   if (!env.storeKeys.encryptionReady) missing.push('STORE_KEY_ENCRYPTION_SECRET');
   if (!env.storeKeys.fingerprintReady) missing.push('STORE_KEY_FINGERPRINT_SECRET');
   if (env.storeKeys.encryptionReady && env.storeKeys.fingerprintReady && !env.storeKeys.distinct) missing.push('STORE_KEY_SECRETS_MUST_DIFFER');
-  if (env.storeKeys.activeKeyId !== 'legacy-v1' && !env.storeKeys.decryptionSecrets['legacy-v1']) missing.push('STORE_KEY_LEGACY_DECRYPTION_KEY_REQUIRED');
+  if (env.storeKeys.activeKeyId !== 'legacy-v1' && !env.storeKeys.decryptionSecrets['legacy-v1']) warnings.push('STORE_KEY_LEGACY_DECRYPTION_KEY_NOT_RETAINED');
   if (env.adminEmails.length !== 1 || env.adminEmails.some(isPlaceholder)) missing.push('ADMIN_EMAILS');
   if (env.adminUids.length !== 1 || env.adminUids.some(isPlaceholder)) missing.push('ADMIN_UIDS');
   const requiredHex = (name) => /^[0-9a-f]{64}$/i.test(String(process.env[name] || '').trim()) && !isPlaceholder(process.env[name]);
@@ -249,7 +251,7 @@ function configurationReport() {
   if (env.security.adminTotp.mode === 'required' && !env.security.adminTotp.configured) missing.push('ADMIN_TOTP_SECRET_BASE32');
   const securityIssues = warnings;
   if (env.firebase.appCheckMode !== 'enforce') securityIssues.push('APP_CHECK_NOT_ENFORCED');
-  if (env.security.rateLimitStore !== 'firestore') securityIssues.push('RATE_LIMIT_NOT_DISTRIBUTED');
+  if (env.security.rateLimitStore === 'memory' || env.security.adminTransientStore === 'memory') securityIssues.push('SINGLE_INSTANCE_TRANSIENT_STATE');
   if (env.security.adminTotp.mode !== 'required') securityIssues.push('ADMIN_TOTP_NOT_REQUIRED');
   if (!env.security.strictCsp) securityIssues.push('CSP_NOT_ENFORCED');
   const identityMissing = missing.filter(key => /^(?:FIREBASE_|PUBLIC_FIREBASE_)/.test(key));
@@ -270,6 +272,7 @@ function configurationReport() {
     appCheckMode: env.firebase.appCheckMode,
     appCheckConfigured: !!env.firebase.appCheckSiteKey,
     rateLimitStore: env.security.rateLimitStore,
+    adminTransientStore: env.security.adminTransientStore,
     adminTotpRequired: env.security.adminTotp.mode === 'required',
     adminTotpConfigured: env.security.adminTotp.configured,
     keyVaultReady: env.storeKeys.configured,

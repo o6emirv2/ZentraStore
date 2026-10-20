@@ -1,5 +1,9 @@
 'use strict';
 
+const { CATEGORY_VISIBILITY_KEYS, LEGACY_GAME_CATEGORY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
+const { MAX_IMAGE_BASE64 } = require('./storeProductImages');
+const { TOPUP_LIMITS } = require('./shopierWallet');
+
 const text = (max) => (value) => typeof value === 'string' && value.length <= max;
 const integer = (min, max) => (value) => Number.isSafeInteger(value) && value >= min && value <= max;
 const boolean = (value) => typeof value === 'boolean';
@@ -14,7 +18,7 @@ const planFields = { key: text(40), label: text(50), duration: text(50), priceKu
 const productFields = { name: text(80), platform: text(20), game: text(30), category: text(50), categoryKey: text(40),
   image: text(500), description: text(240), features, featured: boolean, badgeKey: text(40), badge: text(80),
   active: boolean, archived: boolean, automaticEnabled: boolean, telegramEnabled: boolean, sortOrder: integer(0, 10000), tags: list(text(40), 24) };
-const productCreate = object({ ...productFields, id: text(80), inventoryType: text(20), fulfillmentMode: text(30), plans: list(object(planFields), 12) });
+const productCreate = object({ ...productFields, imageUpload: object({ data: text(MAX_IMAGE_BASE64) }), id: text(80), inventoryType: text(20), fulfillmentMode: text(30), plans: list(object(planFields), 12) });
 const planMap = (value) => !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length <= 12
   && Object.entries(value).every(([key, entry]) => /^[a-z0-9-]{1,40}$/.test(key) && object(planFields)(entry));
 const productPatch = object({ ...productFields, plans: planMap });
@@ -28,18 +32,21 @@ const content = object({ maintenance: boolean,
   announcement: object({ enabled: boolean, title: text(100), message: text(500), tone: text(20), ctaLabel: text(40), ctaTarget: text(80) }),
   services: object({ automaticDelivery: boolean, telegramSupport: boolean, balancePayment: boolean }),
   support: object({ telegramUsername: text(80) }), home: object({ title: text(100), message: text(500) }),
-  categoryVisibility: object({ android: boolean, ios: boolean, 'pubg-android': boolean, 'pubg-ios': boolean,
-    'oxide-android': boolean, 'oxide-ios': boolean, 'random-account': boolean, gbox: boolean }), quickLinks: list(link, 16) });
+  categoryVisibility: object(Object.fromEntries([...CATEGORY_VISIBILITY_KEYS, ...LEGACY_GAME_CATEGORY_KEYS].map((key) => [key, boolean]))), quickLinks: list(link, 16) });
 const CONTRACTS = [
+  ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
+  ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],
+  ['POST', /^\/api\/payments\/shopier\/topups$/, object({ amountKurus: integer(TOPUP_LIMITS.minKurus, TOPUP_LIMITS.maxKurus), idempotencyKey: text(160) })],
+  ['POST', /^\/api\/admin\/store\/orders\/[^/]+\/shopier\/(?:reconcile|close)$/, object({})],
   ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
   ['POST', /^\/api\/auth\/password-reset$/, object({ identifier: text(254) })],
   ['POST', /^\/api\/auth\/session$/, object({ idToken: text(16384), remember: boolean })],
-  ['POST', /^\/api\/profile\/update$/, object({ firstName: text(80), lastName: text(80), username: text(80), birthDate: text(20) })],
   ['POST', /^\/api\/auth\/admin\/gate\/step-email$/, object({ browserKey: object({ keyId: text(36), publicKey: object({ kty: text(4), crv: text(8), x: text(43), y: text(43) }) }) })],
   ['POST', /^\/api\/auth\/admin\/gate\/step-uid$/, object({ ticket: text(16384) })],
   ['POST', /^\/api\/auth\/admin\/gate\/step-(?:firebase-password|four)$/, object({ ticket: text(16384), password: text(4096) })],
-  ['POST', /^\/api\/auth\/admin\/gate\/step-five$/, object({ ticket: text(16384), password: text(4096), totpCode: text(16) })],
+  ['POST', /^\/api\/auth\/admin\/gate\/step-five$/, object({ ticket: text(16384), password: text(4096) })],
+  ['POST', /^\/api\/auth\/admin\/gate\/step-six$/, object({ ticket: text(16384), totpCode: text(16) })],
   ['POST', /^\/api\/auth\/(?:logout|admin\/gate\/logout)$/, object({})],
   ['POST', /^\/api\/admin\/action-proof$/, object({ method: text(8), path: text(240), password: text(4096), bodyHash: (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value) })],
   ['PATCH', /^\/api\/store\/profile\/avatar$/, object({ avatarId: text(40) })],
@@ -81,7 +88,7 @@ function apiBodyContract(req, res, next) {
 function apiClientGuard(req, res, next) {
   const match = /^(?:premium-store|secure-admin)-v(\d+)$/.exec(String(req.headers['x-zentra-store-client'] || ''));
   const path = String(req.originalUrl || '').split('?')[0];
-  const businessWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (path.startsWith('/api/store/') || path.startsWith('/api/admin/store/') || path === '/api/profile/update');
+  const businessWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (path.startsWith('/api/store/') || path.startsWith('/api/payments/') || path.startsWith('/api/admin/store/') || path === '/api/profile/update');
   if (businessWrite && match && Number(match[1]) < 77) return res.status(409).json({ ok: false, error: 'CLIENT_UPDATE_REQUIRED', message: 'Mağaza güncellendi. İşlemi sürdürmek için sayfayı yenileyin.', requestId: req.requestId });
   return next();
 }

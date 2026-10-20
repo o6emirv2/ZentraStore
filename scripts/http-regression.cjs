@@ -73,7 +73,7 @@ test('malformed JSON, prototype keys and untrusted origins produce specific fail
 test('removed upload route and private source paths are unavailable, and image formats are served', async () => {
   assert.equal((await request('/api/admin/store/products/image', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, body: '{}' })).status, 404);
   assert.equal((await request('/server/config/env.js')).status, 404);
-  const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v78');
+  const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v83r1');
   assert.equal(promotionModule.status, 200);
   assert.ok(promotionModule.headers.get('content-type').includes('javascript'));
   for (const path of ['/public/assets/products/gbox.jpeg', '/public/assets/products/random.jpeg', '/public/assets/products/h-kernel.PNG', '/public/assets/products/CRY4ME.JPG']) {

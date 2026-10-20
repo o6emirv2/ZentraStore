@@ -1,8 +1,10 @@
 'use strict';
+const { sessionPolicyMatches } = require('./adminSessionPolicy');
 const crypto = require('node:crypto');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { readAdminSession } = require('./adminSessionRegistry');
+const transient = require('./adminTransientStore');
 const HEADER = 'x-zentra-admin-proof';
 const WINDOW_MS = 60_000;
 function fail(code = 'ADMIN_BROWSER_PROOF_INVALID', statusCode = 401) { throw Object.assign(new Error(code), { code, statusCode }); }
@@ -49,8 +51,12 @@ async function verifyProof(req, binding, session = '') {
   let valid = false;
   try { valid = crypto.verify('sha256', Buffer.from(message), { key: crypto.createPublicKey({ key: publicKey(binding.publicKey), format: 'jwk' }), dsaEncoding: 'ieee-p1363' }, decode(proof.sig, 64)); } catch (_) { fail(); }
   if (!valid) fail();
-  const { db } = initFirebaseAdmin(); if (!db) fail('ADMIN_SESSION_UNAVAILABLE', 503);
   const id = crypto.createHash('sha256').update(JSON.stringify([binding.keyId, session, proof.nonce])).digest('hex');
+  if (transient.memory) {
+    if (!transient.nonces.claim(id, { uid: req.user.uid }, Date.now() + WINDOW_MS * 3)) fail('ADMIN_BROWSER_PROOF_REPLAY', 409);
+    return binding;
+  }
+  const { db } = initFirebaseAdmin(); if (!db) fail('ADMIN_SESSION_UNAVAILABLE', 503);
   const ref = db.collection('storeAdminBrowserNonces').doc(id);
   try {
     await db.runTransaction(async tx => {
@@ -72,7 +78,7 @@ async function resolveBrowserAccess(req) {
   let row;
   try { row = await readAdminSession(proof.session); } catch (_) { fail('ADMIN_SESSION_UNAVAILABLE', 503); }
   if (!row || row.revokedAt || row.expiresAt <= Date.now() || row.uid !== req.user?.uid
-    || row.email !== String(req.user?.email || '').trim().toLowerCase() || !row.browserKey) fail('ADMIN_GATE_ACCESS_INVALID');
+    || row.email !== String(req.user?.email || '').trim().toLowerCase() || !row.browserKey || !(await sessionPolicyMatches(row))) fail('ADMIN_GATE_ACCESS_INVALID');
   await verifyProof(req, row.browserKey, proof.session);
   return { mode: 'browser-key', uid: row.uid, email: row.email, expiresAt: row.expiresAt, gateSession: proof.session };
 }

@@ -3,7 +3,7 @@ const http = require('node:http'), crypto = require('node:crypto');
 const { memoryFirestore, mockModule, admin } = require('./memory-firestore.cjs');
 
 // Only the external Firebase/provider boundaries are adapted. Express routes and business services are real.
-async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '' } = {}) {
+async function applicationFixture({ additionalOrigins = [], canonicalOrigin = '', shopier = false, nodeEnv = 'development', totpMode = 'required', configuredTotp = true, transientStore = 'firestore', appCheckMode = 'enforce', rateLimitStore = 'firestore' } = {}) {
   const server = http.createServer(); await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`, password = 'Fixture Password 2026!';
   const four = 'Fixture factor four!', five = 'Fixture factor five!', secret = crypto.randomBytes(20), alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -12,16 +12,20 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
   const totp = () => { const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000))); const h = crypto.createHmac('sha1', secret).update(counter).digest(), offset = h.at(-1) & 15; return String((h.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0'); };
   const saltFour = crypto.randomBytes(32), saltFive = crypto.randomBytes(32), pair = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   Object.assign(process.env, {
-    NODE_ENV: 'development', PUBLIC_BASE_URL: origin, PUBLIC_BACKEND_ORIGIN: origin, CANONICAL_ORIGIN: canonicalOrigin || origin, ALLOWED_ORIGINS: [origin, ...additionalOrigins].join(','),
-    APP_CHECK_MODE: 'enforce', PUBLIC_FIREBASE_APP_CHECK_SITE_KEY: 'integration-site-key', ADMIN_TOTP_MODE: 'required', RATE_LIMIT_STORE: 'firestore',
-    PUBLIC_FIREBASE_CONFIG: JSON.stringify({ apiKey: crypto.randomBytes(25).toString('base64url'), authDomain: 'zentra-integration.firebaseapp.com', projectId: 'zentra-integration', appId: '1:100:web:integration' }),
+    NODE_ENV: nodeEnv, PUBLIC_BASE_URL: origin, PUBLIC_BACKEND_ORIGIN: origin, CANONICAL_ORIGIN: canonicalOrigin || origin, ALLOWED_ORIGINS: [origin, ...additionalOrigins].join(','),
+    APP_CHECK_MODE: appCheckMode, ADMIN_TRANSIENT_STORE: transientStore, PUBLIC_FIREBASE_APP_CHECK_SITE_KEY: 'integration-site-key', ADMIN_TOTP_MODE: totpMode, RATE_LIMIT_STORE: rateLimitStore,
+    PUBLIC_FIREBASE_CONFIG: JSON.stringify({ apiKey: crypto.randomBytes(25).toString('base64url'), authDomain: 'zentra-integration.firebaseapp.com', projectId: 'zentra-integration', appId: '1:100:web:integration', storageBucket: 'zentra-integration.firebasestorage.app' }),
     FIREBASE_KEY: JSON.stringify({ type: 'service_account', project_id: 'zentra-integration', client_email: 'svc@zentra-integration.iam.gserviceaccount.com', private_key: pair.privateKey.export({ type: 'pkcs8', format: 'pem' }) }),
     ADMIN_EMAILS: 'owner@zentra.invalid', ADMIN_UIDS: 'owneruid',
     ADMIN_GATE_FOUR_SALT_HEX: saltFour.toString('hex'), ADMIN_GATE_FOUR_HASH_HEX: crypto.scryptSync(four, saltFour, 32).toString('hex'),
     ADMIN_GATE_FIVE_SALT_HEX: saltFive.toString('hex'), ADMIN_GATE_FIVE_HASH_HEX: crypto.scryptSync(five, saltFive, 32).toString('hex'),
     ADMIN_GATE_SIGNING_SECRET: crypto.randomBytes(48).toString('base64url'),
-    STORE_KEY_ACTIVE_KEY_ID: 'legacy-v1', STORE_KEY_ENCRYPTION_SECRET: crypto.randomBytes(48).toString('base64url'), STORE_KEY_FINGERPRINT_SECRET: crypto.randomBytes(48).toString('base64url'), ADMIN_TOTP_SECRET_BASE32: base32
+    STORE_KEY_ACTIVE_KEY_ID: 'legacy-v1', STORE_KEY_ENCRYPTION_SECRET: crypto.randomBytes(48).toString('base64url'), STORE_KEY_FINGERPRINT_SECRET: crypto.randomBytes(48).toString('base64url'), ADMIN_TOTP_SECRET_BASE32: configuredTotp ? base32 : ''
   });
+  if (shopier) Object.assign(process.env, { SHOPIER_ENABLED: 'true', SHOPIER_PAT: crypto.randomBytes(48).toString('base64url'),
+    SHOPIER_WEBHOOK_TOKEN: crypto.randomBytes(32).toString('hex'), SHOPIER_REFUND_WEBHOOK_TOKEN: crypto.randomBytes(32).toString('hex'),
+    SHOPIER_WEBHOOK_URL: `${origin}/api/payments/shopier/webhook`, WEQ_PUBLIC_BASE_URL: origin,
+    SHOPIER_SUCCESS_URL: `${origin}/odeme/sonuc`, SHOPIER_CANCEL_URL: `${origin}/odeme/iptal`, SHOPIER_HTTP_TIMEOUT_MS: '1000' });
   const db = memoryFirestore([
     ['users/member', { username: 'EmirHan', usernameLower: 'emirhan', email: 'member@zentra.invalid', firstName: 'Emir', lastName: 'Deneme', birthDate: '2000-01-01', storeBalanceKurus: 50000, storeProfile: { avatarId: '1' }, storeAccountStatus: 'active', createdAt: Date.now() }],
     ['users/owneruid', { username: 'ShopOwner', email: 'owner@zentra.invalid', storeBalanceKurus: 0, storeProfile: { avatarId: '1' } }],
@@ -48,7 +52,9 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     createCustomToken: async uid => { publicUser(uid); const token = 'fixture-custom-' + crypto.randomBytes(24).toString('base64url'); customTokens.set(token, uid); return token; },
     revokeRefreshTokens: async uid => { if (!users.has(uid)) throw notFound(); users.get(uid).generation++; }
   };
-  mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ enabled: true, db, auth, admin, appCheck: { verifyToken: async token => { if (token !== 'fixture-appcheck') throw new Error('invalid fixture appcheck'); return { app_id: 'fixture' }; } } }) });
+  const uploadedImages = new Map();
+  const firebaseAdmin = { ...admin, storage: () => ({ bucket: () => ({ file: name => ({ name, save: async (bytes, options) => uploadedImages.set(name, { bytes, options }), delete: async () => uploadedImages.delete(name) }) }) }) };
+  mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ enabled: true, app: {}, db, auth, admin: firebaseAdmin, appCheck: { verifyToken: async token => { if (token !== 'fixture-appcheck') throw new Error('invalid fixture appcheck'); return { app_id: 'fixture' }; } } }) });
   const originalFetch = global.fetch;
   global.fetch = async (url, options) => {
     if (!String(url).startsWith('https://identitytoolkit.googleapis.com/')) return originalFetch(url, options);
@@ -65,7 +71,7 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
   const cookieFrom = headers => headers.getSetCookie().map(value => value.split(';')[0]).filter(value => !value.endsWith('=')).join('; ');
   async function openAdmin(uid = 'owneruid') {
     const token = idToken(uid); let ticket = '', cookie = '';
-    for (const [step, extra] of [['email', {}], ['uid', {}], ['firebase-password', { password }], ['four', { password: four }], ['five', { password: five, totpCode: totp() }]]) {
+    for (const [step, extra] of [['email', {}], ['uid', {}], ['firebase-password', { password }], ['four', { password: four }], ['five', { password: five }], ['six', { totpCode: totp() }]]) {
       const result = await request(`/api/auth/admin/gate/step-${step}`, { token, cookie, method: 'POST', body: { ...(ticket ? { ticket } : {}), ...extra } });
       if (result.status !== 200) throw new Error(`gate ${step}: ${result.status} ${JSON.stringify(result.body)}`);
       ticket = result.body.ticket || ticket; cookie = [cookie, cookieFrom(result.headers)].filter(Boolean).join('; ');
@@ -77,7 +83,7 @@ async function applicationFixture({ additionalOrigins = [], canonicalOrigin = ''
     if (proof.status !== 200) return proof;
     return request(path, { ...session, method, body, headers: { 'x-admin-action': proof.body.proof.token } });
   }
-  return { app, origin, db, auth, users, password, four, five, totp, idToken, request, requests, openAdmin, adminWrite,
+  return { app, origin, db, auth, users, uploadedImages, password, four, five, totp, idToken, request, requests, openAdmin, adminWrite,
     exchangeCustomToken: token => { const uid = customTokens.get(token); if (!uid) throw notFound(); return { ...publicUser(uid), idToken: idToken(uid) }; },
     close: async () => { await new Promise(resolve => server.close(resolve)); global.fetch = originalFetch; } };
 }

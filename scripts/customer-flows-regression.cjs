@@ -17,6 +17,26 @@ function couponsState() {
 function couponLoader(state, api) {
   return functionFrom('public/js/store/storefront.js', 'async function loadCoupons(', 'function renderOrders()', { state, Date, storeApi: api, renderCouponCollection() {}, $: () => null, beginRegion: () => () => {}, friendlyStoreError: (e) => e.message });
 }
+
+test('initial catalog loading waits for runtime origin discovery before sending its request', async () => {
+  const state = { catalog: null };
+  const catalog = { products: [] };
+  let reads = 0, release, runtimeReady = false;
+  const runtime = new Promise((resolve) => { release = () => { runtimeReady = true; resolve(); }; });
+  const load = functionFrom('public/js/store/storefront.js', 'async function loadCatalog(', 'export async function bootStorefront(', {
+    state, $: () => null, beginRegion: () => () => {},
+    loadStoreRuntimeConfig: () => runtime,
+    loadStoreCatalog: async () => { assert.equal(runtimeReady, true); reads++; return catalog; },
+    storeApi() {}, renderCatalog() {}, renderCart() {}, renderAccountHeader() {},
+    showNotice: (_tone, _title, message) => { throw new Error(message); }, friendlyStoreError: error => error.message
+  });
+  const loading = load();
+  assert.equal(reads, 0);
+  release();
+  await loading;
+  assert.equal(reads, 1);
+  assert.equal(state.catalog, catalog);
+});
 test('forced coupon refresh shares one follow-up request after an existing read', async () => {
   const state = couponsState(); let reads = 0, release;
   const load = couponLoader(state, () => ++reads === 1 ? new Promise((resolve) => { release = resolve; }) : Promise.resolve({ promotions: [{ code: 'FRESH' }] }));

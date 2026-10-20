@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { identityRequest } = require('./firebaseIdentityClient');
 const env = require('../config/env');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const {
@@ -60,7 +61,7 @@ function securityPosture() {
   const totp = totpConfiguration();
   const secureSessionReady = cookie.httpOnly === true && cookie.secure === true && String(cookie.sameSite || '').toLowerCase() === 'strict';
   const rateLimitReady = Number(RATE_LIMIT_POLICY?.adminAuth?.windowMs || 0) > 0
-    && Number(RATE_LIMIT_POLICY?.adminAuth?.max || 0) > 0 && env.security.rateLimitStore === 'firestore';
+    && Number(RATE_LIMIT_POLICY?.adminAuth?.max || 0) > 0 && ['memory', 'firestore'].includes(env.security.rateLimitStore);
   const appCheckReady = env.firebase.appCheckMode === 'enforce' && !!env.firebase.appCheckSiteKey;
   const totpReady = totp.required && totp.configured;
   const checks = [
@@ -74,7 +75,7 @@ function securityPosture() {
     { key: 'signed-access', label: 'İptal edilebilir yönetim oturumu', weight: 8, earned: signingReady ? 8 : 0, ok: signingReady },
     { key: 'strict-csp', label: 'Sıkı içerik güvenliği', weight: 4, earned: env.security.strictCsp ? 4 : 0, ok: env.security.strictCsp },
     { key: 'secure-session', label: 'Korumalı yönetici oturumu', weight: 5, earned: secureSessionReady ? 5 : 0, ok: secureSessionReady },
-    { key: 'rate-limit', label: 'Dağıtık giriş deneme sınırı', weight: 6, earned: rateLimitReady ? 6 : 0, ok: rateLimitReady },
+    { key: 'rate-limit', label: 'Giriş deneme sınırı', weight: 6, earned: rateLimitReady ? 6 : 0, ok: rateLimitReady },
     { key: 'app-check', label: 'Zorunlu uygulama doğrulaması', weight: 7, earned: appCheckReady ? 7 : 0, ok: appCheckReady }
   ];
   const score = checks.reduce((total, item) => total + item.earned, 0);
@@ -82,7 +83,9 @@ function securityPosture() {
   return {
     score,
     minimum,
-    ready: score >= minimum,
+    ready: firebaseReady && emailReady && uidReady && fourthReady && fifthReady && signingReady && totpReady
+      && env.security.strictCsp && (env.nodeEnv !== 'production' || secureSessionReady)
+      && rateLimitReady && (env.firebase.appCheckMode !== 'enforce' || appCheckReady),
     level: score >= 96 ? 'çok güçlü' : score >= minimum ? 'güçlü' : 'yapılandırma gerekli',
     checks: checks.map(({ key, label, weight, earned, ok }) => ({ key, label, weight, earned, ok }))
   };
@@ -106,7 +109,7 @@ function verifyAdminGateFactorProof(req, { identity = {}, gateSession = '', tick
   const expiresAt = Math.max(0, Number(sealedStep?.expiresAt || 0) || 0);
   const stage = Number(sealedStep?.stage || 0);
   if (!sealedStep || !expectedUid || !expectedEmail || !/^[A-Za-z0-9_-]{32,80}$/.test(expectedSession)) return null;
-  if (![4, 5].includes(stage) || !issuedAt || issuedAt > now + 30_000 || expiresAt <= now
+  if (![4, 5, 6].includes(stage) || !issuedAt || issuedAt > now + 30_000 || expiresAt <= now
     || expiresAt - issuedAt > GATE_FACTOR_TTL_MS + 1_000) return null;
   if (String(sealedStep.uid || '') !== expectedUid
     || String(sealedStep.email || '').trim().toLowerCase() !== expectedEmail
@@ -139,8 +142,9 @@ async function resolveAutomaticAdminIdentity() {
   let user;
   try {
     user = await auth.getUser(uids[0]);
-  } catch (_) {
-    throw gateError('ADMIN_IDENTITY_NOT_FOUND');
+  } catch (error) {
+    if (error?.code === 'auth/user-not-found') throw gateError('ADMIN_IDENTITY_NOT_FOUND');
+    throw gateError('AUTH_UNAVAILABLE', 503);
   }
 
   const email = String(user?.email || '').trim().toLowerCase();
@@ -154,30 +158,12 @@ async function resolveAutomaticAdminIdentity() {
 async function verifyFirebasePassword(identity = {}, password = '') {
   const value = String(password || '');
   if (value.length < 6 || value.length > 4096) throw gateError('ADMIN_FIREBASE_PASSWORD_INVALID', 403);
-  const apiKey = String(env.firebase.publicConfig.apiKey || '').trim();
-  if (!apiKey) throw gateError('AUTH_UNAVAILABLE', 503);
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
-  let response;
-  let payload;
-  try {
-    response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ email: identity.email, password: value, returnSecureToken: true }),
-      signal: controller.signal
-    });
-    payload = await response.json().catch(() => null);
-  } catch (_) {
-    throw gateError('AUTH_UNAVAILABLE', 503);
-  } finally {
-    clearTimeout(timer);
-  }
-
+  const { ok, status, payload } = await identityRequest('signInWithPassword', { email: identity.email, password: value, returnSecureToken: true });
+  if (status === 429 || payload?.error?.message === 'TOO_MANY_ATTEMPTS_TRY_LATER') throw gateError('TOO_MANY_REQUESTS', 429);
+  if (status >= 500) throw gateError('AUTH_UNAVAILABLE', 503);
   const uid = String(payload?.localId || '').trim();
   const email = String(payload?.email || '').trim().toLowerCase();
-  if (!response.ok || uid !== identity.uid || email !== identity.email) throw gateError('ADMIN_FIREBASE_PASSWORD_INVALID', 403);
+  if (!ok || uid !== identity.uid || email !== identity.email) throw gateError('ADMIN_FIREBASE_PASSWORD_INVALID', 403);
 
   return {
     gateSession: crypto.randomBytes(24).toString('base64url'),

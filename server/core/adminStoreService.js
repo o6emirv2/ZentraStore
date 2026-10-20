@@ -1,5 +1,5 @@
 'use strict';
-const { readStoredBalance } = require('./storeMoney');
+const { readStoredBalance, checkedBalance } = require('./storeMoney');
 
 const crypto = require('crypto');
 const { findUsernameProfiles } = require('./storeUsername');
@@ -13,9 +13,10 @@ const { recordMutationAudit } = require('./storeMutationAudit');
 const { overviewCan, projectAdminOverview } = require('./adminOverviewPolicy');
 
 const ACCOUNT_STATUSES = Object.freeze(['active', 'purchase_blocked', 'suspended']);
-const STAFF_ROLES = Object.freeze(['owner', 'finance', 'inventory', 'orders', 'support', 'viewer']);
+const STAFF_ROLES = Object.freeze(['owner', 'admin', 'finance', 'inventory', 'orders', 'support', 'viewer']);
 const ROLE_PERMISSIONS = Object.freeze({
   owner: Object.freeze(['*']),
+  admin: Object.freeze(['*']),
   finance: Object.freeze([
     'store.overview.read', 'store.orders.read', 'store.users.read', 'store.wallet.read', 'store.wallet.write',
     'store.audit.read', 'store.security.read'
@@ -36,6 +37,13 @@ const ROLE_PERMISSIONS = Object.freeze({
     'store.overview.read', 'store.catalog.read', 'store.content.read'
   ])
 });
+
+function staffRole(row = {}) {
+  const role = STAFF_ROLES.includes(row.role) && row.role !== 'owner' ? row.role : 'viewer';
+  // Legacy unknown roles must not silently become newly privileged accounts.
+  if (role === 'admin' && (!Number.isSafeInteger(row.policyVersion) || row.policyVersion < 1)) return 'viewer';
+  return role;
+}
 
 const USER_SUMMARY_TTL_MS = 45_000;
 const WALLET_SUMMARY_TTL_MS = 45_000;
@@ -110,6 +118,7 @@ function publicAdminUser(authUser = {}, profile = {}, commerce = {}) {
     disabled: authUser.disabled === true,
     accountStatus: status,
     balanceKurus: balance(profile),
+    walletDebtKurus: checkedBalance(profile.storeWalletDebtKurus || 0),
     createdAt: maxTimestamp(profile.createdAt, profile.storeCreatedAt, authCreatedAt),
     lastActiveAt: maxTimestamp(profile.storeUpdatedAt, profile.updatedAt, authLastSignInAt, commerce.lastOrderAt),
     lastSignInAt: authLastSignInAt,
@@ -129,6 +138,7 @@ async function profileForUid(db, uid) {
 function commerceAggregate(rows = []) {
   const result = { totalOrders: 0, totalSpendKurus: 0, refundedKurus: 0, lastOrderAt: 0 };
   for (const order of rows) {
+    if (order.orderType === 'wallet_topup') continue;
     result.totalOrders += 1;
     const amount = Math.max(0, Math.trunc(Number(order.totalKurus) || 0));
     const status = safeText(order.status, 40).toLowerCase();
@@ -473,19 +483,20 @@ async function getAdminOverview(policy = null) {
   const orders = ordersSnapshot.docs.map((doc) => doc.data() || {});
   const totalOrders = Math.max(orders.length, Number(ordersCount?.data()?.count || 0));
   const today = turkeyDateKey();
-  const confirmed = orders.filter((order) => Number(order.approvedAt || 0) > 0 || ['paid', 'processing', 'delivery_pending', 'delivered', 'refunded'].includes(order.status));
-  const delivered = orders.filter((order) => order.status === 'delivered');
+  const purchases = orders.filter((order) => order.orderType !== 'wallet_topup');
+  const confirmed = purchases.filter((order) => Number(order.approvedAt || 0) > 0 || ['paid', 'processing', 'delivery_pending', 'delivered', 'refunded'].includes(order.status));
+  const delivered = purchases.filter((order) => order.status === 'delivered');
   const awaiting = orders.filter((order) => ['awaiting_payment', 'payment_review'].includes(order.status)).length;
   const processing = orders.filter((order) => ['paid', 'processing', 'delivery_pending'].includes(order.status)).length;
-  const refunded = orders.filter((order) => order.status === 'refunded' || Number(order.walletRefundedAt || 0) > 0);
+  const refunded = purchases.filter((order) => order.status === 'refunded' || Number(order.walletRefundedAt || 0) > 0 || Number(order.shopier?.refundedKurus || 0) > 0);
   const cancelled = orders.filter((order) => order.status === 'cancelled').length;
   const paymentRejected = orders.filter((order) => order.status === 'payment_rejected').length;
   const deliveryFailures = orders.filter((order) => order.delivery?.status === 'failed').length;
   const grossRevenueKurus = confirmed.reduce((sum, order) => sum + Math.max(0, Number(order.totalKurus) || 0), 0);
   const deliveredRevenueKurus = delivered.reduce((sum, order) => sum + Math.max(0, Number(order.totalKurus) || 0), 0);
-  const refundedKurus = refunded.reduce((sum, order) => sum + Math.max(0, Number(order.walletRefundedKurus || (order.status === 'refunded' ? order.totalKurus : 0)) || 0), 0);
+  const refundedKurus = refunded.reduce((sum, order) => sum + Math.max(0, Number(order.shopier?.refundedKurus || order.walletRefundedKurus || (order.status === 'refunded' ? order.totalKurus : 0)) || 0), 0);
   const telegramOrders = orders.filter((order) => order.salesChannel === 'telegram' || order.paymentMethod === 'telegram').length;
-  const automaticOrders = orders.filter((order) => !(order.salesChannel === 'telegram' || order.paymentMethod === 'telegram')).length;
+  const automaticOrders = purchases.filter((order) => !(order.salesChannel === 'telegram' || order.paymentMethod === 'telegram')).length;
   const configuration = env.configurationReport();
   const inventory = inventoryReadiness();
   const activeProducts = catalog.products.filter((product) => product.active !== false && product.archived !== true);
@@ -586,6 +597,7 @@ async function listAuditLogs(limit = 100, targetUid = '') {
   const safeTargetUid = safeText(targetUid, 160);
   return [
     ...adminSnapshot.docs.map((doc) => normalizeAudit(doc, 'admin')),
+    ...require('./adminTransientStore').recentAudits().map(row => normalizeAudit({ id: row.id, data: () => row }, 'admin')),
     ...storeSnapshot.docs.map((doc) => normalizeAudit(doc, 'store'))
   ].filter((row) => !safeTargetUid || row.targetUid === safeTargetUid || row.actor?.uid === safeTargetUid)
     .sort((left, right) => right.createdAt - left.createdAt).slice(0, safeLimit);
@@ -596,7 +608,7 @@ async function listStaff() {
   const snapshot = await db.collection('adminUsers').limit(100).get();
   const rows = snapshot.docs.map((doc) => {
     const row = doc.data() || {};
-    const role = STAFF_ROLES.includes(row.role) ? row.role : 'viewer';
+    const role = staffRole(row);
     return {
       uid: safeText(row.uid || doc.id, 160),
       email: safeText(row.email, 254).toLowerCase(),
@@ -618,16 +630,16 @@ async function resolveStaffPolicy(uid = '', email = '') {
   if (!safeUid || !safeEmail) return null;
   if (env.adminUids.length === 1 && env.adminEmails.length === 1
     && env.adminUids[0] === safeUid && env.adminEmails[0] === safeEmail) {
-    return { uid: safeUid, email: safeEmail, role: 'owner', permissions: ROLE_PERMISSIONS.owner, active: true, systemOwner: true };
+    return { uid: safeUid, email: safeEmail, role: 'owner', permissions: ROLE_PERMISSIONS.owner, active: true, systemOwner: true, policyVersion: 0 };
   }
   const { db } = firebaseStore();
   const snapshot = await db.collection('adminUsers').doc(safeUid).get();
   if (!snapshot.exists) return null;
   const row = snapshot.data() || {};
-  const role = STAFF_ROLES.includes(row.role) && row.role !== 'owner' ? row.role : 'viewer';
+  const role = staffRole(row);
   const rowEmail = safeText(row.email, 254).toLowerCase();
   if (rowEmail !== safeEmail || row.active === false || row.disabled === true || row.revoked === true) return null;
-  return { uid: safeUid, email: safeEmail, role, permissions: ROLE_PERMISSIONS[role], active: true, systemOwner: false };
+  return { uid: safeUid, email: safeEmail, role, permissions: ROLE_PERMISSIONS[role], active: true, systemOwner: false, policyVersion: Math.max(0, Number(row.policyVersion || 0)) };
 }
 
 function staffHasPermission(policy = null, permission = '') {
@@ -636,32 +648,37 @@ function staffHasPermission(policy = null, permission = '') {
 }
 
 async function upsertStaff({ uid = '', email = '', role = 'viewer', active = true, actor = {} } = {}) {
-  const safeUid = safeText(uid, 160);
-  const safeEmail = safeText(email, 254).toLowerCase();
+  const safeUid = safeText(uid, 160), safeEmail = safeText(email, 254).toLowerCase();
   const safeRole = safeText(role, 30).toLowerCase();
-  if (!safeUid || !safeEmail.includes('@')) throw serviceError('ADMIN_STAFF_IDENTITY_INVALID', 400);
+  const actorUid = safeText(actor.uid, 160), actorEmail = safeText(actor.email, 254).toLowerCase();
+  if (!/^[^/\\<>\s]{1,128}$/.test(safeUid) || ['.', '..'].includes(safeUid) || !/^\S+@\S+\.\S+$/.test(safeEmail)) throw serviceError('ADMIN_STAFF_IDENTITY_INVALID', 400);
   if (env.adminUids.includes(safeUid) || env.adminEmails.includes(safeEmail)) throw serviceError('ADMIN_OWNER_IMMUTABLE', 409);
-  if (!STAFF_ROLES.includes(safeRole) || safeRole === 'owner') throw serviceError('ADMIN_STAFF_ROLE_INVALID', 400);
+  if (safeUid === actorUid) throw serviceError('ADMIN_STAFF_SELF_CHANGE_FORBIDDEN', 403);
+  if (!STAFF_ROLES.includes(safeRole) || safeRole === 'owner' || typeof active !== 'boolean') throw serviceError('ADMIN_STAFF_ROLE_INVALID', 400);
   const { db, auth } = firebaseStore();
   let user;
   try { user = await auth.getUser(safeUid); } catch (_) { throw serviceError('STORE_ACCOUNT_NOT_FOUND', 404); }
   if (String(user.email || '').toLowerCase() !== safeEmail) throw serviceError('ADMIN_STAFF_IDENTITY_MISMATCH', 409);
-  const now = Date.now();
-  const row = {
-    uid: safeUid,
-    email: safeEmail,
-    role: safeRole,
-    permissions: ROLE_PERMISSIONS[safeRole],
-    active: active === true,
-    disabled: active !== true,
-    updatedAt: now,
-    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
-  };
-  const batch = db.batch();
-  batch.set(db.collection('adminUsers').doc(safeUid), row, { merge: true });
-  recordMutationAudit(batch, db, 'store.staff.update', actor, { uid: safeUid, role: safeRole, active: row.active });
-  await batch.commit();
-  return row;
+  if (active && (user.disabled === true || user.emailVerified !== true)) throw serviceError('ADMIN_STAFF_ACCOUNT_NOT_READY', 409);
+  const ownerActor = env.adminUids.length === 1 && env.adminEmails.length === 1 && actorUid === env.adminUids[0] && actorEmail === env.adminEmails[0];
+  const ref = db.collection('adminUsers').doc(safeUid);
+  return db.runTransaction(async transaction => {
+    // A concurrent actor revocation conflicts with this read before a new grant commits.
+    const actorSnapshot = ownerActor ? null : await transaction.get(db.collection('adminUsers').doc(actorUid || '_invalid'));
+    const actorPolicy = actorSnapshot?.exists ? actorSnapshot.data() : null;
+    if (!ownerActor && (!actorPolicy || staffRole(actorPolicy) !== 'admin' || actorPolicy.email !== actorEmail
+      || actorPolicy.active === false || actorPolicy.disabled === true || actorPolicy.revoked === true)) throw serviceError('ADMIN_PERMISSION_REQUIRED', 403);
+    const previous = await transaction.get(ref), before = previous.exists ? previous.data() : {};
+    const row = { uid: safeUid, email: safeEmail, role: safeRole, permissions: ROLE_PERMISSIONS[safeRole],
+      active, disabled: !active, revoked: !active, policyVersion: Math.max(0, Number(before.policyVersion || 0)) + 1,
+      updatedAt: Date.now(), updatedBy: { uid: actorUid, email: actorEmail } };
+    transaction.set(ref, row, { merge: true });
+    recordMutationAudit(transaction, db, 'store.staff.update', actor, {
+      uid: safeUid, before: { role: before.role || 'none', active: previous.exists && before.active !== false && before.disabled !== true && before.revoked !== true, policyVersion: before.policyVersion || 0 },
+      after: { role: safeRole, active, policyVersion: row.policyVersion }
+    });
+    return row;
+  });
 }
 
 function walletLedgerId(scope = 'wallet') {

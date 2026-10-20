@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 13,
   "currency": "TRY",
   "telegramUsername": "ZENTRA_STORE",
   "products": [
@@ -259,7 +259,6 @@
       ],
       "badgeKey": "rooted"
     },
-
     {
       "id": "ios-kingmod",
       "platform": "ios",
@@ -692,6 +691,450 @@
           "label": "Aylık",
           "duration": "30 Gün",
           "priceKurus": 140000
+        }
+      ]
+    },
+    {
+      "id": "ios-tracex-delta-force",
+      "platform": "ios",
+      "game": "delta-force",
+      "categoryKey": "delta-force-ios",
+      "category": "DELTA FORCE iOS",
+      "name": "TRACEX iOS DELTA FORCE",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/tracex.jpeg",
+      "accent": "104,151,255",
+      "description": "TRACEX iOS DELTA FORCE için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 600,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ]
+    },
+    {
+      "id": "ios-tracex-valorant",
+      "platform": "ios",
+      "game": "valorant",
+      "categoryKey": "valorant-ios",
+      "category": "VALORANT iOS",
+      "name": "TRACEX iOS VALORANT",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/tracex.jpeg",
+      "accent": "104,151,255",
+      "description": "TRACEX iOS VALORANT için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 601,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ]
+    },
+    {
+      "id": "ios-cloud-codm",
+      "platform": "ios",
+      "game": "codm",
+      "categoryKey": "codm-ios",
+      "category": "CODM iOS",
+      "name": "CLOUD CODM iOS",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/cloud-codm.jpeg",
+      "accent": "104,151,255",
+      "description": "CLOUD CODM iOS için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 602,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ]
+    },
+    {
+      "id": "android-gbd-codm",
+      "platform": "android",
+      "game": "codm",
+      "categoryKey": "codm-android",
+      "category": "CODM Android",
+      "name": "GBD CODM ANDROID",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/gbd-codm.jpeg",
+      "accent": "104,151,255",
+      "description": "GBD CODM ANDROID için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 603,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 65000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 130000
+        }
+      ]
+    },
+    {
+      "id": "android-bloodstrike",
+      "platform": "android",
+      "game": "bloodstrike",
+      "categoryKey": "bloodstrike-android",
+      "category": "BLOODSTRIKE Android",
+      "name": "BLOODSTRIKE ANDROID",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/bloodstrike.png",
+      "accent": "104,151,255",
+      "description": "BLOODSTRIKE ANDROID için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 604,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 145000
+        }
+      ]
+    },
+    {
+      "id": "android-standoff-2",
+      "platform": "android",
+      "game": "standoff-2",
+      "categoryKey": "standoff-2-android",
+      "category": "STANDOFF 2 Android",
+      "name": "STANDOFF 2 ANDROID",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/standoff-2-android.webp",
+      "accent": "104,151,255",
+      "description": "STANDOFF 2 ANDROID için haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 605,
+      "features": [],
+      "plans": [
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 100000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 200000
+        }
+      ]
+    },
+    {
+      "id": "ios-standoff-2",
+      "platform": "ios",
+      "game": "standoff-2",
+      "categoryKey": "standoff-2-ios",
+      "category": "STANDOFF 2 iOS",
+      "name": "STANDOFF 2 iOS",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/standoff-2-ios.webp",
+      "accent": "104,151,255",
+      "description": "STANDOFF 2 iOS için haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 606,
+      "features": [],
+      "plans": [
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 100000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 200000
+        }
+      ]
+    },
+    {
+      "id": "ios-fluorite-mlbb",
+      "platform": "ios",
+      "game": "mobile-legends",
+      "categoryKey": "mobile-legends-ios",
+      "category": "MOBILE LEGENDS iOS",
+      "name": "FLUORITE iOS MLBB",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/fluorite.webp",
+      "accent": "104,151,255",
+      "description": "FLUORITE iOS MLBB için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 607,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 30000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 85000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 160000
+        }
+      ]
+    },
+    {
+      "id": "android-king-mod-8ball-pool",
+      "platform": "android",
+      "game": "8ball-pool",
+      "categoryKey": "8ball-pool-android",
+      "category": "8BALL POOL Android",
+      "name": "KING MOD 8BALL POOL",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/king-mod-8ball-pool.webp",
+      "accent": "104,151,255",
+      "description": "KING MOD 8BALL POOL için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 608,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 20000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 65000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 130000
+        }
+      ]
+    },
+    {
+      "id": "ios-wizard-8ball-pool",
+      "platform": "ios",
+      "game": "8ball-pool",
+      "categoryKey": "8ball-pool-ios",
+      "category": "8BALL POOL iOS",
+      "name": "WIZARD iOS 8BALL POOL",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/wizard-8ball-pool.webp",
+      "accent": "104,151,255",
+      "description": "WIZARD iOS 8BALL POOL için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 609,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 70000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 140000
+        }
+      ]
+    },
+    {
+      "id": "android-drip-client-free-fire",
+      "platform": "android",
+      "game": "free-fire",
+      "categoryKey": "free-fire-android",
+      "category": "FREE FIRE Android",
+      "name": "DRIP CLIENT FREE FIRE",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/drip-client.webp",
+      "accent": "104,151,255",
+      "description": "DRIP CLIENT FREE FIRE için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 610,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 60000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 125000
+        }
+      ]
+    },
+    {
+      "id": "ios-fluorite-free-fire",
+      "platform": "ios",
+      "game": "free-fire",
+      "categoryKey": "free-fire-ios",
+      "category": "FREE FIRE iOS",
+      "name": "FLUORITE iOS FREE FIRE",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/fluorite.webp",
+      "accent": "104,151,255",
+      "description": "FLUORITE iOS FREE FIRE için günlük, haftalık ve aylık lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 611,
+      "features": [],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 80000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 160000
         }
       ]
     }

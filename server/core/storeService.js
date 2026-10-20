@@ -1,6 +1,7 @@
 'use strict';
 
 const { normalizeFeatures } = require('./storeProductSchema');
+const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const crypto = require('crypto');
 const env = require('../config/env');
 const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
@@ -91,7 +92,9 @@ function normalizeAvatarId(value, allowed, fallback = '1') {
 function normalizeStoreProfile(profile = {}, authUser = {}) {
   const storeProfile = profile.storeProfile && typeof profile.storeProfile === 'object' ? profile.storeProfile : {};
   const username = safeText(profile.username || profile.displayName || authUser.name || authUser.email || 'ZENTRA STORE Üyesi', 40);
-  const accountStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
+  const storedStatus = ACCOUNT_STATUSES.includes(profile.storeAccountStatus) ? profile.storeAccountStatus : 'active';
+  const walletDebtKurus = checkedBalance(profile.storeWalletDebtKurus || 0);
+  const accountStatus = storedStatus === 'active' && walletDebtKurus > 0 ? 'purchase_blocked' : storedStatus;
   const avatarId = normalizeAvatarId(storeProfile.avatarId || profile.storeAvatarId, AVATAR_IDS);
   const avatar = getAvatarById(avatarId);
   const changes = profile.profileChangeCounts && typeof profile.profileChangeCounts === 'object'
@@ -115,6 +118,7 @@ function normalizeStoreProfile(profile = {}, authUser = {}) {
     avatarId,
     avatarUrl: avatar?.image || '',
     balanceKurus: clampBalance(profile.storeBalanceKurus ?? profile.storeWallet?.balanceKurus ?? 0),
+    walletDebtKurus, walletTopupAllowed: storedStatus === 'active',
     accountStatus,
     profileChanges: {
       username: changeStatus('username', 3),
@@ -275,12 +279,17 @@ function publicOrder(data = {}, id = '') {
   const status = ORDER_STATUSES.includes(data.status) ? data.status : 'awaiting_payment';
   const deliveryItemCount = Math.max(0, Math.min(100, Math.trunc(Number(delivery.itemCount || 0) || 0)));
   const deliveryVisible = deliveryItemCount > 0 && Number(data.approvedAt || 0) > 0 && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(status);
-  const cancellable = status === 'awaiting_payment';
+  const cancellable = status === 'awaiting_payment' && data.paymentMethod !== 'shopier';
   return {
     id: id || safeText(data.id, 160),
     orderNumber: safeText(data.orderNumber, 40),
     status,
-    paymentMethod: data.paymentMethod === 'wallet' ? 'wallet' : 'telegram',
+    paymentMethod: ['wallet', 'shopier'].includes(data.paymentMethod) ? data.paymentMethod : 'telegram',
+    orderType: data.orderType === 'wallet_topup' ? 'wallet_topup' : 'purchase',
+    ...(data.orderType === 'wallet_topup' ? { walletTopup: {
+      requestedKurus: clampBalance(data.walletTopup?.requestedKurus), netAppliedKurus: clampBalance(data.walletTopup?.netAppliedKurus),
+      balanceAddedKurus: clampBalance(data.walletTopup?.balanceAddedKurus), debtSettledKurus: clampBalance(data.walletTopup?.debtSettledKurus),
+      settledAt: Math.max(0, Number(data.walletTopup?.settledAt || 0)) } } : {}),
     items: Array.isArray(data.items) ? data.items.map((item) => ({
       productId: safeText(item.productId, 80),
       productName: safeText(item.productName, 80),
@@ -301,7 +310,14 @@ function publicOrder(data = {}, id = '') {
       discountKurus: clampBalance(data.promotion.discountKurus)
     } : null,
     totalKurus: clampBalance(data.totalKurus),
-    paymentState: data.paymentMethod === 'wallet' ? 'captured' : 'external',
+    paymentState: data.paymentMethod === 'shopier' ? safeText(data.paymentState || 'pending', 30) : data.paymentMethod === 'wallet' ? 'captured' : 'external',
+    paidAt: Math.max(0, Number(data.paidAt || 0)),
+    shopier: data.paymentMethod === 'shopier' ? {
+      orderId: safeText(data.shopier?.orderId, 100), productId: safeText(data.shopier?.productId, 100),
+      state: safeText(data.shopier?.state, 40), lastError: safeText(data.shopier?.lastError, 80),
+      refundStatus: safeText(data.shopier?.refundStatus, 30), refundedKurus: clampBalance(data.shopier?.refundedKurus),
+      verifiedAt: Math.max(0, Number(data.shopier?.verifiedAt || 0)), linkClosedAt: Math.max(0, Number(data.shopier?.linkClosedAt || 0))
+    } : null,
     deliveryVisible,
     cancellable,
     approvedAt: Math.max(0, Number(data.approvedAt || 0) || 0),
@@ -540,7 +556,9 @@ function adminOrder(data = {}, id = '') {
     uid: safeText(data.uid, 160),
     email: maskEmail(data.email),
     username: safeText(data.username, 80),
-    availableTransitions: ORDER_TRANSITIONS[status] || [status],
+    availableTransitions: data.paymentMethod === 'shopier'
+      ? (Number(data.paidAt || 0) > 0 && data.paymentState === 'paid' && status !== 'delivered' ? ['delivery_pending', 'delivered'] : [status])
+      : ORDER_TRANSITIONS[status] || [status],
     delivery: {
       status: safeText(delivery.status || (status === 'delivered' ? 'delivered' : 'pending'), 30),
       title: safeText(delivery.title || '', 100),
@@ -595,6 +613,7 @@ async function cancelOrderByUser({ uid = '', orderId = '', reason = '' } = {}) {
       result = publicOrder(current, safeOrderId);
       return;
     }
+    if (current.paymentMethod === 'shopier') throw serviceError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
     const canCancel = currentStatus === 'awaiting_payment' || (currentStatus === 'paid' && current.paymentMethod === 'wallet');
     if (!canCancel) throw serviceError('STORE_ORDER_CANCELLATION_NOT_ALLOWED', 409);
     const promotionRelease = await readPromotionReleaseInTransaction({
@@ -793,6 +812,14 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
   if (!ORDER_STATUSES.includes(requestedStatus)) throw serviceError('STORE_ORDER_STATUS_INVALID', 400);
   const { db, admin } = firebaseStore();
   const orderRef = db.collection('storeOrders').doc(safeOrderId);
+  const paymentCheck = await orderRef.get();
+  if (paymentCheck.data()?.paymentMethod === 'shopier') {
+    if (!['delivery_pending', 'delivered'].includes(requestedStatus) || manualDeliveryValues.length) throw serviceError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
+    const { deliverShopierOrder } = require('./shopierService');
+    await deliverShopierOrder(safeOrderId, { actor: { uid: actorUid, email: actorEmail, source: 'admin' } });
+    const refreshed = await orderRef.get();
+    return { ...adminOrder(refreshed.data(), safeOrderId), previousStatus: paymentCheck.data().status };
+  }
   let result = null;
   let stockChanged = false;
   let previousStatus = '';
@@ -962,6 +989,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
 }
 
 async function publicCatalog() {
+  const shopierReadiness = require('../config/shopier').shopierReadiness();
   const catalog = await getEffectiveCatalog({ includeInactive: false });
   const firebase = initFirebaseAdmin();
   let stockVerified = true;
@@ -1001,7 +1029,7 @@ async function publicCatalog() {
   const products = (stocked.products || []).map((product) => ({
     id: safeText(product.id, 80),
     platform: product.platform === 'ios' ? 'ios' : 'android',
-    game: ['pubg', 'oxide'].includes(product.game) ? product.game : 'other',
+    game: GAME_KEYS.includes(product.game) ? product.game : 'other',
     inventoryType: product.inventoryType === 'account' ? 'account' : 'license',
     fulfillmentMode: product.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
     automaticEnabled: product.automaticEnabled !== false && product.fulfillmentMode !== 'telegram_only',
@@ -1034,6 +1062,11 @@ async function publicCatalog() {
     currency: 'TRY',
     telegramUsername: safeText(stocked.telegramUsername, 40).replace(/^@+/, '').replace(/[^a-zA-Z0-9_]/g, ''),
     storefront,
+    payments: { shopier: { status: stocked.storefront?.maintenance === true ? 'maintenance' : !shopierReadiness.enabled ? 'disabled' : !shopierReadiness.configured ? 'unavailable' : 'ready',
+      available: shopierReadiness.available && deliveryReady
+      && configuredServices.automaticDelivery !== false && stocked.storefront?.maintenance !== true,
+      topupAvailable: shopierReadiness.available && stocked.storefront?.maintenance !== true,
+      topupLimits: require('./shopierWallet').TOPUP_LIMITS } },
     stockVerified,
     badgeOptions: (Array.isArray(stocked.badgeOptions) ? stocked.badgeOptions : []).map((badge) => ({
       key: safeText(badge.key, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''),
@@ -1047,6 +1080,7 @@ async function publicCatalog() {
 }
 
 module.exports = {
+  normalizeCartIntent, normalizeCart, orderNumber, publicOrder, adminOrder,
   normalizeStoreProfile,
   publicCatalog,
   readAccount,

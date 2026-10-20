@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v78';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v83r1';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
@@ -32,6 +32,14 @@ export function startAmbientCanvas(canvas) {
 function errorMessage(payload = {}, status = 0) {
   const code = String((typeof payload.error === 'object' ? payload.error?.code : payload.error) || payload.code || '');
   const messages = {
+    SHOPIER_PROVIDER_ACTION_REQUIRED: 'Shopier ödemesi veya iadesi yerel durum seçimiyle değiştirilemez. Shopier kaydını doğrulayın; iadeyi Shopier panelinden yönetin.',
+    SHOPIER_PAYMENT_NOT_VERIFIED: 'Ödeme Shopier kaydıyla doğrulanmadan teslimat açılamaz.',
+    SHOPIER_CREATION_REVIEW_REQUIRED: 'Ödeme bağlantısının oluşturulma sonucu kesinleştirilemedi. Shopier ürün kaydını kontrol edin; yeni ürün oluşturmayın.',
+    SHOPIER_CONFIGURATION_INVALID: 'Render Shopier yapılandırması eksik veya hatalı.',
+    SHOPIER_AUTH_FAILED: 'Shopier bağlantı yetkisi doğrulanamadı. Mağaza desteğine başvurun.',
+    SHOPIER_REQUEST_REJECTED: 'Shopier ödeme bağlantısını kabul etmedi. Bu denemede ödeme bağlantısı oluşturulmadı.',
+    SHOPIER_API_ERROR: 'Shopier bağlantısı tamamlanamadı. Aynı siparişi yeniden kontrol edin.',
+    SHOPIER_CUSTOMER_MISMATCH: 'Shopier ödeme e-postası ile sipariş hesabı eşleşmiyor. Tahsilatı ve müşteriyi Shopier panelinden kontrol edin.',
     ADMIN_ACTION_REQUIRED: 'İşlem doğrulaması eksik. Sayfayı yenileyip parolanızla tekrar doğrulayın.',
     ADMIN_ACTION_INVALID: 'İşlem onayı doğrulanamadı. Parolanızla yeniden doğrulayın.',
     ADMIN_ACTION_MISMATCH: 'Onaylanan işlem bilgileri değişti. Güncel bilgileri kontrol edip yeniden onaylayın.',
@@ -62,6 +70,8 @@ function errorMessage(payload = {}, status = 0) {
     ADMIN_TOTP_UNAVAILABLE: 'Tek kullanımlık yönetici doğrulaması şu anda kullanılamıyor.',
     ADMIN_STAFF_IDENTITY_INVALID: 'Personel e-posta adresi veya hesap kimliği geçerli değil.',
     ADMIN_STAFF_IDENTITY_MISMATCH: 'Personelin e-posta adresi Firebase hesabındaki adresle eşleşmiyor.',
+    ADMIN_STAFF_SELF_CHANGE_FORBIDDEN: 'Kendi yönetici rolünüzü bu formdan değiştiremezsiniz. Başka bir tam yetkili yönetici güncelleyebilir.',
+    ADMIN_STAFF_ACCOUNT_NOT_READY: 'Aktif yetki için hesap açık ve e-posta adresi doğrulanmış olmalıdır.',
     ADMIN_STAFF_ROLE_INVALID: 'Seçilen personel rolü geçersiz veya atanamaz.',
     ADMIN_AUDIT_FAILED: 'İşlem için zorunlu güvenlik kaydı oluşturulamadı.',
     ADMIN_AUDIT_UNAVAILABLE: 'Güvenlik kayıt alanı şu anda kullanılamıyor.',
@@ -102,6 +112,10 @@ function errorMessage(payload = {}, status = 0) {
     ADMIN_REAUTH_PROVIDER_INVALID: 'Bu kritik işlem parola tabanlı yeniden doğrulama gerektirir.',
     ADMIN_REAUTH_CONFIG_MISSING: 'Kritik işlem doğrulaması kullanıma hazır değil.',
     ADMIN_REAUTH_UNAVAILABLE: 'Hesap şifresi şu anda doğrulanamıyor. Lütfen kısa bir süre sonra yeniden deneyin.',
+    STORE_PRODUCT_IMAGE_UPLOAD_INVALID: 'Görsel doğrulanamadı. Uygun bir JPEG, PNG veya WebP dosyası seçin.',
+    STORE_PRODUCT_IMAGE_STORAGE_UNAVAILABLE: 'Görsel kaydedilemedi. Storage bucket ve servis hesabı izinlerini kontrol edin veya görsel seçmeden kategori görseliyle kaydedin.',
+    ADMIN_TRANSIENT_CAPACITY: 'Yönetim hizmeti geçici olarak yoğun. Kısa süre sonra yeniden deneyin.',
+    AUTH_PROVIDER_CONFIGURATION_INVALID: 'Hesap sağlayıcısı ayarları doğrulanamadı. Firebase giriş yöntemini ve sunucu API anahtarı kısıtlarını kontrol edin.',
     STORE_STORAGE_UNAVAILABLE: 'Güvenli mağaza kayıtlarına şu anda ulaşılamıyor.',
     STORE_CATALOG_PERSISTENCE_UNAVAILABLE: 'Ürün ayarlarının kalıcı kaydı doğrulanamadı. Değişiklikler uygulanmadı.',
     STORE_INDEX_REQUIRED: 'Firestore sorgu indeksi hazırlanmadı. Firebase indekslerini yayımladıktan sonra yeniden deneyin.',
@@ -188,7 +202,7 @@ function errorMessage(payload = {}, status = 0) {
     REQUEST_BODY_TOO_LARGE: 'Gönderilen bilgi boyutu izin verilen sınırı aşıyor.',
     API_BODY_INVALID: 'Alanların biçimini ve desteklenen değerleri kontrol edin. Bilgileriniz korunmuştur.',
     SERVICE_NOT_READY: 'Mağazanın güvenli işlem bağlantısı hazır değil. İşlem uygulanmadı.',
-    ADMIN_BROWSER_SERVER_UPDATE_REQUIRED: 'Mağaza ve Render sunucusu V78 dosyalarıyla birlikte güncellenmelidir.',
+    ADMIN_BROWSER_SERVER_UPDATE_REQUIRED: 'Mağaza ve yönetim sunucusu birlikte güncellenmelidir.',
     ADMIN_BROWSER_UNAVAILABLE: 'Güvenli yönetici oturumu hazırlanamadı. HTTPS bağlantısını ve tarayıcı ayarlarınızı kontrol edin.',
     ADMIN_SESSION_UNAVAILABLE: 'Güvenli yönetim bağlantısı geçici olarak kullanılamıyor. Bilgileriniz korunmuştur; yeniden deneyin.'
   };

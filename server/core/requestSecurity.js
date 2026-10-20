@@ -6,6 +6,8 @@ const env = require('../config/env');
 
 const API_BODY_LIMIT_BYTES = 256 * 1024;
 const CATALOG_BULK_BODY_LIMIT_BYTES = 1024 * 1024;
+const PRODUCT_CREATE_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
+const { MAX_IMAGE_BASE64 } = require('./storeProductImages');
 const MAX_URI_LENGTH = 2048;
 const MAX_QUERY_KEYS = 80;
 const MAX_QUERY_VALUE_LENGTH = 4096;
@@ -47,11 +49,11 @@ function inspectQuery(query) {
   });
 }
 
-function inspectBody(body, { maxObjectKeys = MAX_OBJECT_KEYS } = {}) {
+function inspectBody(body, { maxObjectKeys = MAX_OBJECT_KEYS, allowProductImage = false } = {}) {
   let keys = 0;
-  function inspect(value, depth = 0) {
+  function inspect(value, depth = 0, keyPath = '') {
     if (depth > MAX_BODY_DEPTH) return false;
-    if (typeof value === 'string') return value.length <= MAX_BODY_STRING_LENGTH;
+    if (typeof value === 'string') return value.length <= (allowProductImage && keyPath === 'imageUpload.data' ? MAX_IMAGE_BASE64 : MAX_BODY_STRING_LENGTH);
     if (typeof value === 'number') return Number.isFinite(value);
     if (value === null || typeof value === 'boolean' || value === undefined) return true;
     if (typeof value !== 'object') return false;
@@ -60,7 +62,7 @@ function inspectBody(body, { maxObjectKeys = MAX_OBJECT_KEYS } = {}) {
     }
     for (const [key, child] of Object.entries(value)) {
       keys += 1;
-      if (keys > maxObjectKeys || FORBIDDEN_KEYS.has(key) || key.length > 160 || !inspect(child, depth + 1)) return false;
+      if (keys > maxObjectKeys || FORBIDDEN_KEYS.has(key) || key.length > 160 || !inspect(child, depth + 1, keyPath ? `${keyPath}.${key}` : key)) return false;
     }
     return true;
   }
@@ -94,7 +96,8 @@ function requestEnvelopeGuard(req, res, next) {
 
   const contentLength = parseContentLength(req.headers['content-length']);
   if (contentLength < 0) return response(res, 400, 'CONTENT_LENGTH_INVALID', req);
-  const bodyLimit = req.path === '/api/admin/store/products/bulk' ? CATALOG_BULK_BODY_LIMIT_BYTES : API_BODY_LIMIT_BYTES;
+  const bodyLimit = req.path === '/api/admin/store/products/bulk' ? CATALOG_BULK_BODY_LIMIT_BYTES
+    : req.path === '/api/admin/store/products' && method === 'POST' ? PRODUCT_CREATE_BODY_LIMIT_BYTES : API_BODY_LIMIT_BYTES;
   if (contentLength > bodyLimit && String(req.path || '').startsWith('/api')) {
     return response(res, 413, 'REQUEST_BODY_TOO_LARGE', req);
   }
@@ -141,7 +144,7 @@ function apiRequestGuard(req, res, next) {
 
 function bodySafetyGuard(req, res, next) {
   const maxObjectKeys = req.originalUrl?.split('?')[0] === '/api/admin/store/products/bulk' ? 10_000 : MAX_OBJECT_KEYS;
-  if (!inspectBody(req.body, { maxObjectKeys })) return response(res, 400, 'REQUEST_BODY_UNSAFE', req);
+  if (!inspectBody(req.body, { maxObjectKeys, allowProductImage: req.method === 'POST' && req.originalUrl?.split('?')[0] === '/api/admin/store/products' })) return response(res, 400, 'REQUEST_BODY_UNSAFE', req);
   return next();
 }
 

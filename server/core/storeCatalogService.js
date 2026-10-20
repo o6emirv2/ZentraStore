@@ -1,7 +1,10 @@
 'use strict';
 const crypto = require('node:crypto');
+const { uploadProductImage, readImageUpload } = require('./storeProductImages');
+const { logError } = require('./errorLogger');
 
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
+const { normalizeCategoryVisibility, expandCategoryVisibility } = require('../../public/js/store/catalog-schema.mjs');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -35,9 +38,7 @@ const DEFAULT_STOREFRONT = Object.freeze({
   services: Object.freeze({ automaticDelivery: true, telegramSupport: true, balancePayment: true }),
   support: Object.freeze({ telegramUsername: STORE_CATALOG.telegramUsername }),
   home: Object.freeze({ title: '', message: '' }),
-  categoryVisibility: Object.freeze(Object.fromEntries(
-    ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account'].map((key) => [key, true])
-  )),
+  categoryVisibility: Object.freeze(normalizeCategoryVisibility()),
   quickLinks: DEFAULT_QUICK_LINKS
 });
 
@@ -150,10 +151,7 @@ function normalizeStorefront(source = {}) {
       title: safeText(home.title, 80),
       message: safeText(home.message, 240)
     },
-    categoryVisibility: Object.fromEntries(
-      ['android', 'ios', 'pubg-ios', 'pubg-android', 'oxide-ios', 'oxide-android', 'gbox', 'random-account']
-        .map((key) => [key, categoryVisibility[key] !== false])
-    ),
+    categoryVisibility: normalizeCategoryVisibility(categoryVisibility),
     quickLinks: normalizeQuickLinks(source.quickLinks)
   };
 }
@@ -459,16 +457,20 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
 
 async function createProduct(input = {}, actor = {}) {
   const product = normalizeCreatedProduct(input);
+  if (input.imageUpload !== undefined) readImageUpload(input.imageUpload);
   const { db } = initFirebaseAdmin();
   if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
   await readOverrides();
   const settingsRef = db.collection('storefrontSettings').doc('main');
-  const saved = await db.runTransaction(async (transaction) => {
+  const uploaded = input.imageUpload === undefined ? null : await uploadProductImage(input.imageUpload);
+  if (uploaded) product.image = uploaded.url;
+  let saved;
+  try { saved = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(settingsRef);
     const current = catalogState(snapshot.exists ? snapshot.data() : {});
     if (!current) throw serviceError('STORE_CATALOG_PERSISTENCE_UNAVAILABLE', 503);
     const existing = readCustomProducts(current.customProducts);
-    if (findBaseProduct(product.id) || Object.hasOwn(current.products, product.id) || existing.some((row) => row.id === product.id)) {
+    if (findBaseProduct(product.id) || Object.hasOwn(current.products, product.id) || Object.hasOwn(current.customProducts || {}, product.id) || existing.some((row) => row.id === product.id)) {
       throw serviceError('STORE_PRODUCT_ID_EXISTS', 409);
     }
     if (existing.length >= MAX_CUSTOM_PRODUCTS) throw serviceError('STORE_PRODUCT_LIMIT_REACHED', 409);
@@ -486,7 +488,12 @@ async function createProduct(input = {}, actor = {}) {
       fulfillmentMode: product.fulfillmentMode, plans: product.plans.map((plan) => ({ key: plan.key, priceKurus: plan.priceKurus }))
     });
     return mergeProduct(product, patch, true);
-  });
+  }); } catch (error) {
+    if (uploaded && /^STORE_PRODUCT_|^STORE_CATALOG_/.test(String(error.code || ''))) {
+      await uploaded.discard().catch(cause => logError(cause, { event: 'catalog.image.cleanup', code: 'STORE_PRODUCT_IMAGE_CLEANUP_FAILED' }));
+    }
+    throw error;
+  }
   invalidateCatalogCache();
   return saved;
 }
@@ -510,7 +517,7 @@ async function updateStorefrontSettings(input = {}, actor = {}) {
       services: { ...(effective.services || {}), ...(input.services || {}) },
       announcement: { ...(effective.announcement || {}), ...(input.announcement || {}) },
       home: { ...(effective.home || {}), ...(input.home || {}) },
-      categoryVisibility: { ...(effective.categoryVisibility || {}), ...(input.categoryVisibility || {}) },
+      categoryVisibility: { ...(effective.categoryVisibility || {}), ...expandCategoryVisibility(input.categoryVisibility || {}) },
       channelLinksRevision: CHANNEL_LINKS_REVISION,
       support: input.support === undefined ? effective.support : input.support,
       quickLinks: input.quickLinks === undefined ? effective.quickLinks : input.quickLinks

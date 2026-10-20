@@ -6,7 +6,7 @@ const express = require('express');
 const http = require('node:http');
 const { usernameKeys, usernameRegistryId, findUsernameProfiles } = require('../server/core/storeUsername');
 
-let records = new Map(), issued = [], writes = 0, calls = [], providerStatus = 200, providerUid = '';
+let records = new Map(), issued = [], writes = 0, calls = [], providerStatus = 200, providerUid = '', providerError = '';
 const accounts = new Map();
 function snapshot(collection, id) {
   const path = `${collection}/${id}`;
@@ -39,7 +39,7 @@ before(async () => {
     const input = JSON.parse(options.body); calls.push(input);
     const user = [...accounts.values()].find((account) => account.email === input.email);
     const status = providerStatus !== 200 ? providerStatus : input.password === 'valid-password' && user ? 200 : 400;
-    return { ok: status === 200, status, json: async () => status === 200 ? { localId: providerUid || user.uid } : { error: { message: status === 429 ? 'TOO_MANY_ATTEMPTS_TRY_LATER' : 'INVALID_LOGIN_CREDENTIALS' } } };
+    return { ok: status === 200, status, json: async () => status === 200 ? { localId: providerUid || user.uid } : { error: { message: providerError || (status === 429 ? 'TOO_MANY_ATTEMPTS_TRY_LATER' : 'INVALID_LOGIN_CREDENTIALS') } } };
   };
   const app = express(); app.use(express.json()); app.use('/api', router);
   app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ ok: false, error: error.code || 'INTERNAL_ERROR' }));
@@ -50,7 +50,7 @@ after(async () => { global.fetch = originalFetch; await new Promise((resolve) =>
 function reset(username = 'o6emirxl', profile = {}) {
   records = new Map([['users/member', { username, ...profile }]]);
   accounts.clear(); accounts.set('member', { uid: 'member', email: 'actual@example.test', disabled: false });
-  issued = []; writes = 0; calls = []; providerStatus = 200; providerUid = '';
+  issued = []; writes = 0; calls = []; providerStatus = 200; providerUid = ''; providerError = '';
 }
 async function login(identifier, password = 'valid-password') {
   const response = await originalFetch(origin + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ identifier, password }) });
@@ -136,4 +136,18 @@ test('identity service outages are retryable and cannot issue custom tokens', as
     const result = await login('o6emirxl'); assert.equal(result.status, 503); assert.equal(result.body.error, 'AUTH_UNAVAILABLE');
     assert.equal(issued.length, 0);
   } finally { auth.getUser = original; }
+});
+
+test('misconfigured provider keys report configuration failure and never masquerade as a password error', async () => {
+  reset(); providerStatus = 403; providerError = 'API_KEY_HTTP_REFERRER_BLOCKED';
+  const result = await login('o6emirxl');
+  assert.equal(result.status, 503); assert.equal(result.body.error, 'AUTH_PROVIDER_CONFIGURATION_INVALID');
+  assert.equal(issued.length, 0);
+});
+
+test('a provider UID mapped to a different verified email cannot receive a backend custom token', async () => {
+  reset(); accounts.set('different', { uid: 'different', email: 'different@example.test', disabled: false });
+  providerUid = 'different';
+  const result = await login('actual@example.test');
+  assert.equal(result.status, 401); assert.equal(issued.length, 0);
 });

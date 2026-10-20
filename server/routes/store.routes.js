@@ -71,6 +71,27 @@ const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req,
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
 const sensitiveAdminChain = (permission, { inspection = false } = {}) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth, ...(inspection ? [] : [requireAdminAction])];
 
+router.get('/admin/store/shopier-readiness', ...adminChain, requireStorePermission('store.orders.read'), asyncRoute(async (_req, res) => {
+  noStore(res);
+  res.json({ ok: true, readiness: require('../config/shopier').shopierReadiness(), jobs: await require('../core/shopierJobs').shopierJobStatus() });
+}));
+router.post('/admin/store/shopier/jobs/:id/retry', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
+  await require('../core/shopierJobs').retryShopierJob(req.params.id, req.user);
+  noStore(res); res.json({ ok: true });
+}));
+router.post('/admin/store/orders/:orderId/shopier/reconcile', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
+  const { reconcileShopierOrder } = require('../core/shopierService');
+  const found = await reconcileShopierOrder(req.params.orderId);
+  await writeSupplementalAdminAudit(req, 'shopier.admin.reconcile', { orderId: req.params.orderId, found });
+  require('../core/shopierJobs').wakeShopierWorker();
+  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, found });
+}));
+router.post('/admin/store/orders/:orderId/shopier/close', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
+  const result = await require('../core/shopierService').closeShopierOrder(req.params.orderId, { uid: req.user.uid, source: 'admin' });
+  await writeSupplementalAdminAudit(req, 'shopier.admin.close', { orderId: req.params.orderId, released: result.released });
+  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, ...result });
+}));
+
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Pragma', 'no-cache');
@@ -82,7 +103,8 @@ router.post('/admin/action-proof', ...adminChain, requireAdminReauth, adminActio
   res.json({ ok: true, proof });
 }));
 
-function requireOwner(req, res, next) {
+function requireStaffAdministrator(req, res, next) {
+  if (req.adminPolicy?.active === true && req.adminPolicy?.role === 'admin') return next();
   const uid = String(req.user?.uid || '').trim();
   const email = String(req.user?.email || '').trim().toLowerCase();
   if (uid && email && env.adminUids.length === 1 && env.adminEmails.length === 1
@@ -109,7 +131,7 @@ function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inven
     ['cookie-samesite', 'Siteler arası istek koruması', String(cookie.sameSite).toLowerCase() === 'strict'],
     ['strict-csp', 'İçerik koruma politikası', env.security.strictCsp === true],
     ['cors', 'İzinli bağlantı politikası', Array.isArray(env.allowedOrigins) && env.allowedOrigins.includes(env.canonicalOrigin) && env.allowedOrigins.includes(env.serviceOrigin)],
-    ['rate-limit', 'Dağıtık istek deneme sınırı', strictRateLimitReady && configuration.rateLimitStore === 'firestore'],
+    ['rate-limit', 'İstek deneme sınırı', strictRateLimitReady && ['memory', 'firestore'].includes(configuration.rateLimitStore)],
     ['app-check', 'Zorunlu uygulama doğrulaması', configuration.appCheckConfigured === true && configuration.appCheckMode === 'enforce'],
     ['totp-factor', 'Tek kullanımlık doğrulama kodu', configuration.adminTotpRequired === true && configuration.adminTotpConfigured === true],
     ['key-vault', 'Şifreli stok kasası', configuration.keyVaultReady === true],
@@ -136,7 +158,7 @@ function initFirebaseReady() {
 }
 
 router.get('/store/catalog', asyncRoute(async (_req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=45, stale-while-revalidate=180');
+  res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true, catalog: await publicCatalog() });
 }));
 
@@ -552,12 +574,12 @@ router.get('/admin/store/audit', ...adminChain, requireStorePermission('store.au
   res.json({ ok: true, audit: await listAuditLogs(req.query.limit, req.query.uid) });
 }));
 
-router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireOwner, asyncRoute(async (_req, res) => {
+router.get('/admin/store/staff', ...adminChain, requireStorePermission('store.staff.read'), requireStaffAdministrator, asyncRoute(async (_req, res) => {
   noStore(res);
   res.json({ ok: true, staff: await listStaff() });
 }));
 
-router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireOwner, asyncRoute(async (req, res) => {
+router.put('/admin/store/staff/:uid', ...sensitiveAdminChain('store.staff.write'), requireStaffAdministrator, asyncRoute(async (req, res) => {
   const staff = await upsertStaff({ uid: req.params.uid, email: req.body?.email, role: req.body?.role, active: req.body?.active, actor: req.user });
   await writeSupplementalAdminAudit(req, 'store.staff.update', { targetUid: staff.uid, role: staff.role, active: staff.active });
   noStore(res);

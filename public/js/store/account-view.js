@@ -30,7 +30,9 @@ export function updateAccountView(root, options = {}) {
   write('accountStatusLabel', model.status);
   root.querySelector('#accountStatusLabel')?.classList.toggle('is-warning', model.warning);
   write('accountBalance', model.loaded ? options.formatBalance?.(options.account.balanceKurus) || '—' : '—');
-  write('accountBalanceDescription', options.stale ? 'Son doğrulanan bakiye · İşlem öncesinde hesap bilgilerinizi yenileyin.' : model.loaded ? 'Alışverişlerinizde kullanabileceğiniz bakiye' : options.loading ? 'Bakiyeniz yükleniyor…' : 'Bakiyenizi görmek için hesabınızı yenileyin.');
+  write('accountBalanceDescription', options.stale ? 'Son doğrulanan bakiye · İşlem öncesinde hesap bilgilerinizi yenileyin.' : model.loaded && options.account.walletDebtKurus > 0
+    ? `Doğrulanmış iade nedeniyle ${options.formatBalance?.(options.account.walletDebtKurus) || 'bekleyen tutar'} kapatılmalıdır. Yeni yüklemeniz önce bu tutarı karşılar; tamamlanana kadar satın alma sınırlandırılır.`
+    : model.loaded ? 'Alışverişlerinizde kullanabileceğiniz bakiye' : options.loading ? 'Bakiyeniz yükleniyor…' : 'Bakiyenizi görmek için hesabınızı yenileyin.');
   write('accountEmailSecurityDetail', model.email);
   const currentEmail = root.querySelector('#accountCurrentEmail');
   if (currentEmail) currentEmail.value = model.email;
