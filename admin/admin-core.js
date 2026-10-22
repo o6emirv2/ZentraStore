@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v83r1';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
 
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';

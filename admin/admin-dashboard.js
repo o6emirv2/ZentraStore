@@ -1,14 +1,14 @@
-import { prepareProductImage } from './product-image-upload.js?v=zentra-ui-v83r1';
-import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v83r1';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v83r1';
-import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v83r1';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v83r1';
-import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v83r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v83r1';
-import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v83r1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v83r1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v83r1';
-import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v83r1';
+import { prepareProductImage } from './product-image-upload.js?v=zentra-ui-v84r1';
+import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v84r1';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v84r1';
+import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v84r1';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
+import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v84r1';
+import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v84r1';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v84r1';
+import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v84r1';
 
 installInteractionGuard();
 

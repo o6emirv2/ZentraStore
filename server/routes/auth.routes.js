@@ -69,8 +69,8 @@ router.post('/auth/session', strictLimiter, async (req, res) => {
       expiresIn: result.expiresIn
     });
   } catch (error) {
-    res.setHeader('Set-Cookie', clearSessionCookieHeader());
     const unavailable = error?.code === 'AUTH_UNAVAILABLE';
+    if (!unavailable) res.setHeader('Set-Cookie', clearSessionCookieHeader());
     return res.status(unavailable ? 503 : 401).json({ ok: false, error: unavailable ? 'AUTH_UNAVAILABLE' : 'AUTH_INVALID' });
   }
 });

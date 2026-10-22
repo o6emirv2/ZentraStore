@@ -278,7 +278,7 @@ function publicOrder(data = {}, id = '') {
   const delivery = data.delivery && typeof data.delivery === 'object' ? data.delivery : {};
   const status = ORDER_STATUSES.includes(data.status) ? data.status : 'awaiting_payment';
   const deliveryItemCount = Math.max(0, Math.min(100, Math.trunc(Number(delivery.itemCount || 0) || 0)));
-  const deliveryVisible = deliveryItemCount > 0 && Number(data.approvedAt || 0) > 0 && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(status);
+  const deliveryVisible = data.orderType !== 'wallet_topup' && deliveryItemCount > 0 && Number(data.approvedAt || 0) > 0 && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(status);
   const cancellable = status === 'awaiting_payment' && data.paymentMethod !== 'shopier';
   return {
     id: id || safeText(data.id, 160),
@@ -315,6 +315,7 @@ function publicOrder(data = {}, id = '') {
     shopier: data.paymentMethod === 'shopier' ? {
       orderId: safeText(data.shopier?.orderId, 100), productId: safeText(data.shopier?.productId, 100),
       state: safeText(data.shopier?.state, 40), lastError: safeText(data.shopier?.lastError, 80),
+      refundPending: data.shopier?.refundPending === true,
       refundStatus: safeText(data.shopier?.refundStatus, 30), refundedKurus: clampBalance(data.shopier?.refundedKurus),
       verifiedAt: Math.max(0, Number(data.shopier?.verifiedAt || 0)), linkClosedAt: Math.max(0, Number(data.shopier?.linkClosedAt || 0))
     } : null,

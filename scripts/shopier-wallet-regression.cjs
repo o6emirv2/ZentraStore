@@ -130,3 +130,14 @@ test('renewed refund token is separate from the order token and queues one refun
  assert.equal((await webhook('refund.updated',{id:'rotated-refund'})).status,200);assert.equal((await webhook('refund.updated',{id:'rotated-refund'})).status,200);
  assert.equal(rows('shopierJobs/').filter(([,job])=>job.kind==='refund.updated').length,1);assert.equal(balance(),50000);assert.equal(rows('storeWalletLedger/').length,0);
 });
+
+test('wallet topup counter cannot increment the product purchase counter', async () => {
+  const purchases = profile().storeOrderCount || 0, topups = profile().storeTopupCount || 0;
+  await pending();
+  assert.equal(profile().storeOrderCount || 0, purchases); assert.equal(profile().storeTopupCount, topups + 1);
+});
+test('a topup idempotency key cannot be repurposed into a product purchase', async () => {
+  const request = input(), topup = await service.createShopierPayment(request), posts = provider.calls.filter(c => c.method === 'POST').length;
+  await assert.rejects(service.createShopierPayment({ ...request, purpose: 'purchase', items: [{ productId: 'android-kingmod', planKey: 'monthly', quantity: 1 }] }), { code: 'STORE_ORDER_CONFLICT' });
+  assert.equal(provider.calls.filter(c => c.method === 'POST').length, posts); assert.equal(local(topup).orderType, 'wallet_topup'); assert.deepEqual(local(topup).items, []);
+});

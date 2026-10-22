@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=0.80, minimum-scale=0.80, maximum-scale=0.80, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>ZENTRA STORE | Premium Oyun ve Dijital Ürün Mağazası</title>
   <meta name="description" content="ZENTRA STORE: iOS ve Android koleksiyonları; güvenli bakiye, şifreli stok, gerçek sipariş takibi ve kontrollü dijital teslimat." />
   <meta name="keywords" content="ZENTRA STORE, Android, iOS, KingMod, OXİDE, Zolo, Aspect, Obsidian, Star, Dolphin, GBox, random hesap" />
@@ -38,18 +38,18 @@
   <meta name="twitter:image" content="https://zentrastore.com.tr/public/assets/images/zentra-store-brand.jpeg" />
 
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v83r1" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v84r1" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
   <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v76" fetchpriority="high" />
-  <link rel="stylesheet" href="/style.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v83r1" />
-  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v83r1" />
+  <link rel="stylesheet" href="/style.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v84r1" />
 </head>
 <body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
@@ -108,9 +108,12 @@
       <a class="showcase-social showcase-social--support" data-quick-link-id="support-telegram" href="https://t.me/ZENTRA_STORE" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span class="showcase-social__icon" aria-hidden="true"><i class="fa-brands fa-telegram"></i></span><span class="showcase-social__copy"><strong>Telegram Destek</strong><small>Destek ekibimize güvenle ulaş</small></span><i class="fa-solid fa-arrow-up-right-from-square showcase-social__arrow" aria-hidden="true"></i></a>
     </nav></section>
 
+    <details class="shopping-guide" id="shoppingGuide"><summary><span><i class="fa-regular fa-circle-question" aria-hidden="true"></i> Alışveriş nasıl çalışır?</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary><ol><li><strong>Ürün ve paketinizi seçin</strong><p>Cihazınıza uygun kategoriyi, paket süresini ve güncel stok durumunu inceleyin.</p></li><li><strong>Ödeme yönteminizi seçin</strong><p>Stokta olan ürünü sepetten satın alın. Bakiye yükleme, ürün satın alımından ayrı bir işlemdir.</p></li><li><strong>İşleminizi takip edin</strong><p>Shopier ödemeniz doğrulandıktan sonra bakiye hesabınıza işlenir. Stok geldiğinde ürün alımınızı ayrıca onaylayın.</p></li></ol><p class="shopping-guide__note">Bakiye yüklemek stok ayırmaz. Ödeme yaptıysanız tekrar ödeme yapmadan işlem durumunu kontrol edin.</p></details>
+
     <section class="catalog" id="catalog" aria-labelledby="catalogTitle">
       <section class="discovery-panel" aria-label="Ürün arama ve filtreleme"><label class="sr-only" for="productSearch">Ürün adı veya açıklaması ile arayın</label>
-        <div class="searchbar" role="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="productSearch" type="search" aria-label="Ürün ara" placeholder="Ürün ara" autocomplete="off" enterkeyhint="search" /><button id="clearSearch" type="button" aria-label="Aramayı temizle" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+        <div class="searchbar" role="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="productSearch" type="search" aria-label="Ürün ara" placeholder="Ürün, oyun veya paket ara" aria-describedby="productSearchHint" autocomplete="off" enterkeyhint="search" /><button id="clearSearch" type="button" aria-label="Aramayı temizle" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+        <p class="search-hint" id="productSearchHint">Ürün adı, oyun veya paket süresiyle arayın; cihazınıza göre filtreleyin.</p>
       </section>
       <div class="game-categories" id="gameCategories" role="group" tabindex="0" aria-label="Ürün kategorileri, yatay kaydırılabilir">
         <button class="game-category is-active" type="button" data-filter="all" aria-pressed="true"><span class="game-category__symbol"><i class="fa-solid fa-border-all" aria-hidden="true"></i></span><span class="game-category__copy"><strong>Tümü</strong><span>Bütün ürünler</span></span><small data-category-count="all"></small></button>
@@ -261,6 +264,11 @@
             <p class="product-detail__description" id="purchaseDescription">Ürün bilgileri hazırlanıyor.</p>
             <section class="detail-section" aria-labelledby="purchasePlansTitle"><header><h3 id="purchasePlansTitle">Paketinizi seçin</h3><span>Süre ve teslimat</span></header><div class="detail-plans" id="purchasePlans"></div></section>
             <div class="detail-summary" id="purchaseSummary" aria-live="polite"></div>
+            <section class="product-topup" id="purchaseTopupPanel" aria-labelledby="purchaseTopupTitle" hidden>
+              <span class="product-topup__icon" aria-hidden="true"><i class="fa-solid fa-wallet"></i></span>
+              <div><h3 id="purchaseTopupTitle">Stok beklerken bakiyenizi hazırlayın</h3><p id="purchaseTopupStatus" role="status">Bakiye yükleme ürün satın almaz ve stok ayırmaz.</p></div>
+              <button class="button button--shopier button--full" id="purchaseTopupButton" type="button" aria-describedby="purchaseTopupStatus" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>SHOPİER İLE BAKİYE YÜKLE</span></button>
+            </section>
             <p class="detail-availability" id="purchaseDeliveryAssurance"></p>
             <button class="screen-button detail-restock" id="notifyStockButton" type="button" hidden><i class="fa-solid fa-bell" aria-hidden="true"></i><span>Stok geldiğinde bildir</span></button>
             <section class="detail-section detail-features" id="purchaseFeatures" aria-labelledby="purchaseFeaturesTitle" hidden><header><h3 id="purchaseFeaturesTitle">Ürün özellikleri</h3><span id="purchaseFeatureCount"></span></header><ul id="purchaseFeatureList"></ul></section>
@@ -349,14 +357,15 @@
               <div class="customer-checkout__actions"><button class="button button--primary button--large button--full" id="checkoutButton" type="button"><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Bakiyeyle satın al</span></button><button class="customer-telegram-button" id="telegramCheckoutButton" type="button"><i class="fa-brands fa-telegram" aria-hidden="true"></i><span>Telegram ile sipariş ver</span></button><small><i class="fa-solid fa-lock" aria-hidden="true"></i> İşlemler güvenli sunucu üzerinden doğrulanır.</small></div>
             </aside>
           </div>
-          <section class="cart-shopier-panel" aria-labelledby="cartShopierTitle"><header><i class="fa-solid fa-credit-card" aria-hidden="true"></i><div><h3 id="cartShopierTitle">Shopier ile güvenli ödeme</h3><p>Ürün ödemenizi yapın veya hesabınıza mağaza bakiyesi yükleyin.</p></div></header><button class="button button--shopier button--large button--full" id="shopierCheckoutButton" type="button" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile öde</span></button><p class="shopier-checkout-status" id="shopierCheckoutStatus" role="status" aria-live="polite">Kartla ödeme durumu kontrol ediliyor.</p><div class="shopier-status-actions"><button class="shopier-status-refresh" id="shopierCheckoutRefresh" type="button"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span>Durumu yenile</span></button></div></section>
+          <section class="cart-shopier-panel" aria-labelledby="cartShopierTitle"><header><i class="fa-solid fa-credit-card" aria-hidden="true"></i><div><h3 id="cartShopierTitle">Ürün siparişi ödemesi</h3><p>Sepetinizdeki ürünlerin ödemesini yapın. Bakiye yükleme aşağıdaki ayrı alandadır.</p></div></header><button class="button button--shopier button--large button--full" id="shopierCheckoutButton" type="button" disabled><i class="fa-solid fa-credit-card" aria-hidden="true"></i><span>Shopier ile öde</span></button><p class="shopier-checkout-status" id="shopierCheckoutStatus" role="status" aria-live="polite">Kartla ödeme durumu kontrol ediliyor.</p><div class="shopier-status-actions"><button class="shopier-status-refresh" id="shopierCheckoutRefresh" type="button"><i class="fa-solid fa-rotate" aria-hidden="true"></i><span>Durumu yenile</span></button></div></section>
+          <section class="cart-shopier-panel cart-shopier-panel--topup" aria-labelledby="cartTopupTitle"><header><i class="fa-solid fa-wallet" aria-hidden="true"></i><div><h3 id="cartTopupTitle">Hesabınıza bakiye yükleyin</h3><p id="cartTopupDescription">Sepetinizden bağımsızdır. Ürün satın almaz ve stok ayırmaz; ödeme doğrulandıktan sonra bakiyenize işlenir.</p></div></header><button class="button button--glass button--full" id="cartTopupButton" type="button" aria-describedby="cartTopupDescription" disabled><i class="fa-solid fa-wallet" aria-hidden="true"></i><span>Shopier ile bakiye yükle</span></button></section>
         </section>
 
         <section class="orders-page" id="customerViewOrders" data-customer-view="orders" aria-labelledby="customerTitle" hidden inert>
           <div class="orders-page__intro"><div><span class="screen-eyebrow">Alışveriş geçmişiniz</span><h2>Siparişlerinizi takip edin</h2><p>Ödeme ve teslimat durumlarını tek yerden görüntüleyin.</p></div><p class="orders-page__updated" id="ordersUpdatedLabel" role="status">Siparişler yükleniyor…</p></div>
           <div class="orders-page__summary" aria-label="Görüntülenen siparişlerin özeti"><article><span>Görüntülenen</span><strong id="orderMetricTotal">—</strong></article><article><span>Teslim edildi</span><strong id="orderMetricDelivered">—</strong></article><article><span>Devam ediyor</span><strong id="orderMetricPending">—</strong></article></div>
           <form class="orders-page__search" id="orderSearchForm" role="search"><label for="orderSearchInput">Siparişlerde ara</label><div><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="orderSearchInput" type="search" autocomplete="off" maxlength="80" placeholder="Sipariş numarası veya ürün adı" /><button class="screen-icon-button" type="button" id="orderSearchClose" aria-label="Sipariş aramasını temizle"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div></form>
-          <div class="orders-page__filters" id="orderFilterBar" role="group" aria-label="Sipariş durumuna göre filtrele"><button class="is-active" type="button" data-order-filter="all" aria-pressed="true">Tümü</button><button type="button" data-order-filter="pending" aria-pressed="false">Bekleyen</button><button type="button" data-order-filter="approved" aria-pressed="false">Hazırlanan</button><button type="button" data-order-filter="delivered" aria-pressed="false">Teslim edilen</button><button type="button" data-order-filter="closed" aria-pressed="false">Kapanan</button></div>
+          <div class="orders-page__filters" id="orderFilterBar" role="group" aria-label="Sipariş durumuna göre filtrele"><button class="is-active" type="button" data-order-filter="all" aria-pressed="true">Tümü</button><button type="button" data-order-filter="purchases" aria-pressed="false">Ürün satın alımları</button><button type="button" data-order-filter="topups" aria-pressed="false">Bakiye yüklemeleri</button><button type="button" data-order-filter="pending" aria-pressed="false">Bekleyen</button><button type="button" data-order-filter="approved" aria-pressed="false">Hazırlanan</button><button type="button" data-order-filter="delivered" aria-pressed="false">Teslim edilen</button><button type="button" data-order-filter="closed" aria-pressed="false">Kapanan</button></div>
           <div class="orders-page__results"><span id="ordersResultLabel" role="status"></span><button class="orders-page__reset" type="button" data-order-reset>Filtreleri temizle</button></div>
           <div class="orders-page__list" id="ordersList"></div>
           <button class="screen-button orders-page__more" id="loadMoreOrdersButton" type="button" hidden>Önceki siparişleri yükle</button>
@@ -431,6 +440,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-ui-v83r1"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v84r1"></script>
 </body>
 </html>

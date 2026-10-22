@@ -1,11 +1,21 @@
-import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v83r1';
-import { initStoreAuth, getStoreAuthSnapshot } from './auth.js?v=zentra-ui-v83r1';
-import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v83r1';
-import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v83r1';
+import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v84r1';
+import { initStoreAuth, getStoreAuthSnapshot, subscribeStoreAuth } from './auth.js?v=zentra-ui-v84r1';
+import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v84r1';
+import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v84r1';
 
 const $ = (id) => document.getElementById(id);
 const orderId = new URLSearchParams(location.search).get('order') || '';
 let busy = false, refreshTimer = null, redirectTimer = null, polls = 0;
+let displayUid = '';
+function clearPaymentDetails() {
+  displayUid = '';
+  $('paymentFacts').hidden = true;
+  $('paymentItems').replaceChildren();
+  for (const id of ['paymentOrderNumber', 'paymentProviderId', 'paymentAmount', 'paymentStatus', 'paymentDelivery']) $(id).textContent = '—';
+  $('continuePayment').hidden = true;
+  $('continuePayment').removeAttribute('href');
+  $('paymentAccountLink').hidden = true;
+}
 const openedAt = Date.now();
 function scheduleRefresh() {
   if (refreshTimer || redirectTimer || Date.now() - openedAt > 5 * 60_000) return;
@@ -24,6 +34,7 @@ async function refresh() {
   try {
     await initStoreAuth();
     if (!getStoreAuthSnapshot().user) {
+      clearPaymentDetails();
       message('Hesabınıza giriş yapın', 'Sipariş yalnızca satın almayı başlattığınız hesapla görüntülenebilir. Siparişlerime git bağlantısından giriş yapıp bu sayfayı yeniden açın.'); return;
     }
     if (!/^[A-Za-z0-9_-]{1,160}$/.test(orderId)) {
@@ -31,7 +42,8 @@ async function refresh() {
     }
     const identityUid = getStoreAuthSnapshot().user.uid;
     const { order, paymentUrl } = await storeApi(`/api/payments/shopier/orders/${encodeURIComponent(orderId)}`);
-    if (getStoreAuthSnapshot().user?.uid !== identityUid) return;
+    if (getStoreAuthSnapshot().user?.uid !== identityUid) { clearPaymentDetails(); return; }
+    displayUid = identityUid;
     const topup = order.orderType === 'wallet_topup';
     $('paymentFacts').hidden = false;
     $('paymentOrderNumber').textContent = order.orderNumber;
@@ -45,7 +57,10 @@ async function refresh() {
       const li = document.createElement('li'); li.textContent = `${item.productName} · ${item.platform === 'ios' ? 'iOS' : 'Android'} · ${item.planLabel} · ${item.quantity} adet`; return li;
     }));
     if (topup) { const li = document.createElement('li'); li.textContent = `Mağaza bakiyesi yüklemesi · Ürün satın alımı ayrıca yapılır.${order.walletTopup?.debtSettledKurus ? ' Yüklemenin bir bölümü doğrulanmış iade bakiyesini kapatmak için kullanıldı.' : ''}`; $('paymentItems').append(li); }
-    if (topup && order.paymentState === 'paid') message(order.walletTopup?.settledAt ? 'Bakiye yüklemeniz tamamlandı' : 'Ödemeniz doğrulandı', order.walletTopup?.settledAt ? 'Tutar hesabınıza işlendi. Hesabım bölümünden güncel bakiyenizi görebilir ve ürün satın alımınızı ayrıca tamamlayabilirsiniz.' : 'Bakiye kaydı kontrol bekliyor. Yeniden ödeme yapmadan işlem durumunu kontrol edin veya destek alın.', order.walletTopup?.settledAt ? 'success' : '');
+    if (order.shopier?.state === 'paid_review') message('Ödemeniz kontrol bekliyor', 'Ödeme kaydı bulundu; bakiye veya teslimat için ek kontrol gerekiyor. Yeniden ödeme yapmadan işlem numaranızla destek alın.');
+    else if (order.shopier?.refundPending || order.shopier?.refundStatus === 'pending') message('İade işlemi kontrol ediliyor', 'İade sonucu kesinleşene kadar bu işlemi yeniden ödemeyin. Güncel bakiye ve iade durumunu hesabınızdan takip edin.');
+    else if (order.shopier?.refundStatus === 'partial') message('Kısmi iade doğrulandı', 'İade tutarı ödeme kaydıyla eşleştirildi. Güncel tutarları hesabınızdan kontrol edebilirsiniz.');
+    else if (topup && order.paymentState === 'paid') message(order.walletTopup?.settledAt ? 'Bakiye yüklemeniz tamamlandı' : 'Ödemeniz doğrulandı', order.walletTopup?.settledAt ? 'Tutar hesabınıza işlendi. Hesabım bölümünden güncel bakiyenizi görebilir ve ürün satın alımınızı ayrıca tamamlayabilirsiniz.' : 'Bakiye kaydı kontrol bekliyor. Yeniden ödeme yapmadan işlem durumunu kontrol edin veya destek alın.', order.walletTopup?.settledAt ? 'success' : '');
     else if (order.paymentState === 'paid') message(order.status === 'delivered' ? 'Ödemeniz ve teslimatınız hazır' : 'Ödemeniz doğrulandı', order.status === 'delivered'
       ? 'Dijital teslimat bilgilerinizi Siparişlerim / Teslimatlarım ekranından güvenle açabilirsiniz.' : 'Teslimatınız hazırlanıyor. Kontrol gerekiyorsa siparişiniz yönetim panelinde görünür.', 'success');
     else if (order.paymentState === 'refunded') message('İade doğrulandı', 'İade durumu Shopier kaydıyla eşleştirildi. Bankanıza yansıma süresi için ödeme sağlayıcısını kontrol edin.');
@@ -60,12 +75,21 @@ async function refresh() {
         location.replace(paymentReturnUrl(window.__ZENTRA_RUNTIME__ || {}, location.origin));
       }, 2500);
     } else if (paymentNeedsRefresh(order)) scheduleRefresh();
-  } catch (error) { message('İşlem kontrol edilemedi', friendlyStoreError(error), 'error');
+  } catch (error) {
+    if (['AUTH_REQUIRED', 'AUTH_SESSION_CHANGED', 'STORE_ORDER_NOT_FOUND'].includes(error.code)) clearPaymentDetails();
+    message('İşlem kontrol edilemedi', friendlyStoreError(error), 'error');
     if (!['AUTH_REQUIRED', 'STORE_ORDER_NOT_FOUND'].includes(error.code)) scheduleRefresh();
   }
   finally { busy = false; $('refreshPayment').disabled = false; $('refreshPayment').removeAttribute('aria-busy'); }
 }
 $('refreshPayment').addEventListener('click', () => void refresh());
+subscribeStoreAuth(snapshot => {
+  if (displayUid && snapshot.user?.uid !== displayUid) {
+    clearTimeout(refreshTimer); clearTimeout(redirectTimer); refreshTimer = null; redirectTimer = null;
+    clearPaymentDetails();
+    message('Hesabınıza giriş yapın', 'Bu işlemi görüntülemek için ödemeyi başlattığınız hesapla giriş yapın.');
+  }
+});
 void refresh();
 
 document.addEventListener('visibilitychange', () => {

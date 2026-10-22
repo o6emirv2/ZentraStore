@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v83r1';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites, compatiblePrivateReads } from '../request-utils.js?v=zentra-ui-v84r1';
 
 const DEFAULT_API_BASE = 'https://emirhan-siye.onrender.com';
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -10,12 +10,13 @@ let runtimePromise = null;
 const USER_MESSAGES = Object.freeze({
   SHOPIER_TOPUP_AMOUNT_INVALID: 'Tek işlemde 100 TL ile 10.000 TL arasında bakiye yükleyebilirsiniz. Tutarı en fazla iki ondalık basamakla girin.',
   SHOPIER_TOPUP_RECONCILE_REQUIRED: 'Bakiye yükleme durumu Shopier kaydı doğrulanarak güncellenir.',
+  SHOPIER_ATTEMPT_KIND_MISMATCH: 'İşlem türü doğrulanamadı. Yeni ödeme yapmadan işlem geçmişinizi kontrol edin veya destek alın.',
   SHOPIER_WALLET_ACCOUNT_MISSING: 'Bakiye yüklenecek hesap bulunamadı. İşlem numaranızla destek alın.',
   SHOPIER_DISABLED: 'Kartla ödeme şu anda kapalı. Diğer sipariş yöntemlerini kullanabilirsiniz.',
   SHOPIER_CONFIGURATION_INVALID: 'Kartla ödeme bağlantısı şu anda hazır değil. Siparişinizin durumunu kontrol edin veya destek alın.',
   SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. Aynı işlemi kontrol ederek devam edin; yeni sipariş başlatmayın.',
   SHOPIER_CONNECTION_FAILED: 'Ödeme bağlantısı kurulamadı. Aynı işlemi tekrar kontrol edin.',
-  SHOPIER_PENDING_LIMIT: 'İki Shopier siparişiniz ödeme bekliyor. Önce bu siparişleri kontrol edin.',
+  SHOPIER_PENDING_LIMIT: 'İki Shopier işleminiz ödeme bekliyor. Yeni ödeme başlatmadan ürün ve bakiye işlemlerinizi kontrol edin.',
   SHOPIER_AUTH_FAILED: 'Shopier bağlantı yetkisi doğrulanamadı. Mağaza desteğine başvurun.',
     SHOPIER_REQUEST_REJECTED: 'Shopier ödeme bağlantısını kabul etmedi. Bu denemede ödeme bağlantısı oluşturulmadı.',
     SHOPIER_API_ERROR: 'Shopier işlemi şu anda tamamlanamıyor. Sipariş durumunu kontrol edip yeniden deneyin.',

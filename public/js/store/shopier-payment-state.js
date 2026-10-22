@@ -1,12 +1,12 @@
 export function verifiedPaymentComplete(order = {}) {
   return order.paymentMethod === 'shopier' && order.paymentState === 'paid' && order.paidAt > 0
     && order.shopier?.state === 'paid' && order.shopier.verifiedAt > 0 && !!order.shopier.orderId
-    && !Number(order.shopier.refundedKurus || 0) && !['pending', 'partial', 'full'].includes(order.shopier.refundStatus)
+    && !order.shopier.refundPending && !Number(order.shopier.refundedKurus || 0) && !['pending', 'partial', 'full'].includes(order.shopier.refundStatus)
     && (order.orderType !== 'wallet_topup' || order.walletTopup?.settledAt > 0);
 }
 
 export function paymentNeedsRefresh(order = {}) {
-  return order.paymentState === 'pending' || (order.paymentState === 'paid' && order.orderType === 'wallet_topup'
+  return order.paymentState === 'pending' || (order.paymentState === 'paid' && order.shopier?.refundPending === true) || (order.paymentState === 'paid' && order.orderType === 'wallet_topup'
     && !order.walletTopup?.settledAt && order.shopier?.state !== 'paid_review');
 }
 

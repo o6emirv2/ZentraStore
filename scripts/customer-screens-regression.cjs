@@ -155,3 +155,13 @@ test('cached catalog configuration cannot hide offline, checking or maintenance 
   render();
   assert.equal(host.dataset.state, 'maintenance');
 });
+
+test('only confirmed stockout plans expose the independent wallet offer', async () => {
+  const { productTopupOffer } = await load('product-detail.js');
+  const plan = { stock: { available: 0, state: 'out' } }, catalog = { stockVerified: true, payments: { shopier: { topupAvailable: true } } };
+  assert.deepEqual(productTopupOffer(plan, catalog), { visible: true, available: true });
+  for (const candidate of [null, {}, { stock: { available: 1 } }, { stock: { available: -1 } }, { stock: { available: 0, state: 'unverified' } }]) assert.equal(productTopupOffer(candidate, catalog).visible, false);
+  assert.equal(productTopupOffer(plan, { ...catalog, stockVerified: false }).visible, false);
+  assert.equal(productTopupOffer(plan, { ...catalog, storefront: { maintenance: true } }).visible, false);
+  assert.deepEqual(productTopupOffer(plan, { ...catalog, payments: {} }), { visible: true, available: false });
+});

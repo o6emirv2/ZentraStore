@@ -160,7 +160,7 @@ async function createShopierPayment({ uid, authUser = {}, items = [], idempotenc
     applyPromotionInTransaction({ transaction: tx, promotion, uid: safeUid, orderId: ref.id, now });
     tx.create(ref, order);
     tx.create(attemptRef, { uid: safeUid, orderId: ref.id, requestHash, createdAt: now });
-    tx.set(userRef, { storeOrderCount: admin.firestore.FieldValue.increment(1), storeUpdatedAt: now }, { merge: true });
+    tx.set(userRef, { [topup ? 'storeTopupCount' : 'storeOrderCount']: admin.firestore.FieldValue.increment(1), storeUpdatedAt: now }, { merge: true });
     // Crash recovery is durable before the non-idempotent remote POST is attempted.
     queueJob(tx, db, { id: `recover_${ref.id}`, kind: 'recover', orderId: ref.id, availableAt: now + 60_000 });
     audit(tx, db, order, 'shopier.order.pending', { totalKurus });

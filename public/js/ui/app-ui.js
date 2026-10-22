@@ -1,4 +1,4 @@
-import { installNoticeSound } from './notice-sound.js?v=zentra-ui-v83r1';
+import { installNoticeSound } from './notice-sound.js?v=zentra-ui-v84r1';
 
 const actions = new WeakMap();
 const regions = new WeakMap();

@@ -1,4 +1,4 @@
-import { categoryKey } from '../store/catalog-schema.mjs?v=zentra-ui-v83r1';
+import { categoryKey } from '../store/catalog-schema.mjs?v=zentra-ui-v84r1';
 
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 

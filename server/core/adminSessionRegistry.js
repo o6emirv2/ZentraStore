@@ -7,6 +7,15 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const transient = require('./adminTransientStore');
 const cache = new Map();
 const CACHE_TTL_MS = 3_000;
+const CACHE_LIMIT = 3000;
+function cacheSession(id, row) {
+  const now = Date.now();
+  if (cache.size >= CACHE_LIMIT) {
+    for (const [key, entry] of cache) if (entry.until <= now) cache.delete(key);
+    if (!cache.has(id) && cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
+  }
+  cache.set(id, { value: row, until: now + CACHE_TTL_MS });
+}
 
 function sessionError(code = 'ADMIN_SESSION_UNAVAILABLE', statusCode = 503) {
   return Object.assign(new Error(code), { code, statusCode });
@@ -46,7 +55,7 @@ async function registerAdminSession({ uid = '', email = '', session = '', expire
   if (transient.memory) transient.sessions.set(id, row, expiry);
   else {
     await sessionReference(session).set(row, { merge: false });
-    cache.set(id, { value: row, until: now + CACHE_TTL_MS });
+    cacheSession(id, row);
   }
   return row;
 }
@@ -67,7 +76,7 @@ async function isAdminSessionActive({ uid = '', email = '', session = '' } = {})
     if (!row || row.revokedAt || Number(row.expiresAt || 0) <= Date.now() || !(await sessionPolicyMatches(row))) return false;
     const matches = row.uid === String(uid || '').trim()
       && row.email === String(email || '').trim().toLowerCase();
-    if (matches && !transient.memory) cache.set(id, { value: row, until: Date.now() + CACHE_TTL_MS });
+    if (matches && !transient.memory) cacheSession(id, row);
     return matches;
   } catch (_) {
     return false;

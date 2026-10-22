@@ -1,4 +1,4 @@
-import { escapeViewText as text, viewIcon as icon } from './view-utils.js?v=zentra-ui-v83r1';
+import { escapeViewText as text, viewIcon as icon } from './view-utils.js?v=zentra-ui-v84r1';
 
 export function renderProductPlans(plans = [], selectedKey = '', { formatPrice, channelFor } = {}) {
   return plans.map((plan) => {
@@ -16,4 +16,11 @@ export function renderProductSummary(plan, { formatPrice, channel } = {}) {
 
 export function renderProductFeatures(features = []) {
   return features.map((feature) => `<li>${icon('fa-check')}<span>${text(feature)}</span></li>`).join('');
+}
+
+export function productTopupOffer(plan, catalog = {}) {
+  const count = plan?.stock?.available;
+  const visible = !!plan && catalog.stockVerified === true && plan.stock?.state !== 'unverified'
+    && Number.isSafeInteger(count) && count === 0 && catalog.storefront?.maintenance !== true;
+  return { visible, available: visible && catalog.payments?.shopier?.topupAvailable === true };
 }

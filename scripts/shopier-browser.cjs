@@ -100,10 +100,11 @@ async function main() {
     for (const [name, viewport, touch] of [['desktop-wallet', {width:1440,height:1000}, false], ['mobile-wallet', {width:390,height:844}, true]]) {
       const ctx = await context(viewport, undefined, touch), walletPage = await ctx.newPage();
       await prepareCart(walletPage); await walletPage.locator('[data-cart-quantity="increase"]').click();
-      assert.equal(await walletPage.locator('#shopierCheckoutButton').isDisabled(), false);
-      assert.match(await walletPage.locator('#shopierCheckoutButton').innerText(), /bakiye yükle/);
-      assert.match(await walletPage.locator('#shopierCheckoutStatus').innerText(), /stok ayırmaz/);
-      await walletPage.locator('#shopierCheckoutButton').click(); await walletPage.locator('#accountTopupForm').waitFor({state:'visible'});
+      assert.equal(await walletPage.locator('#shopierCheckoutButton').isDisabled(), true);
+      assert.equal(await walletPage.locator('#cartTopupButton').isDisabled(), false);
+      assert.match(await walletPage.locator('#cartTopupButton').innerText(), /bakiye yükle/);
+      assert.match(await walletPage.locator('#cartTopupDescription').innerText(), /stok ayırmaz/);
+      await walletPage.locator('#cartTopupButton').click(); await walletPage.locator('#accountTopupForm').waitFor({state:'visible'});
       const before = app.db.records.get('users/member').storeBalanceKurus, beforeCalls = provider.calls.length;
       await walletPage.locator('#accountTopupAmount').fill('99'); await walletPage.locator('#accountTopupButton').click();
       assert.equal(await walletPage.locator('#accountTopupAmount').getAttribute('aria-invalid'),'true'); assert.equal(provider.calls.length,beforeCalls);
@@ -129,7 +130,7 @@ async function main() {
       await walletPage.waitForFunction(()=>!document.getElementById('accountTopupAmount').disabled);
       await walletPage.evaluate(()=>{location.hash='#account/orders';});const card=walletPage.locator(`[data-order-card="${payload.order.id}"]`);await card.waitFor();
       assert.match(await card.innerText(),/Mağaza bakiyesi yüklemesi/);assert.match(await card.innerText(),/Bakiye yüklendi/);
-      results.cases.push({name,stockInsufficientCheckoutAvailable:true,invalidAmountBlocked:true,exactlyOnceCredit:true,returnRefreshesBalanceAndClearsPending:true,layout});topups.push(payload.order.id);await ctx.close();
+      results.cases.push({name,stockInsufficientPurchaseDisabled:true,separateTopupAvailable:true,invalidAmountBlocked:true,exactlyOnceCredit:true,returnRefreshesBalanceAndClearsPending:true,layout});topups.push(payload.order.id);await ctx.close();
     }
     const walletAdmin=await context({width:1440,height:1000},{uid:'owneruid',email:'owner@zentra.invalid',token:session.token});
     await walletAdmin.addCookies([...cookies].map(([name,value])=>({name,value,url:app.origin,httpOnly:true,sameSite:'Lax'})));
@@ -143,13 +144,14 @@ async function main() {
     process.env.SHOPIER_ENABLED='true';
     for(const [record,row] of [...app.db.records])if(record.startsWith('storeInventory/')&&row.status==='available')await inventory.revokeInventory({productId:row.productId,planKey:row.planKey,itemId:record.split('/').at(-1),storageSku:record.split('/')[1],reason:'Kontrollü stok bitişi',actor:{uid:'owneruid'}});inventory.invalidateStockCache();
     const empty=await context({width:390,height:844},undefined,true),emptyPage=await empty.newPage();await emptyPage.goto(app.origin+'/#account/cart',{waitUntil:'domcontentloaded'});await emptyPage.waitForFunction(()=>document.documentElement.dataset.storefrontStatus==='ready');await emptyPage.locator('#customerViewCart').waitFor({state:'visible'});
-    assert.equal(await emptyPage.locator('#cartEmpty').isVisible(),true);assert.equal(await emptyPage.locator('#shopierCheckoutButton').isVisible(),true);assert.equal(await emptyPage.locator('#shopierCheckoutButton').isDisabled(),false);
-    await emptyPage.locator('#shopierCheckoutButton').click();await emptyPage.locator('#accountTopupForm').waitFor({state:'visible'});
+    assert.equal(await emptyPage.locator('#cartEmpty').isVisible(),true);assert.equal(await emptyPage.locator('#shopierCheckoutButton').isVisible(),true);assert.equal(await emptyPage.locator('#shopierCheckoutButton').isDisabled(),true);assert.equal(await emptyPage.locator('#cartTopupButton').isDisabled(),false);
+    await emptyPage.locator('#cartTopupButton').click();await emptyPage.locator('#accountTopupForm').waitFor({state:'visible'});
     assert.equal([...app.db.records].filter(([record,row])=>record.startsWith('storeInventory/')&&row.status==='available').length,0);
-    results.cases.push({name:'zero-stock-empty-cart',shopierVisibleAndEnabled:true,opensAccountTopup:true});
+    results.cases.push({name:'zero-stock-empty-cart',purchaseDisabled:true,separateTopupEnabled:true,opensAccountTopup:true});
     await emptyPage.goto(app.origin+'/#product/'+product.id,{waitUntil:'domcontentloaded'});
-    await emptyPage.waitForFunction(()=>document.getElementById('addToCartButton').dataset.topup==='true');
-    await emptyPage.locator('#addToCartButton').click();await emptyPage.locator('#accountTopupForm').waitFor({state:'visible'});
+    await emptyPage.waitForFunction(()=>!document.getElementById('purchaseTopupPanel').hidden && !document.getElementById('purchaseTopupButton').disabled);
+    assert.equal(await emptyPage.locator('#addToCartButton').isVisible(),false);assert.match(await emptyPage.locator('#purchaseTopupButton').innerText(),/SHOPİER İLE BAKİYE YÜKLE/);
+    await emptyPage.locator('#purchaseTopupButton').click();await emptyPage.locator('#accountTopupForm').waitFor({state:'visible'});
     results.cases.push({name:'zero-stock-product',directProductTopup:true,noPurchaseCreated:true});
     await emptyPage.evaluate(()=>{window.open=()=>null;});
     await emptyPage.locator('#accountTopupAmount').fill('250');let fallback;
@@ -169,13 +171,13 @@ async function main() {
     await refreshPage.goto(app.origin+'/#account/cart',{waitUntil:'domcontentloaded'});await refreshPage.locator('#customerViewCart').waitFor({state:'visible'});
     await refreshPage.waitForFunction(()=>document.getElementById('shopierCheckoutStatus').textContent.includes('kapalı'));
     process.env.SHOPIER_ENABLED='true';await refreshPage.evaluate(()=>window.dispatchEvent(new Event('pageshow')));
-    await refreshPage.waitForFunction(()=>!document.getElementById('shopierCheckoutButton').disabled);assert.equal(paymentPosts,0);
+    await refreshPage.waitForFunction(()=>!document.getElementById('cartTopupButton').disabled);assert.equal(paymentPosts,0);
     results.cases.push({name:'availability-resume',foregroundStatusRefresh:true,noFinancialPOST:true});
     await refreshPage.route('**/api/store/catalog**',r=>r.abort('failed'));await refreshPage.locator('#shopierCheckoutRefresh').click();
     await refreshPage.waitForFunction(()=>document.getElementById('shopierCheckoutStatus').textContent.includes('doğrulanamadı'));
     assert.equal(await refreshPage.locator('#shopierCheckoutButton').isDisabled(),true);assert.equal(await refreshPage.locator('#telegramCheckoutButton').isDisabled(),false);
     await refreshPage.unroute('**/api/store/catalog**');await refreshPage.locator('#shopierCheckoutRefresh').click();
-    await refreshPage.waitForFunction(()=>!document.getElementById('shopierCheckoutButton').disabled);assert.equal(paymentPosts,0);
+    await refreshPage.waitForFunction(()=>!document.getElementById('cartTopupButton').disabled);assert.equal(paymentPosts,0);
     results.cases.push({name:'availability-connection-recovery',unavailableDistinctFromDisabled:true,manualReadRetry:true,noFinancialPOST:true});await refreshCtx.close();
     const accountCtx=await context({width:1440,height:1000}),accountPage=await accountCtx.newPage();
     let accountPosts=0;accountPage.on('request',r=>{if(r.method()==='POST'&&/\/api\/payments\/shopier\/(?:create|topups)$/.test(r.url()))accountPosts++;});

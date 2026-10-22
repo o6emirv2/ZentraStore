@@ -1,4 +1,4 @@
-import { SHOPIER_TOPUP_LIMITS } from './shopier-availability.js?v=zentra-ui-v83r1';
+import { SHOPIER_TOPUP_LIMITS } from './shopier-availability.js?v=zentra-ui-v84r1';
 export function verifiedShopierUrl(value) {
   const url = new URL(value);
   if (url.protocol !== 'https:' || !['shopier.com', 'www.shopier.com'].includes(url.hostname)
@@ -16,42 +16,66 @@ export function parseTopupAmount(value, { minKurus = SHOPIER_TOPUP_LIMITS.minKur
 }
 
 export function createShopierCheckout({ request, storage, createId }) {
-  const key = (uid) => `zentra-shopier-attempt-v1:${uid}`;
-  function pending(uid) {
-    if (!uid) return null;
-    try {
-      const value = JSON.parse(storage.getItem(key(uid)) || 'null');
-      return value?.uid === uid && typeof value.body?.idempotencyKey === 'string'
-        && (value.kind === 'wallet_topup' ? Number.isSafeInteger(value.body.amountKurus) : Array.isArray(value.body.items)) ? value : null;
-    } catch (_) { return null; }
+  const kinds = ['purchase', 'wallet_topup'];
+  const legacyKey = (uid) => `zentra-shopier-attempt-v1:${uid}`;
+  const key = (uid, kind) => `zentra-shopier-attempt-v2:${uid}:${kind}`;
+  const read = (name) => {
+    try { return JSON.parse(storage.getItem(name) || 'null'); } catch (_) { return null; }
+  };
+  function valid(value, uid, kind) {
+    return value?.uid === uid && (value.kind || 'purchase') === kind
+      && /^[A-Za-z0-9_.:-]{12,160}$/.test(value.body?.idempotencyKey || '')
+      && (kind === 'wallet_topup' ? Number.isSafeInteger(value.body.amountKurus) : Array.isArray(value.body.items));
   }
-  function forget(uid) { try { storage.removeItem(key(uid)); } catch (_) {} }
-  async function check(uid) {
-    const attempt = pending(uid);
+  function pending(uid, kind = 'purchase') {
+    if (!uid) return null;
+    if (!kinds.includes(kind)) throw new TypeError('Unknown payment purpose');
+    const current = read(key(uid, kind));
+    if (valid(current, uid, kind)) return current;
+    const legacy = read(legacyKey(uid));
+    if (!valid(legacy, uid, kind)) return null;
+    const migrated = { ...legacy, kind };
+    try {
+      storage.setItem(key(uid, kind), JSON.stringify(migrated));
+      storage.removeItem(legacyKey(uid));
+    } catch (_) { /* Recover the original key even when migration storage is unavailable. */ }
+    return migrated;
+  }
+  function forget(uid, kind = 'purchase') {
+    try {
+      storage.removeItem(key(uid, kind));
+      if (valid(read(legacyKey(uid)), uid, kind)) storage.removeItem(legacyKey(uid));
+    } catch (_) {}
+  }
+  function resultFor(result, attempt) {
+    if (result.order && (result.order.orderType || 'purchase') !== attempt.kind) {
+      throw Object.assign(new Error('İşlem türü doğrulanamadı. İşlem geçmişinden kontrol edin.'), { code: 'SHOPIER_ATTEMPT_KIND_MISMATCH' });
+    }
+    if (['paid', 'refunded', 'failed', 'cancelled'].includes(result.order?.paymentState)) forget(attempt.uid, attempt.kind);
+    return { ...result, attemptedItems: attempt.body.items || [], purpose: attempt.kind };
+  }
+  async function check(uid, kind = 'purchase') {
+    const attempt = pending(uid, kind);
     if (!attempt) return null;
     const result = await request(`/api/payments/shopier/attempt?idempotencyKey=${encodeURIComponent(attempt.body.idempotencyKey)}`);
-    if (result.found) {
-      if (['paid', 'refunded', 'failed', 'cancelled'].includes(result.order?.paymentState)) forget(uid);
-      return { ...result, attemptedItems: attempt.body.items || [] };
-    }
+    if (result.found) return resultFor(result, attempt);
     return { found: false, attemptedItems: attempt.body.items || [] };
   }
   async function begin(uid, body, kind = 'purchase') {
-    let attempt = pending(uid);
+    let attempt = pending(uid, kind);
     if (attempt) {
-      const result = await check(uid);
+      const result = await check(uid, kind);
       if (result?.found) return result;
     } else {
-      attempt = { uid, kind, body: { ...body, idempotencyKey: createId() } };
-      try { storage.setItem(key(uid), JSON.stringify(attempt)); }
+      attempt = { uid, kind, body: { ...body, idempotencyKey: `${kind}:${createId()}` } };
+      try { storage.setItem(key(uid, kind), JSON.stringify(attempt)); }
       catch (_) { throw Object.assign(new Error('Tarayıcı işlem kaydını saklayamadı. Sekmeyi açık tutup tarayıcı depolama iznini kontrol edin.'), { code: 'SHOPIER_ATTEMPT_STORAGE_REQUIRED' }); }
     }
     // An explicit retry always sends the same persisted body and key; no automatic financial POST retry.
     const result = await request(attempt.kind === 'wallet_topup' ? '/api/payments/shopier/topups' : '/api/payments/shopier/create', { method: 'POST', body: attempt.body, timeoutMs: 30_000 });
-    if (['paid', 'refunded', 'failed', 'cancelled'].includes(result.order?.paymentState)) forget(uid);
-    return { ...result, attemptedItems: attempt.body.items || [] };
+    return resultFor(result, attempt);
   }
   const start = (uid, items, promotionCode = '') => begin(uid, { items, ...(promotionCode ? { promotionCode } : {}) });
   const startTopup = (uid, amountKurus) => begin(uid, { amountKurus }, 'wallet_topup');
-  return { pending, start, startTopup, check, forget };
+  return { pending, start, startTopup, check, forget, pendingKinds: (uid) => kinds.filter(kind => pending(uid, kind)) };
 }

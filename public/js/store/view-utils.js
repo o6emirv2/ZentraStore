@@ -9,6 +9,7 @@ export function viewIcon(name, family = 'fa-solid') {
 export function safeExternalLink(value, fallback = 'https://t.me/ZENTRA_STORE') {
   try {
     const url = new URL(String(value || ''));
-    return url.protocol === 'https:' && ['t.me', 'www.t.me'].includes(url.hostname) ? url.href : fallback;
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port
+      && ['t.me', 'www.t.me'].includes(url.hostname) ? url.href : fallback;
   } catch { return fallback; }
 }

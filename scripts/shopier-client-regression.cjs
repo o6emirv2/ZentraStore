@@ -34,18 +34,45 @@ test('browser redirect accepts only HTTPS Shopier hosts', async () => {
   for (const url of ['https://shopier.com.evil.invalid/123', 'https://shopier.com@evil.invalid/123', 'http://www.shopier.com/123', 'javascript:alert(1)', 'https://www.shopier.com:444/123']) assert.throws(() => verifiedShopierUrl(url));
 });
 test('browser persists the selected topup amount before the wallet POST', async () => {
-  let fixture; fixture = await setup(async (path, options) => { assert.equal(fixture.map.size, 1); assert.equal(path, '/api/payments/shopier/topups'); assert.equal(options.body.amountKurus, 25000); assert.equal(options.body.items, undefined); return { order: { paymentState: 'pending' } }; });
-  await fixture.client.startTopup('member', 25000); assert.equal(fixture.client.pending('member').kind, 'wallet_topup');
+  let fixture; fixture = await setup(async (path, options) => { assert.equal(fixture.map.size, 1); assert.equal(path, '/api/payments/shopier/topups'); assert.equal(options.body.amountKurus, 25000); assert.equal(options.body.items, undefined); return { order: { orderType: 'wallet_topup', paymentState: 'pending' } }; });
+  await fixture.client.startTopup('member', 25000); assert.equal(fixture.client.pending('member', 'wallet_topup').kind, 'wallet_topup');
 });
 test('browser topup retry cannot silently change an uncertain payment amount', async () => {
   const sent = []; let first = true;
-  const { client } = await setup(async (_p, options) => { if (!options) return { found: false }; sent.push(structuredClone(options.body)); if (first) { first = false; throw new TypeError('lost response'); } return { order: { paymentState: 'pending' } }; });
+  const { client } = await setup(async (_p, options) => { if (!options) return { found: false }; sent.push(structuredClone(options.body)); if (first) { first = false; throw new TypeError('lost response'); } return { order: { orderType: 'wallet_topup', paymentState: 'pending' } }; });
   await assert.rejects(client.startTopup('member', 25000)); await client.startTopup('member', 50000); assert.deepEqual(sent[0], sent[1]);
 });
-test('browser shares purchase and topup recovery without a second financial POST', async () => {
+test('purchase and topup have independent persisted intents and never resume each other', async () => {
+  const posts = [], saved = new Map();
+  const { client, map } = await setup(async (path, options) => {
+    if (!options) return { found: true, ...saved.get(new URLSearchParams(path.split('?')[1]).get('idempotencyKey')) };
+    posts.push(path); const result = { order: { id: path.endsWith('/topups') ? 'topup' : 'purchase', orderType: path.endsWith('/topups') ? 'wallet_topup' : 'purchase', paymentState: 'pending' } };
+    saved.set(options.body.idempotencyKey, result); return result;
+  });
+  assert.equal((await client.startTopup('member', 25000)).order.id, 'topup');
+  assert.equal((await client.start('member', items)).order.id, 'purchase');
+  assert.equal(map.size, 2); assert.notEqual(client.pending('member').body.idempotencyKey, client.pending('member', 'wallet_topup').body.idempotencyKey);
+  assert.equal((await client.startTopup('member', 99999)).order.id, 'topup');
+  assert.equal((await client.start('member', [])).order.id, 'purchase');
+  assert.deepEqual(posts, ['/api/payments/shopier/topups', '/api/payments/shopier/create']);
+});
+test('legacy topup recovery keeps its original key and cannot occupy the purchase slot', async () => {
+  const calls = [], local = new Map([['zentra-shopier-attempt-v1:member', JSON.stringify({ uid: 'member', kind: 'wallet_topup', body: { amountKurus: 25000, idempotencyKey: 'original-stable-key-123' } })]]);
+  const { client } = await setup(async path => { calls.push(path); return { found: true, order: { orderType: 'wallet_topup', paymentState: 'pending' } }; }, { getItem: k => local.get(k), setItem: (k,v) => local.set(k,v), removeItem: k => local.delete(k) });
+  assert.equal(client.pending('member'), null); assert(local.has('zentra-shopier-attempt-v1:member'));
+  assert.equal(client.pending('member', 'wallet_topup').body.idempotencyKey, 'original-stable-key-123');
+  await client.startTopup('member', 50000); assert.equal(calls.length, 1); assert(calls[0].includes('original-stable-key-123')); assert(!local.has('zentra-shopier-attempt-v1:member'));
+});
+test('terminal purchase cleanup cannot discard an unresolved wallet payment', async () => {
+  const { client } = await setup(async (path, options) => options ? { order: { orderType: path.endsWith('/topups') ? 'wallet_topup' : 'purchase', paymentState: 'pending' } } : { found: true, order: { orderType: 'purchase', paymentState: 'paid' } });
+  await client.start('member', items); await client.startTopup('member', 25000); await client.check('member');
+  assert.equal(client.pending('member'), null); assert(client.pending('member', 'wallet_topup'));
+});
+test('mismatched recovered payment purpose fails closed without creating another payment', async () => {
   let posts = 0;
-  const { client } = await setup(async (_p, options) => options ? (posts++, { order: { paymentState: 'pending' } }) : { found: true, order: { id: 'saved-topup', orderType: 'wallet_topup', paymentState: 'pending' } });
-  await client.startTopup('member', 25000); const result = await client.start('member', items); assert.equal(posts, 1); assert.equal(result.order.id, 'saved-topup'); assert.deepEqual(result.attemptedItems, []);
+  const { client } = await setup(async (_path, options) => options ? (posts++, { order: { orderType: 'wallet_topup', paymentState: 'pending' } }) : { found: true, order: { orderType: 'purchase', paymentState: 'paid' } });
+  await client.startTopup('member', 25000); await assert.rejects(client.startTopup('member', 25000), { code: 'SHOPIER_ATTEMPT_KIND_MISMATCH' });
+  assert.equal(posts, 1); assert(client.pending('member', 'wallet_topup'));
 });
 test('browser Turkish amount parsing uses exact kurus and rejects ambiguous formats', async () => {
   const { parseTopupAmount } = await browserModule('public/js/store/shopier-checkout.js');

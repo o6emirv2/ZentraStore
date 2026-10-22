@@ -31,7 +31,7 @@ function cssStructureValid(source) {
   }
   return !quote && !comment && stack.length === 0;
 }
-const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.80, minimum-scale=0.80, maximum-scale=0.80, user-scalable=no, viewport-fit=cover" />';
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
 for (const filename of files) {
   if (!/\.(?:js|mjs|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
@@ -142,4 +142,4 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.80 initial / minimum / maximum', result: 'PASS' }));
+console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '1.0 / zoom enabled', result: 'PASS' }));

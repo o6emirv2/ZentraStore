@@ -84,14 +84,14 @@ test('updated client bundles use fresh cache versions rather than stale immutabl
   const script = fs.readFileSync(path.join(__dirname, '../script.js'), 'utf8');
   const storefront = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
-  assert.match(index, /\/style\.css\?v=zentra-ui-v83r1/);
-  assert.match(index, /\/script\.js\?v=zentra-ui-v83r1/);
-  assert.match(script, /\/storefront\.js\?v=zentra-ui-v83r1/);
-  assert.match(storefront, /products\.js\?v=zentra-ui-v83r1/);
-  assert.match(storefront, /notification-center\.js\?v=zentra-ui-v83r1/);
-  assert.match(admin, /admin-legacy-entry\.js\?v=zentra-ui-v83r1/);
+  assert.match(index, /\/style\.css\?v=zentra-ui-v84r1/);
+  assert.match(index, /\/script\.js\?v=zentra-ui-v84r1/);
+  assert.match(script, /\/storefront\.js\?v=zentra-ui-v84r1/);
+  assert.match(storefront, /products\.js\?v=zentra-ui-v84r1/);
+  assert.match(storefront, /notification-center\.js\?v=zentra-ui-v84r1/);
+  assert.match(admin, /admin-legacy-entry\.js\?v=zentra-ui-v84r1/);
   const entry = fs.readFileSync(path.join(__dirname, '../admin/admin-entry.js'), 'utf8');
-  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v83r1/);
+  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v84r1/);
 });
 
 const additions = [

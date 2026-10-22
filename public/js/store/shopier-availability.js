@@ -22,7 +22,7 @@ export function createShopierAvailabilityRefresh({ load, onUpdate, onLoading = (
     pending = Promise.resolve().then(load).then(catalog => {
       if (!catalog || catalog.stale) throw new Error('CATALOG_UNAVAILABLE');
       const availability = normalizeShopierAvailability(catalog.payments?.shopier);
-      onUpdate(availability); checkedAt = now(); return availability;
+      onUpdate(availability, catalog); checkedAt = now(); return availability;
     }).catch(() => {
       const availability = normalizeShopierAvailability({ status: 'unavailable' });
       onUpdate(availability); checkedAt = null; return availability;

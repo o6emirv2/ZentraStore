@@ -1,10 +1,5 @@
 const GUARD_KEY = '__ZENTRA_INTERACTION_GUARD__';
-const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
 const MEDIA_SELECTOR = 'img, video, picture, canvas, svg';
-
-function isEditableTarget(target) {
-  return target instanceof Element && Boolean(target.closest(EDITABLE_SELECTOR));
-}
 
 function normalizeProtectedMedia(root = document) {
   const nodes = [];
@@ -24,21 +19,13 @@ export function installInteractionGuard({ documentRoot = document, windowRoot = 
     target?.addEventListener?.(type, handler, options);
     listeners.push(() => target?.removeEventListener?.(type, handler, options));
   };
-  const prevent = (event) => event.preventDefault();
-
-  const preventSelection = (event) => {
-    if (!isEditableTarget(event.target)) event.preventDefault();
-  };
-  const preventContextMenu = (event) => {
-    if (!isEditableTarget(event.target)) event.preventDefault();
-  };
 
   documentRoot.documentElement.classList.add('zentra-interaction-locked');
   normalizeProtectedMedia(documentRoot);
 
-  listen(documentRoot, 'contextmenu', preventContextMenu, { capture: true });
-  listen(documentRoot, 'dragstart', (event) => { if (!isEditableTarget(event.target)) prevent(event); }, { capture: true });
-  listen(documentRoot, 'selectstart', preventSelection, { capture: true, passive: false });
+  listen(documentRoot, 'dragstart', (event) => {
+    if (event.target instanceof Element && event.target.matches(MEDIA_SELECTOR)) event.preventDefault();
+  }, { capture: true });
 
   const observer = typeof MutationObserver === 'function'
     ? new MutationObserver((mutations) => {

@@ -81,11 +81,6 @@ body.layer-open {
   overflow:hidden;
   overscroll-behavior:none
 }
-body,body * {
-  -webkit-touch-callout:none;
-  -webkit-user-select:none;
-  user-select:none
-}
 input,textarea,select {
   -webkit-touch-callout:default;
   -webkit-user-select:text;

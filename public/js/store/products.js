@@ -1,8 +1,8 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v83r1';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v83r1';
-import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v83r1';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v84r1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v84r1';
+import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v84r1';
 
-import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v83r1';
+import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v84r1';
 
 export { CATALOG_FILTERS };
 

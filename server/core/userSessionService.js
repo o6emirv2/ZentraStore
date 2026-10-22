@@ -6,6 +6,14 @@ const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const COOKIE_NAME = env.nodeEnv === 'production' ? '__Host-zentra_session' : 'zentra_session';
 const REMEMBER_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const BROWSER_TTL_MS = 24 * 60 * 60 * 1000;
+const PROVIDER_FAILURES = new Set(['auth/internal-error', 'auth/insufficient-permission', 'app/network-error', 'app/network-timeout']);
+function providerFailure(error) {
+  if (PROVIDER_FAILURES.has(error?.code)) throw Object.assign(new Error('AUTH_UNAVAILABLE'), { code: 'AUTH_UNAVAILABLE', statusCode: 503 });
+  throw error;
+}
+async function providerRequest(operation) {
+  try { return await operation(); } catch (error) { return providerFailure(error); }
+}
 
 function parseCookies(header = '') {
   return String(header || '').split(';').reduce((output, part) => {
@@ -49,11 +57,11 @@ async function createUserSession(idToken, remember = false) {
   const token = String(idToken || '').trim();
   if (!token) throw Object.assign(new Error('ID_TOKEN_REQUIRED'), { code: 'ID_TOKEN_REQUIRED', statusCode: 400 });
   const expiresIn = remember ? REMEMBER_TTL_MS : BROWSER_TTL_MS;
-  const decoded = await auth.verifyIdToken(token, true);
+  const decoded = await providerRequest(() => auth.verifyIdToken(token, true));
   const now = Math.floor(Date.now() / 1000);
   const authTime = Number(decoded.auth_time || 0);
   if (!authTime || authTime > now + 30 || now - authTime > 300) throw Object.assign(new Error('AUTH_RECENT_LOGIN_REQUIRED'), { code: 'AUTH_RECENT_LOGIN_REQUIRED', statusCode: 401 });
-  const sessionCookie = await auth.createSessionCookie(token, { expiresIn });
+  const sessionCookie = await providerRequest(() => auth.createSessionCookie(token, { expiresIn }));
   return { sessionCookie, decoded, remember: !!remember, expiresIn };
 }
 
@@ -61,11 +69,12 @@ async function verifyUserSession(req, { checkRevoked = true } = {}) {
   const cookie = readSessionCookie(req);
   if (!cookie) return null;
   const { auth } = initFirebaseAdmin();
-  if (!auth) return null;
+  if (!auth) throw Object.assign(new Error('AUTH_UNAVAILABLE'), { code: 'AUTH_UNAVAILABLE', statusCode: 503 });
   try {
     const decoded = await auth.verifySessionCookie(cookie, checkRevoked);
     return { ...decoded, uid: decoded.uid || decoded.sub };
-  } catch (_) {
+  } catch (error) {
+    if (PROVIDER_FAILURES.has(error?.code)) providerFailure(error);
     return null;
   }
 }

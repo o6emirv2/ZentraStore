@@ -1,6 +1,6 @@
-import { rememberForms, confirmDiscard, animateView, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v83r1';
+import { rememberForms, confirmDiscard, animateView, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v84r1';
 const CUSTOMER_VIEWS = Object.freeze(['cart', 'orders', 'deliveries', 'coupons', 'profile']);
-const ORDER_FILTERS = Object.freeze(['all', 'pending', 'approved', 'delivered', 'closed']);
+const ORDER_FILTERS = Object.freeze(['all', 'purchases', 'topups', 'pending', 'approved', 'delivered', 'closed']);
 const COUPON_FILTERS = Object.freeze(['available', 'scheduled', 'used', 'expired']);
 
 const CUSTOMER_VIEW_META = Object.freeze({
@@ -114,11 +114,15 @@ function customerOrderGroup(order = {}) {
 
 function orderMatchesFilter(order = {}, filter = 'all') {
   const selected = ORDER_FILTERS.includes(filter) ? filter : 'all';
+  if (selected === 'topups') return order.orderType === 'wallet_topup';
+  if (selected === 'purchases') return order.orderType !== 'wallet_topup';
+  if (order.orderType === 'wallet_topup') return selected === 'all';
   return selected === 'all' || customerOrderGroup(order) === selected;
 }
 
 function summarizeCustomerOrders(orders = []) {
   return (Array.isArray(orders) ? orders : []).reduce((summary, order) => {
+    if (order.orderType === 'wallet_topup') return summary;
     const group = customerOrderGroup(order);
     summary.total += 1;
     if (group === 'delivered') summary.delivered += 1;
@@ -173,7 +177,7 @@ function couponScopeLabel(coupon = {}) {
 
 function latestDeliveryLabel(orders = [], now = Date.now()) {
   const latest = (Array.isArray(orders) ? orders : [])
-    .filter((order) => order.status === 'delivered' || order.delivery?.status === 'delivered')
+    .filter((order) => order.orderType !== 'wallet_topup' && (order.status === 'delivered' || order.delivery?.status === 'delivered'))
     .map((order) => Math.max(0, Number(order.delivery?.deliveredAt || order.updatedAt || order.createdAt || 0)))
     .sort((left, right) => right - left)[0];
   if (!latest) return 'Henüz yok';
