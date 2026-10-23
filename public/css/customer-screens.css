@@ -128,34 +128,34 @@
 @media(max-width:899px){
  body[data-authenticated=false] .store-header .topbar__inner{grid-template-columns:minmax(0,1fr) auto}
  body[data-authenticated=false] .store-header #guestActions{grid-column:2;grid-row:1}
- body[data-authenticated=false] .store-header .brand__copy strong{font-size:16px}
- .store-header .topbar__inner{grid-template-columns:minmax(0,1fr) auto 55px;gap:8px;padding-block:8px;width:calc(100% - 24px)}
- .store-header .desktop-nav{display:none}.store-header .topbar__actions{display:contents}.store-header .brand{grid-column:1;grid-row:1;justify-self:start;min-width:0;gap:10px}
- .store-header .brand__copy strong{font-size:16px}.store-header .brand__mark{width:40px;height:40px}
- .store-header #accountButton{grid-column:3;grid-row:1;width:55px;height:55px}
- .header-wallet{grid-column:2;grid-row:1;min-height:55px;padding:8px 10px;gap:8px}.header-wallet__copy strong{font-size:16px}
-
- .store-header #guestActions{grid-column:2/-1;grid-row:1;justify-self:end}.store-header #guestActions .button{min-height:55px;padding-inline:12px}
+ body[data-authenticated=false] .store-header .brand__copy strong{font-size:14px}
+ .store-header .topbar__inner{grid-template-columns:minmax(0,1fr) auto 44px;gap:8px;padding-block:7px;min-height:60px;width:calc(100% - 24px)}
+ .store-header .desktop-nav{display:none}.store-header .topbar__actions{display:contents}.store-header .brand{grid-column:1;grid-row:1;justify-self:start;min-width:0;max-width:100%;gap:8px;min-height:44px}
+ .store-header .brand__copy strong{font-size:14px;overflow:hidden;text-overflow:ellipsis}.store-header .brand__copy small{font-size:8px}.store-header .brand__mark{width:34px;height:34px;flex-basis:34px}
+ .store-header #accountButton{grid-column:3;grid-row:1;width:44px;height:44px;min-height:44px;padding:3px;border-radius:10px}
+ .store-header #accountButton .avatar-shell{width:30px;height:30px}
+ .header-wallet{grid-column:2;grid-row:1;grid-template-columns:14px minmax(0,1fr);max-width:min(36vw,160px);min-height:44px;padding:6px 8px;gap:6px;border-radius:10px}.header-wallet__icon{font-size:14px}.header-wallet__copy strong{font-size:14px;overflow:hidden;text-overflow:ellipsis}.header-wallet__copy small{font-size:10px}
+ .store-header #guestActions{grid-column:2/-1;grid-row:1;justify-self:end}.store-header #guestActions .button{min-height:44px;padding-inline:10px}
  #customerApp{padding:0}.client-shell{border:0;border-radius:0;width:100%;max-width:100%;height:100%;box-shadow:none}
- .client-header{padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));gap:12px}
- .client-header__title h1{font-size:22px}.client-header__title p{font-size:14px}.client-header__title small{font-size:12px}
- .client-header__brand{min-width:55px;width:55px;min-height:55px}.client-header__brand img{width:40px;height:40px}
- .screen-icon-button{width:55px;min-width:55px;min-height:55px}.screen-button{min-height:55px;font-size:16px}
- .client-main{padding:20px 16px 24px}.client-nav{gap:4px;padding:8px 12px max(8px,env(safe-area-inset-bottom))}.client-nav button{min-height:55px}.client-nav button>span{font-size:20px}.client-nav button small{font-size:12px}
- .account-page,.orders-page{gap:20px}.account-page__identity h2{font-size:24px}.account-page__identity p{font-size:16px}.account-page__status{font-size:14px}
- .account-page__wallet{padding:16px}.account-page__wallet>strong{font-size:30px}.account-page__wallet-heading{font-size:16px}.account-page__wallet>p{font-size:15px}
- .account-page__shortcuts button{font-size:14px;min-height:55px;flex-direction:column;gap:6px}.account-page__section h3{font-size:18px}.account-page__section header p{font-size:15px}
- .account-row{padding:12px;gap:10px;min-height:72px}.account-row strong{font-size:15px}.account-row small{font-size:14px}.account-row em{font-size:13px}
- .orders-page__intro{display:grid;gap:12px}.orders-page__intro h2{font-size:24px}.orders-page__intro p{font-size:16px}.orders-page__intro .orders-page__updated{text-align:left;max-width:none;font-size:14px}
- .orders-page__summary{gap:8px}.orders-page__summary article{padding:12px}.orders-page__summary span{font-size:14px}.orders-page__summary strong{font-size:24px}
- .orders-page__search label{font-size:15px}.orders-page__search input{font-size:20px;min-height:55px}.orders-page__filters button{font-size:16px;min-height:55px;padding:12px 16px}
- .orders-page__results,.orders-page__reset{font-size:14px}.orders-page__reset{min-height:55px}.order-card{padding:16px;gap:16px}.order-card__header small{font-size:13px}.order-card__header strong{font-size:16px}.order-card__status{font-size:14px}
- .order-card__items li{grid-template-columns:64px minmax(0,1fr);gap:12px}.order-card__image{width:64px;height:64px;grid-row:1/3}.order-card__items li>b{grid-column:2;text-align:left;max-width:none;font-size:16px}.order-card__item-copy strong{font-size:16px}.order-card__item-copy small{font-size:13px}
- .order-card--skeleton{min-height:400px}
- .order-card__facts dt{font-size:14px}.order-card__facts dd{font-size:15px}.order-card__total span{font-size:14px}.order-card__total strong{font-size:22px}.order-card__discount{font-size:15px}
- .order-card__timeline{gap:8px;padding:12px}.order-card__timeline li{font-size:13px}.order-card__timeline i{font-size:14px}.order-card__cancel-link{min-height:55px;font-size:15px}.order-card__cancel p{font-size:16px}
- .screen-empty{padding:32px 20px}.screen-empty h3{font-size:20px}.screen-empty p{font-size:14px}.screen-support strong{font-size:16px}.screen-support small{font-size:14px}
+ .client-header{padding:calc(8px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));gap:10px}
+ .client-header__title{gap:3px}.client-header__title h1{font-size:20px}.client-header__title p{font-size:12px}.client-header__title small{font-size:10px}
+ .client-header__brand{min-width:44px;width:44px;min-height:44px}.client-header__brand img{width:32px;height:32px}
+ .screen-icon-button{width:44px;min-width:44px;min-height:44px;border-radius:10px;font-size:17px}.screen-button{min-height:44px;font-size:13px;padding:10px 12px;gap:8px;border-radius:10px}
+ .client-main{padding:16px max(12px,env(safe-area-inset-right)) 20px max(12px,env(safe-area-inset-left))}.client-nav{gap:4px;padding:5px max(10px,env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}.client-nav button{min-height:52px;padding:5px 2px;gap:4px;border-radius:10px}.client-nav button>span{font-size:18px}.client-nav button small{font-size:11px}
+ .account-page,.orders-page{gap:16px}.account-page__identity{gap:12px}.account-page__identity h2{font-size:22px}.account-page__identity p{font-size:13px}.account-page__status{font-size:11px}.account-page__avatar .avatar-shell{height:60px;width:60px}
+ .account-page__wallet{padding:14px;border-radius:16px}.account-page__wallet>strong{font-size:28px}.account-page__wallet-heading{font-size:13px}.account-page__wallet>p{font-size:12px}
+ .account-page__shortcuts{padding-top:12px;gap:6px}.account-page__shortcuts button{font-size:12px;min-height:44px;flex-direction:column;gap:4px;border-radius:10px}.account-page__section h3{font-size:16px}.account-page__section header p{font-size:12px}
+ .account-row{padding:10px;gap:10px;min-height:64px}.account-row strong{font-size:13px}.account-row small{font-size:12px}.account-row em{font-size:11px}
+ .orders-page__intro{display:grid;gap:8px}.orders-page__intro h2{font-size:22px}.orders-page__intro p{font-size:13px}.orders-page__intro .orders-page__updated{text-align:left;max-width:none;font-size:12px}
+ .orders-page__summary{gap:6px}.orders-page__summary article{padding:10px;border-radius:12px}.orders-page__summary span{font-size:11px}.orders-page__summary strong{font-size:22px}
+ .orders-page__search label{font-size:12px}.orders-page__search input{font-size:16px;min-height:44px;padding:8px 0}.orders-page__filters button{font-size:12px;min-height:44px;padding:8px 12px;border-radius:10px}
+ .orders-page__results,.orders-page__reset{font-size:12px}.orders-page__reset{min-height:44px}.order-card{padding:14px;gap:14px;border-radius:16px}.order-card__header small{font-size:11px}.order-card__header strong{font-size:13px}.order-card__status{font-size:12px}
+ .order-card__items li{grid-template-columns:48px minmax(0,1fr);gap:8px}.order-card__image{width:48px;height:48px;grid-row:1/3;border-radius:10px}.order-card__items li>b{grid-column:2;text-align:left;max-width:none;font-size:14px}.order-card__item-copy strong{font-size:14px}.order-card__item-copy small{font-size:12px}
+ .order-card--skeleton{min-height:320px}
+ .order-card__facts{gap:12px}.order-card__facts dt{font-size:12px}.order-card__facts dd{font-size:13px}.order-card__total span{font-size:12px}.order-card__total strong{font-size:20px}.order-card__discount{font-size:12px}
+ .order-card__timeline{gap:6px;padding:10px}.order-card__timeline li{font-size:11px}.order-card__timeline i{font-size:12px}.order-card__cancel-link{min-height:44px;font-size:13px}.order-card__cancel p{font-size:13px}
+ .screen-empty{padding:24px 16px;gap:12px}.screen-empty h3{font-size:18px}.screen-empty p{font-size:13px}.screen-empty>i{width:52px;height:52px;font-size:23px;border-radius:14px}.screen-support{padding:12px;gap:10px;border-radius:12px}.screen-support strong{font-size:13px}.screen-support small{font-size:12px}
 }
-@media(max-width:430px){.client-header__title p{display:none}.client-header{gap:10px}.client-header__title h1{font-size:22px}.client-header__actions{gap:6px}.orders-page__summary span{font-size:13px}.account-page__identity{gap:16px}}
-@media(pointer:coarse){.screen-button,.screen-icon-button,.account-page__shortcuts button,.orders-page__filters button{min-height:55px}.screen-icon-button{min-width:55px}.client-nav button{min-height:55px}.header-wallet{min-height:55px}}
+@media(max-width:430px){.client-header__title p{display:none}.client-header__actions{gap:6px}}
+@media(pointer:coarse){.screen-button,.screen-icon-button,.account-page__shortcuts button,.orders-page__filters button{min-height:44px}.screen-icon-button{min-width:44px}.header-wallet{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.client-shell,.screen-button{transition:none}}

@@ -61,7 +61,7 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v84r1" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v85r1" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`

@@ -85,6 +85,10 @@ test('updated client bundles use fresh cache versions rather than stale immutabl
   const storefront = fs.readFileSync(path.join(__dirname, '../public/js/store/storefront.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '../admin/admin.html'), 'utf8');
   assert.match(index, /\/style\.css\?v=zentra-ui-v84r1/);
+  for (const name of ['interface', 'customer-app', 'customer-screens', 'product-detail', 'storefront-design', 'notifications']) {
+    assert.ok(index.includes(`/public/css/${name}.css?v=zentra-ui-v85r1`), `stale mobile stylesheet ${name}`);
+  }
+  assert.ok(admin.includes('/public/css/interface.css?v=zentra-ui-v85r1'));
   assert.match(index, /\/script\.js\?v=zentra-ui-v84r1/);
   assert.match(script, /\/storefront\.js\?v=zentra-ui-v84r1/);
   assert.match(storefront, /products\.js\?v=zentra-ui-v84r1/);
