@@ -40,6 +40,7 @@ async function main(){
   }
   async function product(page,id,expected,mobile=false){
    await panel(page,'products');await page.locator('#openProductCreate').click();const form=page.locator('#productCreateForm');await form.waitFor({state:'visible'});
+   await form.locator('[name="categoryPreset"]').selectOption('cs2-ios');assert.equal(await form.locator('[name="platform"]').inputValue(),'ios');assert.equal(await form.locator('[name="game"]').inputValue(),'cs2');
    await form.locator('[name="id"]').fill(id);await form.locator('[name="name"]').fill('MAGİC');await form.locator('[name="categoryPreset"]').selectOption('oxide-android');await form.locator('[name="description"]').fill('Oxide Android ürünü için test açıklaması.');
    await form.locator('[name="key"]').fill('GÜNLÜK');await form.locator('[name="label"]').fill('Günlük');await form.locator('[name="duration"]').fill('24 Saat');await form.locator('[name="price"]').fill('250');
    await form.locator('[name="id"]').blur();assert.equal(await form.locator('[name="id"]').inputValue(),expected);assert.equal(await form.locator('[name="id"]').evaluate(n=>n.validity.patternMismatch),false);
@@ -53,12 +54,19 @@ async function main(){
    const saved=await r,data=await saved.json();assert.equal(saved.status(),201,JSON.stringify(data));assert.equal(data.product.id,expected);assert.equal(data.product.name,'MAGİC');assert.equal(data.product.platform,'android');assert.equal(data.product.plans[0].key,'gunluk');if(mobile){assert.match(data.product.image,/^https:\/\/firebasestorage/);assert.equal(app.uploadedImages.size,1);}
    await form.waitFor({state:'hidden'});assert.equal(app.db.records.get('storefrontSettings/main').catalog.customProducts[expected].id,expected);assert.equal(sent,1);page.off('request',count);
    const layout=await page.evaluate(()=>({width:document.documentElement.scrollWidth,viewport:innerWidth}));assert(layout.width<=layout.viewport+1);
-   cases.push({name:(mobile?'mobile':'desktop')+'-product-creation',exactScreenshotKey:!mobile,TurkishKeyCanonicalized:mobile,invalidKeyBlockedBeforePOST:true,persisted:true,focusedFieldClearOfActions:true,normalizedPlanKey:true,layout});
+   cases.push({name:(mobile?'mobile':'desktop')+'-product-creation',exactScreenshotKey:!mobile,TurkishKeyCanonicalized:mobile,invalidKeyBlockedBeforePOST:true,persisted:true,focusedFieldClearOfActions:true,normalizedPlanKey:true,cs2PresetSync:true,layout});
+  }
+  async function cs2Catalog(page,name){
+   await panel(page,'products');await page.locator('#adminProductCategory').selectOption('cs2-ios');
+   await page.waitForFunction(()=>[...document.querySelectorAll('[data-product-form]')].filter(el=>el.getClientRects().length).length===2);
+   const ids=await page.locator('[data-product-form]:visible').evaluateAll(forms=>forms.map(form=>form.dataset.productForm).sort());assert.deepEqual(ids,['ios-tracex-cs2','ios-ultima-cs2']);
+   await page.locator('#clearProductFilters').click();cases.push({name:name+'-cs2-category',exactProducts:true,clearFilterRestoresCatalog:true});
   }
   const owner=await context('owneruid');await gate(owner.page,'desktop');await product(owner.page,'oxide-android-magic-yeni','oxide-android-magic-yeni');
+  await cs2Catalog(owner.page,'desktop');
   await role(owner.page,'member','admin');assert.equal(app.db.records.get('adminUsers/member').role,'admin');assert.equal(await owner.page.locator('[data-edit-staff="owneruid"]').count(),0);cases.push({name:'owner-role-grant',fullAdminOption:true,passwordProofRequired:true,ownerImmutable:true});
   const delegated=await context('member',true);await gate(delegated.page,'mobile');for(const name of ['orders','inventory','products','users','wallet','content','links','coupons','staff','audit','security'])assert.equal(await delegated.page.locator(`[data-panel="${name}"]`).first().isVisible(),true,name);
-  await product(delegated.page,'OXİDE–ANDROİD–MAGİC–MOBİL','oxide-android-magic-mobil',true);await role(delegated.page,'viewer','support');
+  await product(delegated.page,'OXİDE–ANDROİD–MAGİC–MOBİL','oxide-android-magic-mobil',true);await cs2Catalog(delegated.page,'mobile');await role(delegated.page,'viewer','support');
   await delegated.page.locator('[data-edit-staff="viewer"]').click();assert.equal(await delegated.page.locator('#staffUid').inputValue(),'viewer');assert.equal(await delegated.page.locator('#staffRole').inputValue(),'support');await delegated.page.screenshot({path:path.join(output,'mobile-full-authority-staff.png'),fullPage:true});cases.push({name:'delegated-full-authority',allAdminPanels:true,canManageStaff:true,existingRoleEditable:true});
   await role(owner.page,'member','viewer');await delegated.page.reload({waitUntil:'domcontentloaded'});await delegated.page.waitForFunction(()=>!document.querySelector('[data-panel="staff"]')||document.querySelector('[data-panel="staff"]').hidden);cases.push({name:'role-revocation',existingBrowserSessionRejected:true});
   assert.deepEqual(errors,[]);const results={passed:cases.length,failed:0,pageErrors:errors,livePayments:0,liveRefunds:0,cases};fs.writeFileSync(path.join(output,'browser-results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));

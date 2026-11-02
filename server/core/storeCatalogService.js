@@ -164,8 +164,20 @@ function catalogState(source = {}) {
   return state;
 }
 
-function initializeProductSettings(legacy = new Map(), now = Date.now()) {
-  return Object.fromEntries(STORE_CATALOG.products.map((base) => {
+function catalogDefinitions(customProducts = []) {
+  return [...new Map([...STORE_CATALOG.products, ...customProducts].map((product) => [product.id, product])).values()];
+}
+
+function findProductDefinition(id, customProducts = {}) {
+  const custom = customProducts instanceof Map ? customProducts.get(id)
+    : readCustomProducts(customProducts).find((product) => product.id === id);
+  return custom || findBaseProduct(id);
+}
+
+function initializeProductSettings(legacy = new Map(), now = Date.now(), customProducts = {}) {
+  const custom = readCustomProducts(customProducts);
+  const customMap = new Map(custom.map((product) => [product.id, product]));
+  return Object.fromEntries(catalogDefinitions(custom).map((base) => {
     const existing = legacy.get(base.id) || {};
     const effective = mergeProduct(base, existing, true);
     const settings = {
@@ -178,7 +190,7 @@ function initializeProductSettings(legacy = new Map(), now = Date.now()) {
       }]))
     };
     const savedAt = Math.max(0, Number(existing.updatedAt || 0)) || now;
-    const prepared = productSettingsPatch(base.id, settings, existing.updatedBy || {}, savedAt);
+    const prepared = productSettingsPatch(base.id, settings, existing.updatedBy || {}, savedAt, customMap);
     return [base.id, prepared.patch];
   }));
 }
@@ -234,7 +246,7 @@ async function readOverrides() {
       const currentState = catalogState(current);
       if (!currentState) return;
       const currentProducts = currentState.products || {};
-      const defaults = initializeProductSettings(new Map(Object.entries(currentProducts)), now);
+      const defaults = initializeProductSettings(new Map(Object.entries(currentProducts)), now, currentState.customProducts);
       const addedProducts = Object.fromEntries(Object.entries(defaults).filter(([id]) => !Object.hasOwn(currentProducts, id)));
       const nextState = {
         ...currentState,
@@ -274,7 +286,7 @@ async function getEffectiveCatalog({ includeInactive = false, fresh = false } = 
     const generation = cacheGeneration;
     const pending = (async () => {
       const overrides = await readOverrides();
-      const products = [...STORE_CATALOG.products, ...overrides.customProducts]
+      const products = catalogDefinitions(overrides.customProducts)
         .map((product) => mergeProduct(product, overrides.products.get(product.id), true))
         .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, 'tr'));
       const common = {
@@ -312,7 +324,7 @@ function invalidateCatalogCache() {
 
 function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt = Date.now(), customProducts = {}) {
   const id = safeText(productId, 80).toLowerCase();
-  const base = findBaseProduct(id) || readCustomProducts(customProducts).find((entry) => entry.id === id);
+  const base = findProductDefinition(id, customProducts);
   if (!base) throw serviceError('STORE_PRODUCT_NOT_FOUND', 404);
   const body = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const plansInput = body.plans && typeof body.plans === 'object' && !Array.isArray(body.plans) ? body.plans : {};
@@ -397,7 +409,7 @@ async function updateProductSettings(productId = '', input = {}, actor = {}) {
     assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
     transaction.set(reference, { catalog: nextCatalog }, { merge: true });
     recordMutationAudit(transaction, db, 'store.product.update', actor, { productId: id, before: current.products[id] || null, after: prepared.patch });
-    const base = findBaseProduct(id) || readCustomProducts(current.customProducts).find((entry) => entry.id === id);
+    const base = findProductDefinition(id, current.customProducts);
     return mergeProduct(base, prepared.patch, true);
   });
   invalidateCatalogCache();
@@ -441,13 +453,13 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
     const products = { ...current.products };
     updates.forEach((entry) => {
       const id = safeText(entry.productId, 80).toLowerCase();
-      products[id] = productSettingsPatch(id, mergeProductInput(current.products[id], entry.settings), actor, now, current.customProducts).patch;
+      products[id] = productSettingsPatch(id, mergeProductInput(current.products[id], entry.settings), actor, now, customProductMap).patch;
     });
     const nextCatalog = { ...current, updatedAt: now, products };
     assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
     transaction.set(settingsRef, { catalog: nextCatalog }, { merge: true });
     transaction.create(auditRef, audit);
-    return prepared.map(({ id }) => mergeProduct(findBaseProduct(id) || customProductMap.get(id), products[id], true));
+    return prepared.map(({ id }) => mergeProduct(findProductDefinition(id, customProductMap), products[id], true));
   });
   invalidateCatalogCache();
   const ids = new Set(prepared.map((entry) => entry.id));

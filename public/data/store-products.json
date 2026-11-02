@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "currency": "TRY",
   "telegramUsername": "ZENTRA_STORE",
   "products": [
@@ -1135,6 +1135,287 @@
           "label": "Aylık",
           "duration": "30 Gün",
           "priceKurus": 160000
+        }
+      ]
+    },
+    {
+      "id": "ios-sapphire-oxide",
+      "platform": "ios",
+      "game": "oxide",
+      "categoryKey": "oxide-ios",
+      "category": "Oxide iOS",
+      "name": "SAPPHİRE",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/sapphire.JPG",
+      "accent": "119,108,255",
+      "description": "SAPPHİRE için iOS / OXİDE lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 720,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ]
+    },
+    {
+      "id": "ios-tracex-cs2",
+      "platform": "ios",
+      "game": "cs2",
+      "categoryKey": "cs2-ios",
+      "category": "CS2 iOS",
+      "name": "CS2 TRACEX",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/tracex.jpeg",
+      "accent": "98,204,236",
+      "description": "CS2 TRACEX için iOS / CS2 lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 730,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 80000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 160000
+        }
+      ]
+    },
+    {
+      "id": "ios-tracex-oxide",
+      "platform": "ios",
+      "game": "oxide",
+      "categoryKey": "oxide-ios",
+      "category": "Oxide iOS",
+      "name": "OXİDE TRACEX",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/tracex.jpeg",
+      "accent": "98,204,236",
+      "description": "OXİDE TRACEX için iOS / OXİDE lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 740,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 20000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 135000
+        }
+      ]
+    },
+    {
+      "id": "ios-ultima-cs2",
+      "platform": "ios",
+      "game": "cs2",
+      "categoryKey": "cs2-ios",
+      "category": "CS2 iOS",
+      "name": "CS MOBİLE ULTİMA",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/cs-mobile-ultima.jpeg",
+      "accent": "255,112,65",
+      "description": "CS MOBİLE ULTİMA için iOS / CS2 lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 750,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 80000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 150000
+        }
+      ]
+    },
+    {
+      "id": "android-magic-oxide",
+      "platform": "android",
+      "game": "oxide",
+      "categoryKey": "oxide-android",
+      "category": "Oxide Android",
+      "name": "MAGİC",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/magic.JPG",
+      "accent": "226,64,82",
+      "description": "MAGİC için Android / OXİDE lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 760,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 35000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 125000
+        },
+        {
+          "key": "biweekly",
+          "label": "2 Haftalık",
+          "duration": "14 Gün",
+          "priceKurus": 190000
+        }
+      ]
+    },
+    {
+      "id": "ios-tracex-pubg",
+      "platform": "ios",
+      "game": "pubg",
+      "categoryKey": "pubg-ios",
+      "category": "PUBG iOS",
+      "name": "TRACEX",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/tracex.jpeg",
+      "accent": "98,204,236",
+      "description": "TRACEX için iOS / PUBG lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 770,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 25000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 135000
+        }
+      ]
+    },
+    {
+      "id": "ios-lion-pubg",
+      "platform": "ios",
+      "game": "pubg",
+      "categoryKey": "pubg-ios",
+      "category": "PUBG iOS",
+      "name": "LİON",
+      "badge": "PREMIUM",
+      "badgeKey": "premium",
+      "icon": "fa-gamepad",
+      "image": "/public/assets/products/lion-ios.webp",
+      "accent": "101,211,255",
+      "description": "LİON için iOS / PUBG lisans paketleri.",
+      "inventoryType": "license",
+      "fulfillmentMode": "automatic",
+      "sortOrder": 780,
+      "features": [],
+      "tags": [
+        "new"
+      ],
+      "plans": [
+        {
+          "key": "daily",
+          "label": "Günlük",
+          "duration": "24 Saat",
+          "priceKurus": 20000
+        },
+        {
+          "key": "weekly",
+          "label": "Haftalık",
+          "duration": "7 Gün",
+          "priceKurus": 75000
+        },
+        {
+          "key": "monthly",
+          "label": "Aylık",
+          "duration": "30 Gün",
+          "priceKurus": 135000
         }
       ]
     }

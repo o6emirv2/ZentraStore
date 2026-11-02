@@ -34,7 +34,7 @@ async function mountDashboard() {
     document.querySelector('link[href*="admin-gate.css"]')?.remove();
     document.body.append(...[...parsed.body.childNodes].map(node => document.importNode(node, true)));
     history.replaceState(history.state, '', '/admin/' + (/^#panel\/[a-z]+$/.test(location.hash) ? location.hash : ''));
-    await import('./admin-dashboard.js?v=zentra-ui-v84r1');
+    await import('./admin-dashboard.js?v=zentra-ui-v86r1');
   })();
   try { await mounting; } catch (error) { mounting = null; throw error; }
 }

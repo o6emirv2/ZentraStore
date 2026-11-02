@@ -1,6 +1,6 @@
 import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v84r1';
 import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v84r1';
-import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v84r1';
+import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v86r1';
 
 import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v84r1';
 
@@ -210,7 +210,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {
-        source = await apiRequest('/api/store/catalog?v=13', { auth: false, timeoutMs: 6500 });
+        source = await apiRequest('/api/store/catalog?v=14', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {

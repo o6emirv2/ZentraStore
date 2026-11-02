@@ -14,7 +14,7 @@ async function main() {
     app = await applicationFixture({ shopier: true, transientStore: 'memory', rateLimitStore: 'memory', appCheckMode: 'monitor' });
     provider = shopierFixture();
     browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : { channel: 'chrome' }), args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'], env: { ...process.env, ...(process.env.CHROMIUM_LIBRARY_PATH ? { LD_LIBRARY_PATH: process.env.CHROMIUM_LIBRARY_PATH } : {}) } });
-    const resetLimits = async () => { const { publicLimiter, apiLimiter } = require('../server/core/security'); await publicLimiter.resetKey('127.0.0.1'); await apiLimiter.resetKey('127.0.0.1'); };
+    const resetLimits = async () => { const { publicLimiter, apiLimiter, strictLimiter } = require('../server/core/security'); await publicLimiter.resetKey('127.0.0.1'); await apiLimiter.resetKey('127.0.0.1'); await strictLimiter.resetKey('127.0.0.1'); };
     let ctx, page;
     for (const width of [320, 390, 768, 1440]) {
       await resetLimits();
@@ -40,12 +40,27 @@ async function main() {
       if (width !== 1440) await ctx.close();
     }
     const catalog = (await app.request('/api/store/catalog')).body.catalog;
+    await page.locator('[data-filter="cs2-ios"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-store-product]').length===2);
+    assert.deepEqual((await page.locator('[data-store-product]').evaluateAll(nodes=>nodes.map(node=>node.dataset.storeProduct))).sort(),['ios-tracex-cs2','ios-ultima-cs2']);
+    assert.equal(await page.locator('[data-filter="cs2-android"]').isVisible(),false);
+    await page.locator('[data-filter="all"]').click();
+    await page.waitForFunction(count=>document.querySelectorAll('[data-store-product]').length===count,catalog.products.length);
+    cases.push({name:'cs2-category',exactProducts:true,emptyAndroidShortcutHidden:true});
     for (const product of catalog.products) {
       await page.evaluate(id => { location.hash = '#product/' + id; }, product.id);
       await page.waitForFunction(id => document.querySelector('[data-product-gallery]')?.dataset.productGallery === id, product.id);
+      if (['ios-lion-pubg', 'ios-ultima-cs2'].includes(product.id)) {
+        const selector = `[data-product-gallery="${product.id}"] .product-gallery__slide img`;
+        await page.waitForFunction(selector => [...document.querySelectorAll(selector)].some(img => img.complete && img.naturalWidth > 0), selector);
+        const logo = await page.locator(selector).first().evaluate(img => ({ path: new URL(img.currentSrc).pathname, width: img.naturalWidth, height: img.naturalHeight }));
+        assert.equal(logo.path, product.image); assert.equal(logo.width, 600); assert.equal(logo.height, product.id === 'ios-lion-pubg' ? 399 : 600);
+        await page.locator('.product-detail').screenshot({ path: path.join(output, product.id + '-original-logo.png') });
+      }
       for (const plan of product.plans) {
         await page.locator(`[data-purchase-plan="${plan.key}"]`).click();
         await page.waitForFunction(label => document.getElementById('purchaseFooterPlan').textContent.includes(label), plan.label);
+        assert.equal(Number((await page.locator('#purchaseFooterPrice').innerText()).replace(/\D/g,'')),plan.priceKurus);
         assert.equal(await page.locator('#purchaseTopupPanel').isVisible(), true);
         assert.equal(await page.locator('#addToCartButton').isVisible(), false);
         assert.match(await page.locator('#purchaseTopupButton').innerText(), /SHOPİER İLE BAKİYE YÜKLE/);
@@ -65,6 +80,7 @@ async function main() {
     await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
     await page.locator('#purchaseTopupPanel').waitFor({ state: 'visible' }); assert.equal(await page.locator('#addToCartButton').isVisible(), false);
     cases.push({ name: 'foreground-stock-refresh', currentStockControlsActions: true });
+    await resetLimits();
     await seed('BROWSER-STOCK-PURCHASE-2026-002');
     const posts = { topups: 0, create: 0 }; let topup, purchase;
     await page.route('**/api/payments/shopier/topups', async route => { posts.topups++; const response = await route.fetch(); topup = (await response.json()).order; await route.fulfill({ response }); });
@@ -77,9 +93,11 @@ async function main() {
     await page.evaluate(() => { location.hash = '#account/cart'; }); await page.waitForFunction(() => !document.getElementById('shopierCheckoutButton').disabled);
     assert.match(await page.locator('#shopierCheckoutButton').innerText(), /Ürün siparişini/);
     await page.locator('#shopierCheckoutButton').click(); await page.waitForURL('**/odeme/sonuc?order=*'); assert.equal(purchase.orderType, 'purchase'); assert.notEqual(purchase.id, topup.id);
+    await resetLimits();
     await page.goto(app.origin + '/#account/profile', { waitUntil: 'domcontentloaded' }); await page.waitForFunction(() => document.getElementById('accountTopupAmount').disabled && !document.getElementById('accountTopupButton').disabled);
     await page.locator('#accountTopupButton').click(); await page.waitForURL('**/odeme/sonuc?order=' + topup.id); assert.deepEqual(posts, { topups: 1, create: 1 });
     cases.push({ name: 'independent-payment-recovery', separateRecords: true, walletResumesWallet: true, noDuplicatePOST: true });
+    await resetLimits();
     await page.goto(app.origin + '/#account/orders', { waitUntil: 'domcontentloaded' });
     await page.locator('[data-order-filter="topups"]').click(); await page.locator(`[data-order-card="${topup.id}"]`).waitFor(); assert.equal(await page.locator('#ordersList [data-order-card]').count(), 1);
     await page.locator('[data-order-filter="purchases"]').click(); await page.locator(`[data-order-card="${purchase.id}"]`).waitFor(); assert.equal(await page.locator('#ordersList [data-order-card]').count(), 1);

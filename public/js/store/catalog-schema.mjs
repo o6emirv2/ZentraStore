@@ -1,6 +1,7 @@
 export const GAME_LABELS = Object.freeze({
   pubg: 'PUBG Mobile',
   oxide: 'Oxide',
+  cs2: 'CS2',
   'delta-force': 'DELTA FORCE',
   valorant: 'VALORANT',
   codm: 'CODM',

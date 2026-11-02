@@ -89,13 +89,13 @@ test('updated client bundles use fresh cache versions rather than stale immutabl
     assert.ok(index.includes(`/public/css/${name}.css?v=zentra-ui-v85r1`), `stale mobile stylesheet ${name}`);
   }
   assert.ok(admin.includes('/public/css/interface.css?v=zentra-ui-v85r1'));
-  assert.match(index, /\/script\.js\?v=zentra-ui-v84r1/);
-  assert.match(script, /\/storefront\.js\?v=zentra-ui-v84r1/);
-  assert.match(storefront, /products\.js\?v=zentra-ui-v84r1/);
+  assert.match(index, /\/script\.js\?v=zentra-ui-v86r1/);
+  assert.match(script, /\/storefront\.js\?v=zentra-ui-v86r1/);
+  assert.match(storefront, /products\.js\?v=zentra-ui-v86r1/);
   assert.match(storefront, /notification-center\.js\?v=zentra-ui-v84r1/);
   assert.match(admin, /admin-legacy-entry\.js\?v=zentra-ui-v84r1/);
   const entry = fs.readFileSync(path.join(__dirname, '../admin/admin-entry.js'), 'utf8');
-  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v84r1/);
+  assert.match(entry, /admin-dashboard\.js\?v=zentra-ui-v86r1/);
 });
 
 const additions = [
@@ -112,6 +112,46 @@ const additions = [
   ['android-drip-client-free-fire', 'free-fire', 'android', [250, 600, 1250]],
   ['ios-fluorite-free-fire', 'free-fire', 'ios', [250, 800, 1600]]
 ];
+
+const currentAdditions = [
+  ['ios-sapphire-oxide', 'SAPPHİRE', 'oxide', 'ios', [['daily', 25000], ['weekly', 75000], ['monthly', 150000]]],
+  ['ios-tracex-cs2', 'CS2 TRACEX', 'cs2', 'ios', [['weekly', 80000], ['monthly', 160000]]],
+  ['ios-tracex-oxide', 'OXİDE TRACEX', 'oxide', 'ios', [['daily', 20000], ['weekly', 75000], ['monthly', 135000]]],
+  ['ios-ultima-cs2', 'CS MOBİLE ULTİMA', 'cs2', 'ios', [['daily', 25000], ['weekly', 80000], ['monthly', 150000]]],
+  ['android-magic-oxide', 'MAGİC', 'oxide', 'android', [['daily', 35000], ['weekly', 125000], ['biweekly', 190000]]],
+  ['ios-tracex-pubg', 'TRACEX', 'pubg', 'ios', [['daily', 25000], ['weekly', 75000], ['monthly', 135000]]],
+  ['ios-lion-pubg', 'LİON', 'pubg', 'ios', [['daily', 20000], ['weekly', 75000], ['monthly', 135000]]]
+];
+
+test('seven supplied products preserve exact names, amounts and only the requested durations', () => {
+  for (const [id, name, game, platform, plans] of currentAdditions) {
+    const product = catalog.find((row) => row.id === id);
+    assert.ok(product, id);
+    assert.equal(product.name, name);
+    assert.equal(product.game, game);
+    assert.equal(product.platform, platform);
+    assert.equal(product.categoryKey, `${game}-${platform}`);
+    assert.deepEqual(product.plans.map((row) => [row.key, row.priceKurus]), plans, id);
+    assert.ok(fs.existsSync(path.join(__dirname, '..', product.image)), id);
+    assert.equal(product.inventoryPoolId || '', '', 'Different products must not share stock implicitly');
+  }
+  assert.equal(catalog.find((row) => row.id === 'android-magic-oxide').plans.find((row) => row.key === 'biweekly').duration, '14 Gün');
+});
+
+test('CS2 uses isolated platform filters, admin categories and browser normalization', async () => {
+  const { loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } = await browserModule('public/js/store/products.js');
+  const { matchesAdminProduct } = await browserModule('public/js/ui/list-controls.js');
+  const expected = ['ios-tracex-cs2', 'ios-ultima-cs2'];
+  const normalized = await loadStoreCatalog(async () => ({ products: catalog }));
+  assert.deepEqual(normalized.products.filter((row) => productMatchesCatalogFilter(row, 'cs2-ios')).map((row) => row.id), expected);
+  assert.deepEqual(normalized.products.filter((row) => matchesAdminProduct(row, { category: 'cs2-ios' })).map((row) => row.id), expected);
+  assert.equal(normalized.products.filter((row) => productMatchesCatalogFilter(row, 'cs2-android')).length, 0);
+  assert.equal(resolveCatalogFilter('cs2-ios', { 'cs2-ios': false }), 'all');
+  for (const row of normalized.products.filter((row) => row.game === 'cs2')) {
+    assert.equal(productMatchesCatalogFilter(row, 'pubg-ios'), false);
+    assert.equal(productMatchesCatalogFilter(row, 'oxide-ios'), false);
+  }
+});
 
 test('all twelve supplied products retain their exact prices, platforms and available durations', () => {
   for (const [id, game, platform, prices] of additions) {

@@ -224,7 +224,7 @@ test('catalog upgrades add every new product while preserving existing prices an
   const previous = structuredClone(stored);
   try {
     const added = require('../public/data/store-products.json').products.filter((product) => product.categoryKey);
-    assert.equal(added.length, 12);
+    assert.equal(added.length, 19);
     for (const product of added) delete stored.catalog.products[product.id];
     stored.catalog.sourceVersion = 11;
     stored.catalog.products.kingmod.plans.daily.priceKurus = 77777;
@@ -247,7 +247,7 @@ test('catalog upgrades add every new product while preserving existing prices an
 test('version twelve combined categories retain custom products, saved prices and platform visibility after upgrading', async () => {
   const previous = structuredClone(stored);
   try {
-    const added = require('../public/data/store-products.json').products.slice(22);
+    const added = require('../public/data/store-products.json').products.slice(22, 34);
     stored.catalog.sourceVersion = 12;
     for (const product of added) {
       stored.catalog.products[product.id].categoryKey = product.game;
@@ -271,7 +271,7 @@ test('version twelve combined categories retain custom products, saved prices an
     assert.equal(upgraded.storefront.categoryVisibility['codm-android'], false);
     assert.equal(upgraded.storefront.categoryVisibility['free-fire-ios'], false);
     assert.equal(upgraded.storefront.categoryVisibility['free-fire-android'], false);
-    assert.equal(stored.catalog.sourceVersion, 13);
+    assert.equal(stored.catalog.sourceVersion, require('../public/data/store-products.json').version);
   } finally {
     stored = previous;
     service.invalidateCatalogCache();
@@ -287,6 +287,34 @@ test('legacy visibility writes update both platforms and separate writes only ch
     await service.updateStorefrontSettings({ categoryVisibility: { 'codm-ios': true } }, actor);
     assert.equal(stored.categoryVisibility['codm-ios'], true);
     assert.equal(stored.categoryVisibility['codm-android'], false);
+  } finally {
+    stored = previous;
+    service.invalidateCatalogCache();
+  }
+});
+
+test('deploying a built-in ID already used by a custom product preserves one editable product and its original SKU', async () => {
+  const previous = structuredClone(stored);
+  try {
+    const id = 'ios-tracex-cs2';
+    const custom = images.normalizeCreatedProduct({ ...valid, id, name: 'Mevcut özel ürün', platform: 'ios', game: 'pubg', categoryKey: 'pubg-ios',
+      plans: [{ key: 'legacy-plan', label: 'Mevcut paket', duration: '20 Gün', priceKurus: 45678 }] });
+    stored.catalog.sourceVersion = 13;
+    stored.catalog.customProducts = { ...(stored.catalog.customProducts || {}), [id]: custom };
+    stored.catalog.products[id] = { ...custom, active: true, plans: { 'legacy-plan': { ...custom.plans[0], active: true } } };
+    service.invalidateCatalogCache();
+    const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
+    const matches = upgraded.products.filter((product) => product.id === id);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0].name, custom.name);
+    assert.equal(matches[0].game, 'pubg');
+    assert.deepEqual(matches[0].plans.map((plan) => [plan.key, plan.priceKurus]), [['legacy-plan', 45678]]);
+    const updated = await service.updateProductSettings(id, { plans: { 'legacy-plan': { priceKurus: 56789 } } }, actor);
+    assert.equal(updated.plans[0].priceKurus, 56789);
+    const bulk = await service.updateProductsBulk([{ productId: id, settings: { plans: { 'legacy-plan': { priceKurus: 67890 } } } }], actor);
+    assert.equal(bulk.products[0].plans[0].key, 'legacy-plan');
+    assert.equal(bulk.products[0].plans[0].priceKurus, 67890);
+    assert.equal(stored.catalog.customProducts[id].plans[0].key, 'legacy-plan');
   } finally {
     stored = previous;
     service.invalidateCatalogCache();

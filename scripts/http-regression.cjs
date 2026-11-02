@@ -70,6 +70,20 @@ test('malformed JSON, prototype keys and untrusted origins produce specific fail
   assert.equal((await cross.json()).error, 'ORIGIN_NOT_ALLOWED');
 });
 
+test('malformed compressed bodies and unstringifiable query values do not crash the server', async () => {
+  const { gzipSync } = require('node:zlib');
+  const qs = require('qs');
+  assert.doesNotThrow(() => qs.stringify({ a: [{ toString: 'untrusted value' }] }, { arrayFormat: 'comma' }));
+  const body = Buffer.concat([gzipSync(Buffer.from('{}')), Buffer.from('trailing bytes')]);
+  const response = await request('/api/store/orders', { method: 'POST', headers: {
+    'Content-Type': 'application/json', 'Content-Encoding': 'gzip', Origin: 'https://zentrastore.com.tr'
+  }, body });
+  await response.text();
+  assert.ok(response.status >= 400 && response.status < 500);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await request('/healthz')).status, 200);
+});
+
 test('removed upload route and private source paths are unavailable, and image formats are served', async () => {
   assert.equal((await request('/api/admin/store/products/image', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, body: '{}' })).status, 404);
   assert.equal((await request('/server/config/env.js')).status, 404);
