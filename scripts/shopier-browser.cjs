@@ -82,8 +82,11 @@ async function main() {
     const cdp = await mobile.newCDPSession(page); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
     for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x - i * 24, y: point.y }] }); await new Promise((resolve) => setTimeout(resolve, 24)); }
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForFunction(() => document.getElementById('gameCategories').scrollLeft > 0);
-    for (const [category, productId] of [['codm-ios', 'ios-cloud-codm'], ['codm-android', 'android-gbd-codm']]) {
-      await page.locator(`#gameCategories [data-filter="${category}"]`).click(); assert.deepEqual(await page.locator('[data-store-product]').evaluateAll((nodes) => nodes.map((node) => node.dataset.storeProduct)), [productId]);
+    for (const [category, productId] of [['oxide-ios', 'ios-sapphire-oxide'], ['oxide-android', 'android-magic-oxide']]) {
+      await page.locator(`#gameCategories [data-filter="${category}"]`).click();
+      const expected = require('../public/data/store-products.json').products.filter(product => `${product.game}-${product.platform}` === category).map(product => product.id).sort();
+      assert.ok(expected.includes(productId));
+      assert.deepEqual((await page.locator('[data-store-product]').evaluateAll(nodes => nodes.map(node => node.dataset.storeProduct))).sort(), expected);
     }
     results.cases.push({ name: 'categories', horizontalTouch: true, separateIosAndroid: true }); await mobile.close();
     const session = await app.openAdmin(), admin = await context({ width: 1440, height: 1000 }, { uid: 'owneruid', email: 'owner@zentra.invalid', token: session.token });

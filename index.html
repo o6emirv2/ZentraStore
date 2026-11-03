@@ -2,10 +2,10 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, viewport-fit=cover" />
   <title>ZENTRA STORE | Premium Oyun ve Dijital Ürün Mağazası</title>
   <meta name="description" content="ZENTRA STORE: iOS ve Android koleksiyonları; güvenli bakiye, şifreli stok, gerçek sipariş takibi ve kontrollü dijital teslimat." />
-  <meta name="keywords" content="ZENTRA STORE, Android, iOS, KingMod, OXİDE, Zolo, Aspect, Obsidian, Star, Dolphin, GBox, random hesap" />
+  <meta name="keywords" content="ZENTRA STORE, Android, iOS, KingMod, OXİDE, Zolo, Aspect, Obsidian, Star, Dolphin, PUBG MOBILE" />
   <meta name="author" content="ZENTRA STORE" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -42,11 +42,11 @@
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
   <link rel="preload" as="image" href="/public/assets/products/kingmod.jpeg?v=storefront-v76" fetchpriority="high" />
   <link rel="stylesheet" href="/style.css?v=zentra-ui-v84r1" />
-  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v85r1" />
+  <link rel="stylesheet" href="/public/css/customer-app.css?v=zentra-ui-v87r1" />
   <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v85r1" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" />
   <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v85r1" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v87r1" />
   <link rel="stylesheet" href="/public/css/customer-screens.css?v=zentra-ui-v85r1" />
   <link rel="stylesheet" href="/public/css/product-detail.css?v=zentra-ui-v85r1" />
   <link rel="stylesheet" href="/public/css/storefront-design.css?v=zentra-ui-v85r1" />
@@ -119,12 +119,12 @@
         <button class="game-category is-active" type="button" data-filter="all" aria-pressed="true"><span class="game-category__symbol"><i class="fa-solid fa-border-all" aria-hidden="true"></i></span><span class="game-category__copy"><strong>Tümü</strong><span>Bütün ürünler</span></span><small data-category-count="all"></small></button>
         <button class="game-category" type="button" data-filter="pubg-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
           <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
+          <span class="game-category__copy"><strong>PUBG MOBILE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
                   <small class="game-category__count" data-category-count="pubg-ios" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="pubg-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
           <img class="game-category__image game-category__image--pubg" src="/public/assets/categories/pubg-mobile.png" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>PUBG</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
+          <span class="game-category__copy"><strong>PUBG MOBILE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
                   <small class="game-category__count" data-category-count="pubg-android" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="oxide-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
@@ -136,106 +136,6 @@
           <img class="game-category__image" src="/public/assets/products/oxide.jpeg?v=storefront-v76" alt="" width="44" height="44" loading="eager" decoding="async" draggable="false" />
           <span class="game-category__copy"><strong>OXİDE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
                   <small class="game-category__count" data-category-count="oxide-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="random-account" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <img class="game-category__image" src="/public/assets/products/random.jpeg?v=storefront-v76" alt="" width="44" height="44" loading="lazy" decoding="async" />
-          <span class="game-category__copy"><strong>RANDOM</strong><span><i class="fa-solid fa-user-shield" aria-hidden="true"></i> HESAPLAR</span></span>
-          <small class="game-category__count" data-category-count="random-account" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="gbox" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <img class="game-category__image" src="/public/assets/products/gbox.jpeg?v=storefront-v76" alt="" width="44" height="44" loading="lazy" decoding="async" />
-          <span class="game-category__copy"><strong>GBOX</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS / IPAD</span></span>
-          <small class="game-category__count" data-category-count="gbox" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="cs2-ios" data-category-platform="ios" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <span class="game-category__symbol"><i class="fa-solid fa-gamepad" aria-hidden="true"></i></span>
-          <span class="game-category__copy"><strong>CS2</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> İOS</span></span>
-          <small class="game-category__count" data-category-count="cs2-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="cs2-android" data-category-platform="android" aria-pressed="false" aria-controls="iosProducts androidProducts">
-          <span class="game-category__symbol"><i class="fa-solid fa-gamepad" aria-hidden="true"></i></span>
-          <span class="game-category__copy"><strong>CS2</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> ANDROİD</span></span>
-          <small class="game-category__count" data-category-count="cs2-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="delta-force-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/tracex.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>DELTA FORCE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="delta-force-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="delta-force-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/tracex.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>DELTA FORCE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="delta-force-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="valorant-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/tracex.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>VALORANT</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="valorant-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="valorant-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/tracex.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>VALORANT</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="valorant-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="codm-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/cloud-codm.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>CODM</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="codm-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="codm-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/gbd-codm.jpeg" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>CODM</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="codm-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="bloodstrike-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/bloodstrike.png" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>BLOODSTRIKE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="bloodstrike-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="bloodstrike-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/bloodstrike.png" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>BLOODSTRIKE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="bloodstrike-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="standoff-2-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/standoff-2-ios.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>STANDOFF 2</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="standoff-2-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="standoff-2-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/standoff-2-android.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>STANDOFF 2</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="standoff-2-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="mobile-legends-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/fluorite.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>MOBILE LEGENDS</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="mobile-legends-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="mobile-legends-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/fluorite.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>MOBILE LEGENDS</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="mobile-legends-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="8ball-pool-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/wizard-8ball-pool.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>8BALL POOL</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="8ball-pool-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="8ball-pool-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/king-mod-8ball-pool.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>8BALL POOL</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="8ball-pool-android" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="free-fire-ios" data-category-platform="ios" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/fluorite.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>FREE FIRE</strong><span><i class="fa-brands fa-apple" aria-hidden="true"></i> iOS</span></span>
-          <small class="game-category__count" data-category-count="free-fire-ios" aria-label="Ürün sayısı"></small>
-        </button>
-        <button class="game-category" type="button" data-filter="free-fire-android" data-category-platform="android" aria-pressed="false" aria-controls="androidProducts iosProducts">
-          <img class="game-category__image" src="/public/assets/products/drip-client.webp" alt="" width="44" height="44" loading="lazy" decoding="async" draggable="false" />
-          <span class="game-category__copy"><strong>FREE FIRE</strong><span><i class="fa-brands fa-android" aria-hidden="true"></i> Android</span></span>
-          <small class="game-category__count" data-category-count="free-fire-android" aria-label="Ürün sayısı"></small>
         </button>
         <button class="game-category" type="button" data-filter="favorites" aria-pressed="false"><span class="game-category__symbol"><i class="fa-solid fa-heart" aria-hidden="true"></i></span><span class="game-category__copy"><strong>Favoriler</strong><span>Seçtiğiniz ürünler</span></span><small data-category-count="favorites"></small></button>
       </div>
@@ -450,6 +350,6 @@
   </div>
 
   <div class="notification-center" id="toastStack" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="/script.js?v=zentra-ui-v86r1"></script>
+  <script type="module" src="/script.js?v=zentra-ui-v87r1"></script>
 </body>
 </html>

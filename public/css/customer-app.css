@@ -1588,3 +1588,11 @@
  .customer-quantity{height:44px;grid-template-columns:44px 28px 44px}
  .customer-quantity button{width:44px;min-width:44px;min-height:44px}
 }
+@media(pointer:coarse){
+ .customer-cart-item__remove{width:44px;height:44px;min-width:44px;min-height:44px}
+ .customer-quantity{height:44px;grid-template-columns:44px 28px 44px}
+ .customer-quantity button{width:44px;min-width:44px;min-height:44px}
+}
+@media(pointer:coarse) and (min-width:900px){
+ .customer-cart-item{grid-template-columns:74px minmax(0,1fr) 44px}
+}

@@ -20,8 +20,8 @@ import {
   signInStore,
   subscribeStoreAuth
 } from './auth.js?v=zentra-ui-v84r1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v86r1';
-import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v86r1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v87r1';
+import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v87r1';
 import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v84r1';
 import { installProductGallery } from './product-gallery.js?v=zentra-ui-v84r1';
 import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v84r1';

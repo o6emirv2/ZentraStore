@@ -4,7 +4,7 @@ const { uploadProductImage, readImageUpload } = require('./storeProductImages');
 const { logError } = require('./errorLogger');
 
 const { productCategory, normalizeFeatures } = require('./storeProductSchema');
-const { normalizeCategoryVisibility, expandCategoryVisibility } = require('../../public/js/store/catalog-schema.mjs');
+const { GAME_KEYS, normalizeCategoryVisibility, expandCategoryVisibility } = require('../../public/js/store/catalog-schema.mjs');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { recordMutationAudit } = require('./storeMutationAudit');
 const { STORE_CATALOG, findProduct: findBaseProduct } = require('./storeCatalog');
@@ -14,6 +14,7 @@ const { MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, produc
 
 const CACHE_TTL_MS = 60_000;
 const CATALOG_SCHEMA_VERSION = 1;
+const CATALOG_SCOPE_VERSION = 1;
 function catalogRevision(settings = {}) {
   const canonical = (value) => {
     if (value instanceof Date) return value.toISOString();
@@ -89,9 +90,15 @@ function mergeProduct(baseProduct = {}, override = {}, includeInactive = false) 
   const badge = resolveBadge({ badgeKey: source.badgeKey, badge: source.badge }, baseProduct);
   const tags = source.tags !== undefined ? normalizeTags(source.tags) : normalizeTags(baseProduct.tags);
   const duplicateTag = badge.key === 'new' ? 'new' : badge.key === 'popular' ? 'popular' : badge.key === 'discounted' ? 'discounted' : '';
+  let category;
+  try { category = productCategory(source, baseProduct); }
+  catch (error) {
+    if (error.code !== 'STORE_PRODUCT_CATEGORY_INVALID') throw error;
+    category = productCategory({}, baseProduct);
+  }
   return {
     ...baseProduct,
-    ...productCategory(source, baseProduct),
+    ...category,
     immutablePlatform: immutableTelegramOnly,
     name: safeText(source.name, 80) || baseProduct.name,
     active: source.active !== false,
@@ -224,19 +231,19 @@ async function readOverrides() {
       }
       stored = {
         schemaVersion: CATALOG_SCHEMA_VERSION,
+        scopeVersion: CATALOG_SCOPE_VERSION,
         sourceVersion: STORE_CATALOG.version,
         initializedAt: now,
         updatedAt: now,
         products
       };
-      transaction.set(reference, { catalog: stored }, { merge: true });
-      settings = { ...current, catalog: stored };
+      settings = { ...current, catalog: stored, categoryVisibility: normalizeCategoryVisibility(current.categoryVisibility) };
+      transaction.set(reference, settings);
     });
   }
   const storedProducts = stored?.products || {};
-  // A deployment/rollback is not permission to erase retired product settings.
-  // Only add missing current products; keep historical overrides intact.
-  const catalogChanged = Number(stored?.sourceVersion) < Number(STORE_CATALOG.version)
+  const catalogChanged = Number(stored?.scopeVersion) !== CATALOG_SCOPE_VERSION
+    || Number(stored?.sourceVersion) < Number(STORE_CATALOG.version)
     || STORE_CATALOG.products.some((product) => !Object.hasOwn(storedProducts, product.id));
   if (catalogChanged) {
     const now = Date.now();
@@ -247,15 +254,16 @@ async function readOverrides() {
       if (!currentState) return;
       const currentProducts = currentState.products || {};
       const defaults = initializeProductSettings(new Map(Object.entries(currentProducts)), now, currentState.customProducts);
-      const addedProducts = Object.fromEntries(Object.entries(defaults).filter(([id]) => !Object.hasOwn(currentProducts, id)));
       const nextState = {
         ...currentState,
+        scopeVersion: CATALOG_SCOPE_VERSION,
         sourceVersion: Math.max(Number(currentState.sourceVersion) || 0, STORE_CATALOG.version),
         updatedAt: now,
-        products: { ...currentProducts, ...addedProducts }
+        products: defaults,
+        customProducts: Object.fromEntries(readCustomProducts(currentState.customProducts).map((product) => [product.id, product]))
       };
-      transaction.set(reference, { catalog: nextState }, { merge: true });
-      settings = { ...current, catalog: nextState };
+      settings = { ...current, catalog: nextState, categoryVisibility: normalizeCategoryVisibility(current.categoryVisibility) };
+      transaction.set(reference, settings);
       stored = nextState;
     });
   }
@@ -333,6 +341,7 @@ function productSettingsPatch(productId = '', input = {}, actor = {}, updatedAt 
   }
   if (Object.keys(plansInput).some((key) => !base.plans.some((plan) => plan.key === key))) throw serviceError('STORE_SKU_INVALID', 400);
   if (body.platform !== undefined && !['android', 'ios'].includes(String(body.platform))) throw serviceError('STORE_PRODUCT_PLATFORM_INVALID', 400);
+  if (body.game !== undefined && !GAME_KEYS.includes(body.game)) throw serviceError('STORE_PRODUCT_GAME_INVALID', 400);
   if (body.sortOrder !== undefined && (!Number.isSafeInteger(Number(body.sortOrder)) || Number(body.sortOrder) < 0 || Number(body.sortOrder) > 10_000)) throw serviceError('STORE_PRODUCT_SORT_INVALID', 400);
   if (body.image !== undefined && String(body.image || '').trim() && !isValidProductImage(String(body.image).trim())) throw serviceError('STORE_PRODUCT_IMAGE_INVALID', 400);
   const incomingBadgeKey = body.badgeKey !== undefined
@@ -535,10 +544,11 @@ async function updateStorefrontSettings(input = {}, actor = {}) {
       quickLinks: input.quickLinks === undefined ? effective.quickLinks : input.quickLinks
     });
     transaction.set(reference, {
+      ...current,
       ...normalized,
       updatedAt: Date.now(),
       updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
-    }, { merge: true });
+    });
     recordMutationAudit(transaction, db, 'store.content.update', actor, { before: normalizeStorefront(effective), after: normalized });
   });
   invalidateCatalogCache();

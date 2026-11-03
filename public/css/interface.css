@@ -233,6 +233,9 @@ html[data-app-hidden] .activity-indicator>span,html[data-app-hidden] .app-skelet
   .auth-actions .button {min-height:44px}
   .icon-button,.icon-action,.customer-icon-button,.table-action {min-width:44px;min-height:44px}
 }
+@media(pointer:coarse) and (min-width:900px) {
+  .page-shell,.site-footer {width:min(calc(100% - max(20px,var(--safe-left),var(--safe-right)) - max(20px,var(--safe-left),var(--safe-right))),var(--container));margin-inline:auto}
+}
 @media(prefers-reduced-motion:reduce) {
   .product-card {transition:none}
 }

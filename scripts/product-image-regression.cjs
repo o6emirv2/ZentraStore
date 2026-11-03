@@ -12,7 +12,7 @@ mockModule('../../server/config/firebaseAdmin', { initFirebaseAdmin: () => ({ ap
   save: async (bytes, options) => { if (failSave) throw new Error('storage denied'); saved.push({ bytes, options, name }); },
   delete: async () => {} }) }) }) } }) });
 const { readImageUpload, uploadProductImage, MAX_IMAGE_BASE64 } = require('../server/core/storeProductImages');
-const jpeg = fs.readFileSync(require('node:path').join(__dirname, '../public/assets/products/gbox.jpeg'));
+const jpeg = fs.readFileSync(require('node:path').join(__dirname, '../public/assets/products/kingmod.jpeg'));
 
 test('raster upload validates content, dimensions, canonical encoding and size before storage', () => {
   assert.deepEqual(readImageUpload({ data: jpeg.toString('base64') }), jpeg);
@@ -20,7 +20,17 @@ test('raster upload validates content, dimensions, canonical encoding and size b
     assert.throws(() => readImageUpload({ data }), { code: 'STORE_PRODUCT_IMAGE_UPLOAD_INVALID' });
   }
   const large = Buffer.from(jpeg);
-  for (let i = 0; i < large.length - 9; i++) if (large[i] === 0xff && [0xc0, 0xc1, 0xc2].includes(large[i + 1])) { large.writeUInt16BE(2000, i + 5); break; }
+  let oversizedFrame = false;
+  for (let offset = 2; offset + 4 < large.length;) {
+    assert.equal(large[offset++], 0xff);
+    while (large[offset] === 0xff) offset++;
+    const marker = large[offset++];
+    if (marker === 0xda || marker === 0xd9) break;
+    const length = large.readUInt16BE(offset);
+    if ([0xc0, 0xc1, 0xc2].includes(marker)) { large.writeUInt16BE(2000, offset + 3); oversizedFrame = true; break; }
+    offset += length;
+  }
+  assert.equal(oversizedFrame, true);
   assert.throws(() => readImageUpload({ data: large.toString('base64') }), { code: 'STORE_PRODUCT_IMAGE_UPLOAD_INVALID' });
   assert.throws(() => readImageUpload({ data: jpeg.toString('base64'), path: '../private' }), { code: 'STORE_PRODUCT_IMAGE_UPLOAD_INVALID' });
 });
@@ -32,7 +42,7 @@ test('stored image gets an opaque path, fixed MIME, generation guard and configu
   assert.equal(saved[0].options.metadata.contentType, 'image/jpeg');
   assert.equal(saved[0].options.preconditionOpts.ifGenerationMatch, 0);
   assert.equal(saved[0].bytes.equals(jpeg), true);
-  assert(!saved[0].name.includes('gbox'));
+  assert(!saved[0].name.includes('kingmod'));
   assert.equal(typeof image.discard, 'function');
   failSave = true;
   await assert.rejects(uploadProductImage({ data: jpeg.toString('base64') }), { code: 'STORE_PRODUCT_IMAGE_STORAGE_UNAVAILABLE' });

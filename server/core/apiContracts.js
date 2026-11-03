@@ -1,6 +1,6 @@
 'use strict';
 
-const { CATEGORY_VISIBILITY_KEYS, LEGACY_GAME_CATEGORY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
+const { CATEGORY_VISIBILITY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const { MAX_IMAGE_BASE64 } = require('./storeProductImages');
 const { TOPUP_LIMITS } = require('./shopierWallet');
 
@@ -32,7 +32,7 @@ const content = object({ maintenance: boolean,
   announcement: object({ enabled: boolean, title: text(100), message: text(500), tone: text(20), ctaLabel: text(40), ctaTarget: text(80) }),
   services: object({ automaticDelivery: boolean, telegramSupport: boolean, balancePayment: boolean }),
   support: object({ telegramUsername: text(80) }), home: object({ title: text(100), message: text(500) }),
-  categoryVisibility: object(Object.fromEntries([...CATEGORY_VISIBILITY_KEYS, ...LEGACY_GAME_CATEGORY_KEYS].map((key) => [key, boolean]))), quickLinks: list(link, 16) });
+  categoryVisibility: object(Object.fromEntries(CATEGORY_VISIBILITY_KEYS.map((key) => [key, boolean]))), quickLinks: list(link, 16) });
 const CONTRACTS = [
   ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
   ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],

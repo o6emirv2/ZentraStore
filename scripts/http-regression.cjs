@@ -90,7 +90,7 @@ test('removed upload route and private source paths are unavailable, and image f
   const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v84r1');
   assert.equal(promotionModule.status, 200);
   assert.ok(promotionModule.headers.get('content-type').includes('javascript'));
-  for (const path of ['/public/assets/products/gbox.jpeg', '/public/assets/products/random.jpeg', '/public/assets/products/h-kernel.PNG', '/public/assets/products/CRY4ME.JPG']) {
+  for (const path of ['/public/assets/products/kingmod.jpeg', '/public/assets/products/magic.JPG', '/public/assets/products/h-kernel.PNG', '/public/assets/products/CRY4ME.JPG']) {
     const response = await request(path);
     assert.equal(response.status, 200, path);
     assert.ok(response.headers.get('content-type').startsWith('image/'));

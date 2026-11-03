@@ -123,9 +123,9 @@ test('store writes bind the initial identity and do not fall back to another acc
 
 test('admin product filtering distinguishes archived and inactive records without changing them', async () => {
   const { matchesAdminProduct, sortRecords } = await load('ui/list-controls.js');
-  const rows = [{ id: 'ios-gbox-1', name: 'GBox', platform: 'ios', active: true }, { id: 'demo', name: 'Türkçe Ürün', game: 'pubg', platform: 'android', active: false }, { id: 'old', name: 'Arşiv', game: 'oxide', platform: 'ios', archived: true }];
+  const rows = [{ id: 'ios-premium-1', name: 'Premium', game: 'pubg', platform: 'ios', active: true }, { id: 'demo', name: 'Türkçe Ürün', game: 'pubg', platform: 'android', active: false }, { id: 'old', name: 'Arşiv', game: 'oxide', platform: 'ios', archived: true }];
   const before = structuredClone(rows);
-  assert.deepEqual(rows.filter((row) => matchesAdminProduct(row, { category: 'gbox' })), [rows[0]]);
+  assert.deepEqual(rows.filter((row) => matchesAdminProduct(row, { category: 'pubg-ios' })), [rows[0]]);
   assert.deepEqual(rows.filter((row) => matchesAdminProduct(row, { query: 'TÜRKÇE', status: 'inactive' })), [rows[1]]);
   assert.deepEqual(rows.filter((row) => matchesAdminProduct(row, { status: 'archived' })), [rows[2]]);
   assert.equal(rows.filter((row) => matchesAdminProduct(row, { query: 'olmayan' })).length, 0);
@@ -145,7 +145,7 @@ test('loaded order sorting preserves IDs and financial fields while ordering by 
 
 test('forced catalog refresh after a mutation waits for an old read and then loads fresh prices', async () => {
   const { loadStoreCatalog } = await browserModule('public/js/store/products.js');
-  const makeCatalog = (price) => ({ products: [{ id: 'demo-product', name: 'Demo', platform: 'android', image: '/public/assets/products/gbox.jpeg', plans: [{ key: 'm', label: 'Aylık', duration: '30 gün', priceKurus: price }] }] });
+  const makeCatalog = (price) => ({ products: [{ id: 'demo-product', name: 'Demo', game: 'pubg', platform: 'android', image: '/public/assets/products/kingmod.jpeg', plans: [{ key: 'm', label: 'Aylık', duration: '30 gün', priceKurus: price }] }] });
   let calls = 0, release;
   const api = async () => { calls++; if (calls === 1) return new Promise((resolve) => { release = resolve; }); return makeCatalog(20000); };
   const initial = loadStoreCatalog(api);

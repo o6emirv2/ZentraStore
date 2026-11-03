@@ -6,17 +6,17 @@ before(async () => { fixture = await applicationFixture(); owner = await fixture
 after(async () => { await fixture?.close(); });
 const credit = { title: '200 TL balance credit', value: 20000, usageLimit: 10, perUserLimit: 1, startsAt: 0, endsAt: 0, active: true, createOnly: true };
 
-test('public catalog HTTP responses preserve every new game, category and exact plan price', async () => {
+test('public catalog HTTP responses expose only permitted products, categories and exact plan prices', async () => {
   const result = await fixture.request('/api/store/catalog');
   assert.equal(result.status, 200);
   const products = result.body.catalog.products;
-  const additions = require('../public/data/store-products.json').products.slice(22);
-  assert.equal(additions.length, 19);
+  const additions = require('../public/data/store-products.json').products;
+  assert.equal(additions.length, 25);
   for (const source of additions) {
     const product = products.find((entry) => entry.id === source.id);
     assert.ok(product, source.id);
     assert.equal(product.game, source.game);
-    assert.equal(product.categoryKey, source.categoryKey);
+    assert.equal(product.categoryKey, source.categoryKey || `${source.game}-${source.platform}`);
     assert.equal(product.platform, source.platform);
     assert.deepEqual(product.plans.map(({ key, priceKurus }) => ({ key, priceKurus })), source.plans.map(({ key, priceKurus }) => ({ key, priceKurus })));
   }

@@ -1,14 +1,14 @@
 import { prepareProductImage } from './product-image-upload.js?v=zentra-ui-v84r1';
 import { createPromoCodeManager } from './promo-codes.js?v=zentra-ui-v84r1';
-import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v86r1';
+import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/js/ui/list-controls.js?v=zentra-ui-v87r1';
 import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v84r1';
 import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
 import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v84r1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v87r1';
 import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v84r1';
 import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
 import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '/public/js/store/social-links.js?v=zentra-ui-v84r1';
-import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v86r1';
+import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v87r1';
 
 installInteractionGuard();
 
@@ -335,7 +335,7 @@ function orderMarkup(order) {
   const canAttachManualDelivery = telegram && !deliveryAttached && !locked
     && transitions.some((value) => ['paid', 'processing', 'delivery_pending', 'delivered'].includes(value));
   const manualDelivery = canAttachManualDelivery
-    ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya random hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Telegram siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
+    ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Telegram siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
     : telegram && deliveryAttached ? `<div class="form-hint"><i class="fa-solid fa-lock"></i>Manuel teslimat bu siparişe şifreli olarak bağlandı (${escapeHtml(order.delivery.itemCount)} kayıt).</div>` : '';
   const deliveryPlaceholder = telegram ? 'Müşteriye gösterilecek açıklama/not. Key veya şifreyi bu alana yazmayın.' : 'Teslimat bilgisini buraya yazmayın; sistem güvenli şekilde otomatik teslim eder.';
   const paymentLabel = order.paymentMethod === 'shopier' ? 'Shopier' : order.paymentMethod === 'wallet' ? 'ZENTRA STORE Bakiye' : 'Telegram';
@@ -598,9 +598,7 @@ function inventorySelectorProducts() {
     product,
     poolId,
     shared: !!product.inventoryPoolId,
-    label: poolId === 'random-30sv-shared'
-      ? 'RANDOM HESAP · Android + iOS Ortak Havuz'
-      : `${product.name} · ${String(product.platform || '').toUpperCase()}`
+    label: `${product.name} · ${product.inventoryPoolId ? 'Ortak Havuz' : String(product.platform || '').toUpperCase()}`
   }));
 }
 
@@ -676,7 +674,7 @@ function renderInventoryParsePreview() {
 function renderInventoryMode({ resetAttempt = true } = {}) {
   const account = selectedInventoryType() === 'account';
   if (resetAttempt && !state.inventoryImportBusy) state.inventoryImportAttempt = null;
-  $('#inventoryImportTitle').textContent = account ? 'Toplu random hesap ekle' : 'Toplu key ekle';
+  $('#inventoryImportTitle').textContent = account ? 'Toplu hesap ekle' : 'Toplu key ekle';
   $('#inventoryImportIcon').className = `fa-solid ${account ? 'fa-user-lock' : 'fa-key'}`;
   $('#inventoryInputLabel').textContent = account ? 'Hesap listesi · her satıra kullanıcı | şifre' : 'Key listesi · her satıra bir key';
   $('#inventoryKeys').placeholder = account ? 'oyuncu01 | GuvenliSifre01\noyuncu02 | GuvenliSifre02' : 'ABCD-EFGH-IJKL\nMNOP-QRST-UVWX';
@@ -688,7 +686,7 @@ function renderInventoryMode({ resetAttempt = true } = {}) {
   const sharedPool = !!product?.inventoryPoolId;
   const poolHint = $('#inventoryPoolHint');
   poolHint.hidden = !sharedPool;
-  if (sharedPool) poolHint.innerHTML = '<i class="fa-solid fa-code-merge"></i> Android ve iOS Random Hesap kayıtları tek ortak stok havuzudur. Bir platformdan yapılan satış her iki platformdaki ortak adedi aynı anda azaltır.';
+  if (sharedPool) poolHint.innerHTML = '<i class="fa-solid fa-code-merge"></i> Android ve iOS Hesap kayıtları tek ortak stok havuzudur. Bir platformdan yapılan satış her iki platformdaki ortak adedi aynı anda azaltır.';
   const migrationButton = $('#inventoryMigrateShared');
   if (migrationButton) migrationButton.hidden = !sharedPool;
   renderInventoryParsePreview();
@@ -728,7 +726,7 @@ function renderInventoryReadiness(readiness = state.inventoryReadiness) {
 
 function renderInventorySummary() {
   const rows = state.inventory;
-  $('#inventorySummary').innerHTML = rows.length ? rows.map((row) => `<button type="button" data-stock-select="${escapeHtml(row.productId)}:${escapeHtml(row.planKey)}"><span><strong>${escapeHtml(row.productName)} · ${escapeHtml(row.planLabel)}</strong><small>${escapeHtml(row.platformLabel || String(row.platform || '').toUpperCase())} · ${row.inventoryType === 'account' ? 'Random hesap' : 'Lisans key'} · Rezerve ${escapeHtml(row.reserved || 0)} · Teslim ${escapeHtml(row.delivered || 0)} · İptal ${escapeHtml(row.revoked || 0)} · Toplam ${escapeHtml(row.total || 0)}</small><em>Son ekleme: ${escapeHtml(formatDate(row.lastImportAt))} · Son teslimat: ${escapeHtml(formatDate(row.lastDeliveryAt))}</em></span><b class="stock-count ${row.available < 1 ? 'is-empty' : row.available <= 3 ? 'is-low' : ''}">${escapeHtml(row.available)}</b></button>`).join('') : emptyMarkup('Stok kaydı yok', 'İlk key veya random hesap grubunu güvenli kasaya ekleyin.', 'fa-vault');
+  $('#inventorySummary').innerHTML = rows.length ? rows.map((row) => `<button type="button" data-stock-select="${escapeHtml(row.productId)}:${escapeHtml(row.planKey)}"><span><strong>${escapeHtml(row.productName)} · ${escapeHtml(row.planLabel)}</strong><small>${escapeHtml(row.platformLabel || String(row.platform || '').toUpperCase())} · ${row.inventoryType === 'account' ? 'Hesap' : 'Lisans key'} · Rezerve ${escapeHtml(row.reserved || 0)} · Teslim ${escapeHtml(row.delivered || 0)} · İptal ${escapeHtml(row.revoked || 0)} · Toplam ${escapeHtml(row.total || 0)}</small><em>Son ekleme: ${escapeHtml(formatDate(row.lastImportAt))} · Son teslimat: ${escapeHtml(formatDate(row.lastDeliveryAt))}</em></span><b class="stock-count ${row.available < 1 ? 'is-empty' : row.available <= 3 ? 'is-low' : ''}">${escapeHtml(row.available)}</b></button>`).join('') : emptyMarkup('Stok kaydı yok', 'İlk key veya hesap grubunu güvenli kasaya ekleyin.', 'fa-vault');
 }
 
 async function loadInventory() {
@@ -808,7 +806,7 @@ async function importInventory(event) {
       }
     });
     $('#inventoryKeys').value = '';
-    const noun = parsed.inventoryType === 'account' ? 'random hesap' : 'key';
+    const noun = parsed.inventoryType === 'account' ? 'hesap' : 'key';
     const reentry = Number(payload.result.duplicateReentries || 0);
     const replaced = Number(payload.result.replacedActiveDuplicates || 0);
     let detail = reentry
@@ -842,7 +840,7 @@ async function inspectInventory() {
     const rows = payload.inventory?.items || [];
     const account = payload.inventory?.product?.inventoryType === 'account';
     const shared = payload.inventory?.pool?.shared === true;
-    $('#inventoryItems').innerHTML = rows.length ? `<table class="data-table"><thead><tr><th>${account ? 'Maskeli hesap' : 'Maskeli key'}</th>${shared ? '<th>Kaynak</th>' : ''}<th>Durum</th><th>Sipariş</th><th>Koruma</th><th>Tarih</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr data-inventory-row="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"><td><code data-secret-cell>${escapeHtml(row.masked)}</code></td>${shared ? `<td>${escapeHtml(String(row.platform || '').toUpperCase())}</td>` : ''}<td><span class="table-state is-${escapeHtml(row.status)}">${escapeHtml(row.status.toLocaleUpperCase('tr-TR'))}</span></td><td>${escapeHtml(row.orderId ? `…${row.orderId.slice(-9)}` : '—')}</td><td>${row.protectionCurrent === false ? 'Yenileme gerekli' : 'Güncel'}</td><td data-sort-value="${escapeHtml(Number(row.createdAt || 0))}">${escapeHtml(formatDate(row.createdAt))}</td><td><div class="table-actions"><button type="button" class="table-action" data-reveal-stock="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"${permissionDisabled('store.inventory.reveal')}>Görüntüle</button>${row.status === 'available' ? `<button type="button" class="table-action is-danger" data-revoke-stock="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"${permissionDisabled('store.inventory.write')}>İptal Et</button>` : ''}</div></td></tr>`).join('')}</tbody></table>` : emptyMarkup('Kayıt bulunamadı', account ? 'Bu ortak havuz için henüz random hesap eklenmemiş.' : 'Bu paket için henüz key eklenmemiş.');
+    $('#inventoryItems').innerHTML = rows.length ? `<table class="data-table"><thead><tr><th>${account ? 'Maskeli hesap' : 'Maskeli key'}</th>${shared ? '<th>Kaynak</th>' : ''}<th>Durum</th><th>Sipariş</th><th>Koruma</th><th>Tarih</th><th></th></tr></thead><tbody>${rows.map((row) => `<tr data-inventory-row="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"><td><code data-secret-cell>${escapeHtml(row.masked)}</code></td>${shared ? `<td>${escapeHtml(String(row.platform || '').toUpperCase())}</td>` : ''}<td><span class="table-state is-${escapeHtml(row.status)}">${escapeHtml(row.status.toLocaleUpperCase('tr-TR'))}</span></td><td>${escapeHtml(row.orderId ? `…${row.orderId.slice(-9)}` : '—')}</td><td>${row.protectionCurrent === false ? 'Yenileme gerekli' : 'Güncel'}</td><td data-sort-value="${escapeHtml(Number(row.createdAt || 0))}">${escapeHtml(formatDate(row.createdAt))}</td><td><div class="table-actions"><button type="button" class="table-action" data-reveal-stock="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"${permissionDisabled('store.inventory.reveal')}>Görüntüle</button>${row.status === 'available' ? `<button type="button" class="table-action is-danger" data-revoke-stock="${escapeHtml(row.id)}" data-storage-sku="${escapeHtml(row.storageSku)}"${permissionDisabled('store.inventory.write')}>İptal Et</button>` : ''}</div></td></tr>`).join('')}</tbody></table>` : emptyMarkup('Kayıt bulunamadı', account ? 'Bu ortak havuz için henüz hesap eklenmemiş.' : 'Bu paket için henüz key eklenmemiş.');
     enhanceDataTables($('#inventoryItems'));
   } catch (error) { $('#inventoryItems').innerHTML = emptyMarkup('Stok kayıtları yüklenemedi', error.message, 'fa-triangle-exclamation'); }
 }
@@ -965,10 +963,9 @@ function syncProductBadgePreview(select) {
 }
 
 function productCategoryField(product) {
-  const inferred = productCategoryKey(product);
-  const key = Object.hasOwn(PRODUCT_CATEGORY_PRESETS, inferred) ? inferred : 'custom';
-  const options = [...Object.entries(PRODUCT_CATEGORY_PRESETS).map(([value, preset]) => [value, preset.category]), ['custom', 'Özel kategori']];
-  return `<label><span>Hazır kategori</span><select data-product-category-key>${options.map(([value, label]) => `<option value="${value}" ${value === key ? 'selected' : ''} ${product.immutablePlatform && PRODUCT_CATEGORY_PRESETS[value]?.platform === 'android' ? 'disabled' : ''}>${escapeHtml(label)}</option>`).join('')}</select></label><label><span>Kategori adı</span><input data-product-category maxlength="50" value="${escapeHtml(product.category || '')}" ${key !== 'custom' ? 'readonly' : ''}/></label>`;
+  const key = productCategoryKey(product);
+  const options = Object.entries(PRODUCT_CATEGORY_PRESETS).map(([value, preset]) => [value, preset.category]);
+  return `<label><span>Kategori</span><select data-product-category-key>${options.map(([value, label]) => `<option value="${value}" ${value === key ? 'selected' : ''} ${product.immutablePlatform && PRODUCT_CATEGORY_PRESETS[value]?.platform === 'android' ? 'disabled' : ''}>${escapeHtml(label)}</option>`).join('')}</select></label><label><span>Kategori adı</span><input data-product-category maxlength="50" value="${escapeHtml(product.category || '')}" readonly/></label>`;
 }
 
 function productMarkup(product) {
@@ -979,7 +976,7 @@ function productMarkup(product) {
     const duplicate = product.badgeKey === name;
     return `<label class="mini-check${duplicate ? ' is-disabled' : ''}"><input type="checkbox" data-product-tag="${name}" ${(product.tags || []).includes(name) && !duplicate ? 'checked' : ''} ${duplicate ? 'disabled' : ''}/><span>${label}</span></label>`;
   };
-  return `<form class="product-admin-card" data-product-form="${escapeHtml(product.id)}"><header><img src="${escapeHtml(product.image)}" alt=""/><div><small>${escapeHtml(product.platform.toUpperCase())} · ${escapeHtml(product.id)}</small><h2>${escapeHtml(product.name)}</h2><p>${deliveryLabel} · Telegram ${product.telegramEnabled !== false ? 'açık' : 'kapalı'}</p></div><span class="account-state ${product.archived ? 'is-suspended' : product.active !== false ? 'is-active' : 'is-purchase_blocked'}">${product.archived ? 'ARŞİV' : product.active !== false ? 'AKTİF' : 'PASİF'}</span></header><div class="toggle-grid"><label class="toggle-row"><input type="checkbox" data-product-active ${product.active !== false ? 'checked' : ''}/><span><strong>Satışta aktif</strong><small>Kullanıcı kataloğunda satış durumunu yönetir.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-archived ${product.archived ? 'checked' : ''}/><span><strong>Arşivle</strong><small>Geçmiş siparişleri silmeden ürünü vitrinden kaldırır.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-automatic ${product.automaticEnabled !== false && !product.immutableFulfillment ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Otomatik teslimat</strong><small>${product.immutableFulfillment ? 'Bu ürün mağaza politikasıyla yalnızca Telegram üzerinden satılır.' : 'Şifreli stok kasasını kullanır.'}</small></span></label><label class="toggle-row"><input type="checkbox" data-product-telegram ${product.telegramEnabled !== false ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Telegram satışı</strong><small>${product.immutableFulfillment ? 'GBOX için zorunlu ve değiştirilemez.' : 'Talep üzerine Telegram siparişine izin verir.'}</small></span></label></div><div class="form-grid"><label><span>Ürün adı</span><input data-product-name maxlength="80" value="${escapeHtml(product.name || '')}"/></label><label><span>Platform</span><select data-product-platform ${product.immutablePlatform ? 'disabled' : ''}><option value="android" ${product.platform === 'android' ? 'selected' : ''}>Android</option><option value="ios" ${product.platform === 'ios' ? 'selected' : ''}>iOS</option></select></label>${productCategoryField(product)}${productBadgeField(product)}<label><span>Sıralama</span><input data-product-sort type="number" min="0" max="10000" value="${escapeHtml(product.sortOrder ?? 500)}"/></label></div><label><span>Ürün görsel yolu</span><input data-product-image maxlength="300" value="${escapeHtml(product.image || '')}" spellcheck="false" placeholder="public/assets/products/urun.jpeg"/></label><label><span>Ürün özellikleri</span><textarea data-product-features rows="6" maxlength="6500" placeholder="Her satıra bir özellik">${escapeHtml((product.features || []).join('\n'))}</textarea><small>En fazla 40 özellik, satır başına 160 karakter. JPEG, PNG, SVG ve diğer görsel biçimleri dosya yoluyla kullanılır.</small></label><label><span>Açıklama</span><textarea data-product-description maxlength="240" rows="3">${escapeHtml(product.description || '')}</textarea></label><div class="tag-row">${tag('new', 'Yeni')}${tag('popular', 'Çok Tercih Edilen')}${tag('discounted', 'İndirimli')}<label class="mini-check"><input type="checkbox" data-product-featured ${product.featured ? 'checked' : ''}/><span>Öne Çıkan</span></label></div><div class="plan-admin-list">${(product.plans || []).map((plan) => `<div data-plan="${escapeHtml(plan.key)}"><label class="mini-check"><input type="checkbox" data-plan-active ${plan.active !== false ? 'checked' : ''}/><span>${escapeHtml(plan.key)}</span></label><label><span>Paket adı</span><input data-plan-label maxlength="50" value="${escapeHtml(plan.label)}"/></label><label><span>Süre</span><input data-plan-duration maxlength="50" value="${escapeHtml(plan.duration)}"/></label><label><span>Fiyat (₺)</span><input data-plan-price type="text" inputmode="decimal" value="${escapeHtml((plan.priceKurus / 100).toFixed(2).replace('.', ','))}"/></label><b>${telegramOnly ? 'Yalnızca Telegram' : `Stok ${escapeHtml(stockLabel(plan.stock))}`}</b></div>`).join('')}</div><div class="product-admin-card__save-hint"><i class="fa-solid fa-layer-group"></i><span>Bu karttaki değişiklikler üstteki <strong>Toplu Kayıt</strong> ile diğer ürünlerle birlikte kaydedilir.</span></div></form>`;
+  return `<form class="product-admin-card" data-product-form="${escapeHtml(product.id)}"><header><img src="${escapeHtml(product.image)}" alt=""/><div><small>${escapeHtml(product.platform.toUpperCase())} · ${escapeHtml(product.id)}</small><h2>${escapeHtml(product.name)}</h2><p>${deliveryLabel} · Telegram ${product.telegramEnabled !== false ? 'açık' : 'kapalı'}</p></div><span class="account-state ${product.archived ? 'is-suspended' : product.active !== false ? 'is-active' : 'is-purchase_blocked'}">${product.archived ? 'ARŞİV' : product.active !== false ? 'AKTİF' : 'PASİF'}</span></header><div class="toggle-grid"><label class="toggle-row"><input type="checkbox" data-product-active ${product.active !== false ? 'checked' : ''}/><span><strong>Satışta aktif</strong><small>Kullanıcı kataloğunda satış durumunu yönetir.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-archived ${product.archived ? 'checked' : ''}/><span><strong>Arşivle</strong><small>Geçmiş siparişleri silmeden ürünü vitrinden kaldırır.</small></span></label><label class="toggle-row"><input type="checkbox" data-product-automatic ${product.automaticEnabled !== false && !product.immutableFulfillment ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Otomatik teslimat</strong><small>${product.immutableFulfillment ? 'Bu ürün mağaza politikasıyla yalnızca Telegram üzerinden satılır.' : 'Şifreli stok kasasını kullanır.'}</small></span></label><label class="toggle-row"><input type="checkbox" data-product-telegram ${product.telegramEnabled !== false ? 'checked' : ''} ${product.immutableFulfillment ? 'disabled' : ''}/><span><strong>Telegram satışı</strong><small>${product.immutableFulfillment ? 'Bu ürün için zorunludur.' : 'Talep üzerine Telegram siparişine izin verir.'}</small></span></label></div><div class="form-grid"><label><span>Ürün adı</span><input data-product-name maxlength="80" value="${escapeHtml(product.name || '')}"/></label><label><span>Platform</span><select data-product-platform ${product.immutablePlatform ? 'disabled' : ''}><option value="android" ${product.platform === 'android' ? 'selected' : ''}>Android</option><option value="ios" ${product.platform === 'ios' ? 'selected' : ''}>iOS</option></select></label>${productCategoryField(product)}${productBadgeField(product)}<label><span>Sıralama</span><input data-product-sort type="number" min="0" max="10000" value="${escapeHtml(product.sortOrder ?? 500)}"/></label></div><label><span>Ürün görsel yolu</span><input data-product-image maxlength="300" value="${escapeHtml(product.image || '')}" spellcheck="false" placeholder="public/assets/products/urun.jpeg"/></label><label><span>Ürün özellikleri</span><textarea data-product-features rows="6" maxlength="6500" placeholder="Her satıra bir özellik">${escapeHtml((product.features || []).join('\n'))}</textarea><small>En fazla 40 özellik, satır başına 160 karakter. JPEG, PNG, SVG ve diğer görsel biçimleri dosya yoluyla kullanılır.</small></label><label><span>Açıklama</span><textarea data-product-description maxlength="240" rows="3">${escapeHtml(product.description || '')}</textarea></label><div class="tag-row">${tag('new', 'Yeni')}${tag('popular', 'Çok Tercih Edilen')}${tag('discounted', 'İndirimli')}<label class="mini-check"><input type="checkbox" data-product-featured ${product.featured ? 'checked' : ''}/><span>Öne Çıkan</span></label></div><div class="plan-admin-list">${(product.plans || []).map((plan) => `<div data-plan="${escapeHtml(plan.key)}"><label class="mini-check"><input type="checkbox" data-plan-active ${plan.active !== false ? 'checked' : ''}/><span>${escapeHtml(plan.key)}</span></label><label><span>Paket adı</span><input data-plan-label maxlength="50" value="${escapeHtml(plan.label)}"/></label><label><span>Süre</span><input data-plan-duration maxlength="50" value="${escapeHtml(plan.duration)}"/></label><label><span>Fiyat (₺)</span><input data-plan-price type="text" inputmode="decimal" value="${escapeHtml((plan.priceKurus / 100).toFixed(2).replace('.', ','))}"/></label><b>${telegramOnly ? 'Yalnızca Telegram' : `Stok ${escapeHtml(stockLabel(plan.stock))}`}</b></div>`).join('')}</div><div class="product-admin-card__save-hint"><i class="fa-solid fa-layer-group"></i><span>Bu karttaki değişiklikler üstteki <strong>Toplu Kayıt</strong> ile diğer ürünlerle birlikte kaydedilir.</span></div></form>`;
 }
 
 function productFormBody(form) {
@@ -1080,8 +1077,6 @@ function applyNewProductCategoryPreset() {
     if (control) control.value = value;
   }
   if (!preset.fulfillmentMode) form.elements.namedItem('fulfillmentMode').value = 'automatic';
-  const image = form.elements.namedItem('image');
-  if (image && (!image.value || /\/(?:gbox|random)\.jpeg$/.test(image.value))) image.value = preset.category === 'GBox' ? 'public/assets/products/gbox.jpeg' : preset.inventoryType === 'account' ? 'public/assets/products/random.jpeg' : '';
   form.elements.namedItem('category').readOnly = true;
 }
 
@@ -1138,6 +1133,7 @@ function markProductFormError(form, error) {
     STORE_PRODUCT_FEATURES_INVALID: '[name="features"],[data-product-features]',
     STORE_PRODUCT_FEATURES_LIMIT: '[name="features"],[data-product-features]',
     STORE_PRODUCT_CATEGORY_INVALID: '[name="categoryPreset"],[data-product-category-key]',
+    STORE_PRODUCT_CATEGORY_CONFLICT: '[name="categoryPreset"],[data-product-category-key]',
     STORE_PRODUCT_CATEGORY_PLATFORM_CONFLICT: '[name="categoryPreset"],[data-product-category-key]',
     STORE_PRODUCT_ID_INVALID: '[name="id"]', STORE_PRODUCT_ID_EXISTS: '[name="id"]',
     STORE_PRODUCT_PLATFORM_INVALID: '[name="platform"],[data-product-platform]',
@@ -2045,7 +2041,7 @@ function bind() {
   $('#newProductId')?.addEventListener('blur', (event) => { event.currentTarget.value = normalizeProductId(event.currentTarget.value); });
   $('#suggestProductId')?.addEventListener('click', () => {
     const form = $('#productCreateForm'), field = $('#newProductId');
-    field.value = suggestProductId(form.querySelector('[name="name"]').value, form.querySelector('[name="categoryPreset"]').value === 'custom' ? form.querySelector('[name="platform"]').value : form.querySelector('[name="categoryPreset"]').value);
+    field.value = suggestProductId(form.querySelector('[name="name"]').value, form.querySelector('[name="categoryPreset"]').value);
     clearFieldError(field); field.focus();
   });
   $('#addProductPlan')?.addEventListener('click', addProductPlanRow);

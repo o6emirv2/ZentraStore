@@ -1,6 +1,6 @@
 import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v84r1';
 import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v84r1';
-import { CATALOG_FILTERS, GAME_KEYS, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v86r1';
+import { CATALOG_FILTERS, CATEGORY_PRESETS, categoryKey, isSupportedProduct, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v87r1';
 
 import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v84r1';
 
@@ -18,20 +18,13 @@ export function resolveCatalogFilter(value = 'all', visibility = {}) {
 }
 
 export function productMatchesCatalogFilter(product = {}, value = 'all', favorites = new Set(), visibility = {}) {
+  if (!isSupportedProduct(product)) return false;
   if (visibility[product.platform] === false) return false;
   const key = resolveCatalogFilter(value, visibility);
   const filter = CATALOG_FILTERS[key];
   if (key === 'favorites' && !favorites.has(String(product.id))) return false;
-  const category = String(product.category || '').trim().toLocaleLowerCase('tr-TR')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
-  // Legacy GBox products have game=other; new GBox entries are identified by the admin category.
-  const isGbox = product.platform === 'ios' && (product.categoryKey === 'gbox' || category === 'gbox' || /^ios-gbox-(?:ipad|iphone)$/.test(String(product.id || '')));
-  const isRandomAccount = product.categoryKey === 'random-account' || product.inventoryType === 'account' || /^(?:random hesap(?:lar)?|random account)$/.test(category);
-  if (key === 'gbox') return isGbox;
-  if (key === 'random-account') return isRandomAccount;
-  // A GBox listing participates in both iOS game collections, but not Android.
   return (!filter.platform || product.platform === filter.platform)
-    && (!filter.game || product.game === filter.game || (isGbox && (filter.game === 'pubg' || filter.game === 'oxide')));
+    && (!filter.game || product.game === filter.game);
 }
 
 const DEFAULT_BADGE_OPTIONS = normalizeBadgeOptions([
@@ -115,7 +108,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
   return Object.freeze({
     id,
     platform: source.platform === 'ios' ? 'ios' : 'android',
-    game: GAME_KEYS.includes(source.game) ? source.game : 'other',
+    game: source.game,
     inventoryType: source.inventoryType === 'account' ? 'account' : 'license',
     inventoryPoolId: String(source.inventoryPoolId || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 80),
     fulfillmentMode: source.fulfillmentMode === 'telegram_only' ? 'telegram_only' : 'automatic',
@@ -125,7 +118,7 @@ function normalizeProduct(source = {}, resolveBadge = badgeResolver([])) {
     immutableFulfillment: source.immutableFulfillment === true,
     immutablePlatform: source.immutablePlatform === true,
     name,
-    category: String(source.category || '').trim().slice(0, 50),
+    category: CATEGORY_PRESETS[categoryKey(source)].category,
     categoryKey: normalizeCategoryKey(source.categoryKey, source.platform).trim().slice(0, 40),
     features: Object.freeze(productFeatures(source.features)),
     badgeKey: badge.key,
@@ -181,7 +174,7 @@ function normalizeCatalog(source = {}) {
   const providedBadgeOptions = normalizeBadgeOptions(value.badgeOptions);
   const badgeOptions = providedBadgeOptions.length ? providedBadgeOptions : DEFAULT_BADGE_OPTIONS;
   const resolveBadge = badgeResolver(badgeOptions);
-  const products = (Array.isArray(value.products) ? value.products : []).map((product) => normalizeProduct(product, resolveBadge)).filter((product) => product.active !== false && !product.archived && product.id && product.name && product.plans.length);
+  const products = (Array.isArray(value.products) ? value.products : []).filter(isSupportedProduct).map((product) => normalizeProduct(product, resolveBadge)).filter((product) => product.active !== false && !product.archived && product.id && product.name && product.plans.length);
   return Object.freeze({
     version: Math.max(1, Math.trunc(Number(value.version) || 1)),
     currency: 'TRY',
@@ -210,7 +203,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
     let stockVerified = false;
     if (typeof apiRequest === 'function') {
       try {
-        source = await apiRequest('/api/store/catalog?v=14', { auth: false, timeoutMs: 6500 });
+        source = await apiRequest('/api/store/catalog?v=15', { auth: false, timeoutMs: 6500 });
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {

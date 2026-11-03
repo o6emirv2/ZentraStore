@@ -55,7 +55,7 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     : 'Güvenli yönetici geçişi tamamlanamadı. Lütfen son doğrulama adımını yeniden deneyin.'));
   const safeCode = escapeHtml(code);
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8" />\n`
-    + `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />\n`
+    + `<meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, viewport-fit=cover" />\n`
     + `<meta name="color-scheme" content="dark" />\n`
     + `<meta name="theme-color" content="#070B16" />\n`
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`

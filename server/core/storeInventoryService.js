@@ -932,7 +932,6 @@ async function readDeliverySecrets({ uid = '', orderId = '' } = {}) {
 }
 
 function sharedPoolDisplayName(target = {}, product = {}) {
-  if (target.poolId === 'random-30sv-shared') return 'RANDOM HESAP · Android + iOS Ortak Havuz';
   if (target.shared) return `${safeText(product.name, 80)} · Ortak Havuz`;
   return safeText(product.name, 80);
 }

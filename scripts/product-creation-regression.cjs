@@ -14,6 +14,15 @@ let stored = {
   catalog: { schemaVersion: 1, sourceVersion: require('../public/data/store-products.json').version, products: {}, updatedAt: Date.now() }
 };
 const audit = [];
+function mergeStored(base, patch) {
+  const value = structuredClone(base);
+  for (const [key, child] of Object.entries(patch)) {
+    value[key] = child && typeof child === 'object' && !Array.isArray(child)
+      ? mergeStored(value[key] && typeof value[key] === 'object' ? value[key] : {}, child)
+      : structuredClone(child);
+  }
+  return value;
+}
 function snapshot() { return { exists: true, data: () => structuredClone(stored) }; }
 const settingsReference = { id: 'main', get: async () => snapshot() };
 const db = {
@@ -30,12 +39,12 @@ const db = {
     const writes = [];
     const tx = {
       get: async () => snapshot(),
-      set: (_, data) => { writes.push({ type: 'settings', data }); },
+      set: (_, data, options = {}) => { writes.push({ type: 'settings', data, options }); },
       create: (_, data) => { writes.push({ type: 'audit', data }); }
     };
     const result = await fn(tx);
     for (const write of writes) {
-      if (write.type === 'settings') stored = { ...stored, ...write.data };
+      if (write.type === 'settings') stored = write.options.merge ? mergeStored(stored, write.data) : structuredClone(write.data);
       else audit.push(write.data);
     }
     return result;
@@ -55,7 +64,7 @@ const actor = { uid: 'test-admin', email: 'test@example.test' };
 const valid = {
   id: 'sample-new-product', name: 'Deneme Premium Ürün',
   description: 'Yeni ürün kataloğu için kontrollü ürün açıklaması.',
-  platform: 'ios', game: 'other', inventoryType: 'license',
+  platform: 'ios', game: 'pubg', inventoryType: 'license',
   fulfillmentMode: 'automatic', badgeKey: 'premium',
   plans: [{ key: 'month', label: 'Aylık Plan', duration: '30 Gün', priceKurus: 14990 }]
 };
@@ -119,16 +128,16 @@ test('server normalizes every category visibility flag with backwards-compatible
   for (const key of require('../public/js/store/catalog-schema.mjs').CATEGORY_VISIBILITY_KEYS) {
     assert.equal(defaults.categoryVisibility[key], true);
   }
-  const changed = service.normalizeStorefront({ categoryVisibility: { gbox: false, 'random-account': false, ios: true } });
-  assert.equal(changed.categoryVisibility.gbox, false);
-  assert.equal(changed.categoryVisibility['random-account'], false);
+  const changed = service.normalizeStorefront({ categoryVisibility: { 'pubg-android': false, 'oxide-ios': false, ios: true, 'unused-category': false } });
+  assert.equal(changed.categoryVisibility['pubg-android'], false);
+  assert.equal(changed.categoryVisibility['oxide-ios'], false);
   assert.equal(changed.categoryVisibility['pubg-ios'], true);
   assert.equal(changed.categoryVisibility.ios, true);
 });
 
 test('features survive create, bulk save and public serialization, and can be cleared', async () => {
   const product = await service.createProduct({ ...valid, id: 'features-product',
-    categoryKey: 'pubg-android', image: 'public/assets/products/h-kernel.PNG',
+    platform: 'android', categoryKey: 'pubg-android', image: 'public/assets/products/h-kernel.PNG',
     features: '🏆ÖZELLİKLER🏆\n✅ -Özelleştirilebilir ESP\n✅ -Aimbot\n✅ -Aimbot' }, actor);
   assert.deepEqual(product.features, ['Özelleştirilebilir ESP', 'Aimbot']);
   assert.equal(product.platform, 'android');
@@ -149,20 +158,11 @@ test('features survive create, bulk save and public serialization, and can be cl
 test('all category presets persist their membership and defaults', async () => {
   const { CATEGORY_PRESETS } = require('../server/core/storeProductSchema');
   for (const [key, preset] of Object.entries(CATEGORY_PRESETS)) {
-    const created = await service.createProduct({ ...valid, id: `category-${key}`, categoryKey: key }, actor);
+    const created = await service.createProduct({ ...valid, ...preset, id: `category-${key}`, categoryKey: key }, actor);
     assert.equal(created.categoryKey, key);
     assert.equal(created.category, preset.category);
     if (preset.platform) assert.equal(created.platform, preset.platform);
     if (preset.game) assert.equal(created.game, preset.game);
-    if (key === 'gbox') {
-      assert.equal(created.fulfillmentMode, 'telegram_only');
-      assert.equal(created.image, '/public/assets/products/gbox.jpeg');
-      assert.equal(created.automaticEnabled, false);
-    }
-    if (key === 'random-account') {
-      assert.equal(created.inventoryType, 'account');
-      assert.equal(created.image, '/public/assets/products/random.jpeg');
-    }
   }
 });
 
@@ -182,7 +182,7 @@ test('image paths support Linux case, nested galleries, SVG and PNG and reject t
   assert.equal(images.isValidProductImage('/public/assets/products/CRY4ME.JPG'), true);
   assert.equal(images.isValidProductImage('/public/assets/products/gallery/kingmod/game-01.jpeg'), true);
   assert.equal(images.isValidProductImage('/public/assets/products/H-KERNEL.png'), false);
-  for (const value of ['/public/assets/products/../products/gbox.jpeg', '/public/assets/products/gbox.jpeg?x=1', '/public/assets/products/a.js', '/etc/passwd', 'data:image/svg+xml,evil']) {
+  for (const value of ['/public/assets/products/../products/kingmod.jpeg', '/public/assets/products/kingmod.jpeg?x=1', '/public/assets/products/a.js', '/etc/passwd', 'data:image/svg+xml,evil']) {
     assert.equal(images.isValidProductImage(value), false, value);
   }
   const svg = path.join(__dirname, '../public/assets/products/qa-image.svg');
@@ -209,22 +209,22 @@ test('catalog document capacity is checked before a Firestore write', async () =
   } finally { stored = previous; service.invalidateCatalogCache(); }
 });
 
-test('optional empty image paths use brand and category defaults without blocking creation', async () => {
-  for (const [categoryKey, image] of [['pubg-android', '/public/assets/images/zentra-mark.webp'], ['gbox', '/public/assets/products/gbox.jpeg'], ['random-account', '/public/assets/products/random.jpeg']]) {
-    const created = await service.createProduct({ ...valid, id: `empty-image-${categoryKey}`, categoryKey, image: '   ' }, actor);
-    assert.equal(created.image, image);
-    assert.equal(stored.catalog.customProducts[created.id].image, image);
+test('optional empty image paths use the brand default without blocking creation', async () => {
+  for (const [categoryKey, preset] of Object.entries(require('../public/js/store/catalog-schema.mjs').CATEGORY_PRESETS)) {
+    const created = await service.createProduct({ ...valid, ...preset, id: `empty-image-${categoryKey}`, categoryKey, image: '   ' }, actor);
+    assert.equal(created.image, '/public/assets/images/zentra-mark.webp');
+    assert.equal(stored.catalog.customProducts[created.id].image, created.image);
   }
   for (const image of [null, 123, {}, 'public/assets/products/missing.png']) {
     assert.throws(() => images.normalizeCreatedProduct({ ...valid, image }), { code: 'STORE_PRODUCT_IMAGE_INVALID' });
   }
 });
 
-test('catalog upgrades add every new product while preserving existing prices and retired settings', async () => {
+test('catalog upgrades add permitted products, preserve prices and prune retired settings', async () => {
   const previous = structuredClone(stored);
   try {
     const added = require('../public/data/store-products.json').products.filter((product) => product.categoryKey);
-    assert.equal(added.length, 19);
+    assert.equal(added.length, 5);
     for (const product of added) delete stored.catalog.products[product.id];
     stored.catalog.sourceVersion = 11;
     stored.catalog.products.kingmod.plans.daily.priceKurus = 77777;
@@ -236,7 +236,7 @@ test('catalog upgrades add every new product while preserving existing prices an
       assert.ok(upgraded.products.some((row) => row.id === product.id));
     }
     assert.equal(upgraded.products.find((row) => row.id === 'kingmod').plans.find((plan) => plan.key === 'daily').priceKurus, 77777);
-    assert.deepEqual(stored.catalog.products['retired-example'], { active: false, archived: true });
+    assert.equal(Object.hasOwn(stored.catalog.products, 'retired-example'), false);
     assert.equal(stored.catalog.sourceVersion, require('../public/data/store-products.json').version);
   } finally {
     stored = previous;
@@ -244,59 +244,56 @@ test('catalog upgrades add every new product while preserving existing prices an
   }
 });
 
-test('version twelve combined categories retain custom products, saved prices and platform visibility after upgrading', async () => {
+test('scope migration removes unsupported products and visibility while preserving permitted custom prices', async () => {
   const previous = structuredClone(stored);
   try {
-    const added = require('../public/data/store-products.json').products.slice(22, 34);
-    stored.catalog.sourceVersion = 12;
-    for (const product of added) {
-      stored.catalog.products[product.id].categoryKey = product.game;
-      stored.catalog.products[product.id].category = product.game;
-    }
-    stored.catalog.products['ios-cloud-codm'].plans.weekly.priceKurus = 87654;
-    const customId = 'category-codm-android';
-    stored.catalog.customProducts[customId].categoryKey = 'codm';
-    stored.catalog.products[customId].categoryKey = 'codm';
-    stored.categoryVisibility = { codm: false, 'codm-ios': true, 'free-fire': false };
+    delete stored.catalog.scopeVersion;
+    stored.catalog.sourceVersion = 14;
+    const invalidId = 'unsupported-product';
+    const allowedId = 'category-pubg-ios';
+    stored.catalog.customProducts[invalidId] = { ...valid, id: invalidId, game: 'unsupported-game', categoryKey: 'unsupported-game-ios' };
+    stored.catalog.products[invalidId] = { ...stored.catalog.customProducts[invalidId], active: true };
+    stored.catalog.products[allowedId].plans.month.priceKurus = 87654;
+    stored.catalog.products.kingmod.categoryKey = 'unsupported-category';
+    stored.categoryVisibility = { 'unused-category': false, 'pubg-ios': false, 'oxide-android': true };
+    const history = { orders: [{ id: 'historic-order', paidKurus: 9900 }], walletKurus: 12345 };
+    stored.history = structuredClone(history);
     service.invalidateCatalogCache();
     const upgraded = await service.getEffectiveCatalog({ includeInactive: true, fresh: true });
-    for (const source of added) {
-      const product = upgraded.products.find((row) => row.id === source.id);
-      assert.equal(product.categoryKey, source.categoryKey);
-      assert.equal(product.category, source.category);
-    }
-    assert.equal(upgraded.products.find((row) => row.id === customId).categoryKey, 'codm-android');
-    assert.equal(upgraded.products.find((row) => row.id === 'ios-cloud-codm').plans.find((row) => row.key === 'weekly').priceKurus, 87654);
-    assert.equal(upgraded.storefront.categoryVisibility['codm-ios'], true);
-    assert.equal(upgraded.storefront.categoryVisibility['codm-android'], false);
-    assert.equal(upgraded.storefront.categoryVisibility['free-fire-ios'], false);
-    assert.equal(upgraded.storefront.categoryVisibility['free-fire-android'], false);
-    assert.equal(stored.catalog.sourceVersion, require('../public/data/store-products.json').version);
-  } finally {
-    stored = previous;
-    service.invalidateCatalogCache();
-  }
+    assert.equal(upgraded.products.some((row) => row.id === invalidId), false);
+    assert.equal(Object.hasOwn(stored.catalog.customProducts, invalidId), false);
+    assert.equal(Object.hasOwn(stored.catalog.products, invalidId), false);
+    assert.equal(Object.hasOwn(stored.categoryVisibility, 'unused-category'), false);
+    assert.equal(upgraded.products.find((row) => row.id === allowedId).plans[0].priceKurus, 87654);
+    assert.equal(upgraded.products.find((row) => row.id === 'kingmod').categoryKey, 'pubg-android');
+    assert.equal(upgraded.storefront.categoryVisibility['pubg-ios'], false);
+    assert.equal(upgraded.storefront.categoryVisibility['oxide-android'], true);
+    assert.deepEqual(stored.history, history);
+    assert.equal(stored.catalog.scopeVersion, 1);
+    const after = structuredClone(stored);
+    await service.getEffectiveCatalog({ fresh: true });
+    assert.deepEqual(stored, after, 'Completed migrations must not write repeatedly');
+  } finally { stored = previous; service.invalidateCatalogCache(); }
 });
 
-test('legacy visibility writes update both platforms and separate writes only change their own shortcut', async () => {
+test('visibility writes retain only permitted shortcuts and keep platforms independent', async () => {
   const previous = structuredClone(stored);
   try {
-    await service.updateStorefrontSettings({ categoryVisibility: { codm: false } }, actor);
-    assert.equal(stored.categoryVisibility['codm-ios'], false);
-    assert.equal(stored.categoryVisibility['codm-android'], false);
-    await service.updateStorefrontSettings({ categoryVisibility: { 'codm-ios': true } }, actor);
-    assert.equal(stored.categoryVisibility['codm-ios'], true);
-    assert.equal(stored.categoryVisibility['codm-android'], false);
-  } finally {
-    stored = previous;
-    service.invalidateCatalogCache();
-  }
+    stored.categoryVisibility = { ...stored.categoryVisibility, 'unused-category': false };
+    await service.updateStorefrontSettings({ categoryVisibility: { 'oxide-ios': false, 'unused-category': false } }, actor);
+    assert.equal(stored.categoryVisibility['oxide-ios'], false);
+    assert.equal(stored.categoryVisibility['oxide-android'], true);
+    assert.equal(Object.hasOwn(stored.categoryVisibility, 'unused-category'), false);
+    await service.updateStorefrontSettings({ categoryVisibility: { 'oxide-android': false } }, actor);
+    assert.equal(stored.categoryVisibility['oxide-ios'], false);
+    assert.equal(stored.categoryVisibility['oxide-android'], false);
+  } finally { stored = previous; service.invalidateCatalogCache(); }
 });
 
 test('deploying a built-in ID already used by a custom product preserves one editable product and its original SKU', async () => {
   const previous = structuredClone(stored);
   try {
-    const id = 'ios-tracex-cs2';
+    const id = 'ios-tracex-pubg';
     const custom = images.normalizeCreatedProduct({ ...valid, id, name: 'Mevcut özel ürün', platform: 'ios', game: 'pubg', categoryKey: 'pubg-ios',
       plans: [{ key: 'legacy-plan', label: 'Mevcut paket', duration: '20 Gün', priceKurus: 45678 }] });
     stored.catalog.sourceVersion = 13;
@@ -338,4 +335,14 @@ test('plan normalization rejects collisions and unsupported path syntax',()=>{
  assert.equal(images.normalizeCreatedProduct({...valid,plans:[first]}).plans[0].key,'gunluk');
  assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[first,{...first,key:'gunluk'}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
  for(const key of ['bad/key','ab'.repeat(21),'3day'])assert.throws(()=>images.normalizeCreatedProduct({...valid,plans:[{...first,key}]}),{code:'STORE_PRODUCT_PLAN_INVALID'});
+});
+
+test('unsupported game and category mutations fail before any catalog change', async () => {
+  const before = structuredClone(stored);
+  for (const patch of [{ game: 'unsupported-game' }, { categoryKey: 'unsupported-category' }]) {
+    assert.throws(() => images.normalizeCreatedProduct({ ...valid, ...patch }));
+    await assert.rejects(service.updateProductSettings(valid.id, patch, actor));
+    await assert.rejects(service.updateProductsBulk([{ productId: valid.id, settings: patch }], actor));
+    assert.deepEqual(stored, before);
+  }
 });

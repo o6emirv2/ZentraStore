@@ -84,7 +84,7 @@ function normalizeCreatedProduct(value) {
   if (!badgeKey) throw failure('STORE_PRODUCT_BADGE_INVALID');
   const badge = resolveBadge({ badgeKey });
   const category = productCategory(value, {}, { creating: true });
-  const categoryImage = category.categoryKey === 'gbox' ? '/public/assets/products/gbox.jpeg' : category.categoryKey === 'random-account' ? '/public/assets/products/random.jpeg' : '';
+  if (category.platform !== value.platform || category.game !== value.game) throw failure('STORE_PRODUCT_CATEGORY_CONFLICT');
   return {
     id,
     name,
@@ -101,7 +101,7 @@ function normalizeCreatedProduct(value) {
     badgeIcon: badge.icon,
     badgeTone: badge.tone,
     icon: 'fa-box',
-    image: productImage(suppliedImage || categoryImage),
+    image: productImage(suppliedImage),
     accent: '55,165,255',
     featured: value.featured === true,
     sortOrder: 500,

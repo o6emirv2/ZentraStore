@@ -18,7 +18,7 @@ function sanitizeCatalog() {
 
     const platform = String(source?.platform || '').trim().toLowerCase();
     if (platform !== 'android' && platform !== 'ios') throw new Error(`STORE_CATALOG_INVALID_PLATFORM:${id}`);
-    const game = String(source?.game || 'other').trim().toLowerCase();
+    const game = String(source?.game || '').trim().toLowerCase();
     if (!GAME_KEYS.includes(game)) throw new Error(`STORE_CATALOG_INVALID_GAME:${id}`);
     const inventoryType = String(source?.inventoryType || 'license').trim().toLowerCase();
     if (!['license', 'account'].includes(inventoryType)) throw new Error(`STORE_CATALOG_INVALID_INVENTORY_TYPE:${id}`);

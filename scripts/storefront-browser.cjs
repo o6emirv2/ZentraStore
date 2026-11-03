@@ -31,30 +31,35 @@ async function main() {
       await page.goto(app.origin, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => document.documentElement.dataset.storefrontStatus === 'ready');
       const layout = await page.evaluate(() => ({ viewport: innerWidth, width: document.documentElement.scrollWidth, meta: document.querySelector('meta[name=viewport]').content, textSelection: getComputedStyle(document.querySelector('#productSearchHint')).userSelect, contextMenuAllowed: document.body.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })) }));
-      assert(layout.width <= layout.viewport + 1); assert.equal(layout.viewport, width); assert(!/user-scalable=no|maximum-scale/.test(layout.meta)); assert.notEqual(layout.textSelection, 'none'); assert(layout.contextMenuAllowed);
+      assert(layout.width <= layout.viewport + 1); assert(Math.abs(layout.viewport-(width<500?width/0.8:width))<=1); for(const key of ['initial-scale','minimum-scale','maximum-scale']) assert.ok(layout.meta.includes(key+'=0.8')); assert.notEqual(layout.textSelection, 'none'); assert(layout.contextMenuAllowed);
       await page.locator('#shoppingGuide summary').focus(); await page.keyboard.press('Enter'); assert.equal(await page.locator('#shoppingGuide').getAttribute('open'), '');
       await page.locator('#productSearch').fill('olmayan-urun-987'); await page.waitForFunction(() => !document.querySelector('[data-store-product]'));
       await page.locator('#clearSearch').click(); await page.locator('[data-store-product]').first().waitFor();
       await page.screenshot({ path: path.join(output, 'home-' + width + '.png') });
-      cases.push({ name: 'home-' + width, zoomEnabled: true, keyboardGuide: true, searchRecovery: true, layout });
+      cases.push({ name: 'home-' + width, requestedScale:0.8, keyboardGuide: true, searchRecovery: true, layout });
       if (width !== 1440) await ctx.close();
     }
     const catalog = (await app.request('/api/store/catalog')).body.catalog;
-    await page.locator('[data-filter="cs2-ios"]').click();
-    await page.waitForFunction(()=>document.querySelectorAll('[data-store-product]').length===2);
-    assert.deepEqual((await page.locator('[data-store-product]').evaluateAll(nodes=>nodes.map(node=>node.dataset.storeProduct))).sort(),['ios-tracex-cs2','ios-ultima-cs2']);
-    assert.equal(await page.locator('[data-filter="cs2-android"]').isVisible(),false);
+    const allowedFilters=['oxide-ios','oxide-android','pubg-ios','pubg-android'];
+    const categoryControls=await page.locator('#gameCategories [data-category-platform]').evaluateAll(nodes=>nodes.map(node=>node.dataset.filter).sort());
+    assert.deepEqual(categoryControls,[...allowedFilters].sort());
+    for(const key of allowedFilters){
+      const expected=catalog.products.filter(product=>`${product.game}-${product.platform}`===key).map(product=>product.id).sort();
+      await page.locator(`[data-filter="${key}"]`).click();
+      await page.waitForFunction(count=>document.querySelectorAll('[data-store-product]').length===count,expected.length);
+      assert.deepEqual((await page.locator('[data-store-product]').evaluateAll(nodes=>nodes.map(node=>node.dataset.storeProduct))).sort(),expected);
+    }
     await page.locator('[data-filter="all"]').click();
     await page.waitForFunction(count=>document.querySelectorAll('[data-store-product]').length===count,catalog.products.length);
-    cases.push({name:'cs2-category',exactProducts:true,emptyAndroidShortcutHidden:true});
+    cases.push({name:'permitted-categories',exactProducts:true,onlyTwoGames:true});
     for (const product of catalog.products) {
       await page.evaluate(id => { location.hash = '#product/' + id; }, product.id);
       await page.waitForFunction(id => document.querySelector('[data-product-gallery]')?.dataset.productGallery === id, product.id);
-      if (['ios-lion-pubg', 'ios-ultima-cs2'].includes(product.id)) {
+      if (product.id === 'ios-lion-pubg') {
         const selector = `[data-product-gallery="${product.id}"] .product-gallery__slide img`;
         await page.waitForFunction(selector => [...document.querySelectorAll(selector)].some(img => img.complete && img.naturalWidth > 0), selector);
         const logo = await page.locator(selector).first().evaluate(img => ({ path: new URL(img.currentSrc).pathname, width: img.naturalWidth, height: img.naturalHeight }));
-        assert.equal(logo.path, product.image); assert.equal(logo.width, 600); assert.equal(logo.height, product.id === 'ios-lion-pubg' ? 399 : 600);
+        assert.equal(logo.path, product.image); assert.equal(logo.width, 600); assert.equal(logo.height, 399);
         await page.locator('.product-detail').screenshot({ path: path.join(output, product.id + '-original-logo.png') });
       }
       for (const plan of product.plans) {

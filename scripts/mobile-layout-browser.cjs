@@ -30,7 +30,7 @@ async function main() {
   try {
     app = await applicationFixture({ shopier: true, transientStore: 'memory', rateLimitStore: 'memory', appCheckMode: 'monitor' });
     browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : { channel: 'chrome' }), args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'], env: { ...process.env, ...(process.env.CHROMIUM_LIBRARY_PATH ? { LD_LIBRARY_PATH: process.env.CHROMIUM_LIBRARY_PATH } : {}) } });
-    const resetLimits = async () => { const { publicLimiter, apiLimiter } = require('../server/core/security'); await publicLimiter.resetKey('127.0.0.1'); await apiLimiter.resetKey('127.0.0.1'); };
+    const resetLimits = async () => { const { publicLimiter, apiLimiter, adminBootstrapLimiter, strictLimiter } = require('../server/core/security'); await publicLimiter.resetKey('127.0.0.1'); await apiLimiter.resetKey('127.0.0.1'); await adminBootstrapLimiter.resetKey('127.0.0.1'); await strictLimiter.resetKey('127.0.0.1'); };
     const contextFor = async (profile, width, { member = false, height = 844 } = {}) => {
       await resetLimits();
       const ctx = await browser.newContext({ viewport: { width, height }, userAgent: profile.userAgent, deviceScaleFactor: profile.deviceScaleFactor, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
@@ -54,11 +54,11 @@ async function main() {
       await bounds(page, ['#loginBtn', '#registerBtn', '.showcase-slider__arrow', '.showcase-slider__autoplay', '.showcase-slider__copy button', '.mobile-nav button:not([hidden])'], { tapTargets: true });
       assert.equal(layout.find(r => r.selector === '.topbar').height, 61);
       const galleryHeight = layout.find(r => r.selector === '.showcase-slider__viewport').height;
-      assert(galleryHeight >= 210 && galleryHeight <= 215, 'Mobile gallery is not compact');
+      assert(galleryHeight >= 210 && galleryHeight * 0.802 <= 218, 'Mobile gallery is not compact at the requested scale');
       assert.equal(layout.find(r => r.selector === '.mobile-nav').height, 64);
       assert.equal(layout.find(r => r.selector === '.showcase-slider__copy button').clippedX, false);
       const scale = await page.evaluate(() => ({ width: innerWidth, overflow: document.documentElement.scrollWidth, zoom: visualViewport.scale, meta: document.querySelector('meta[name=viewport]').content, inputFont: getComputedStyle(document.getElementById('productSearch')).fontSize }));
-      assert.equal(scale.width, width); assert(scale.overflow <= width + 1); assert.equal(scale.zoom, 1); assert.equal(scale.inputFont, '16px'); assert(!/maximum-scale|user-scalable=no/.test(scale.meta));
+      assert(Math.abs(scale.width - width / 0.8) <= 1); assert(scale.overflow <= scale.width + 1); assert(Math.abs(scale.zoom - 0.8) < 0.002); assert.equal(scale.inputFont, '16px'); for(const field of ['initial-scale','minimum-scale','maximum-scale']) assert.ok(scale.meta.includes(field+'=0.8'));
       metrics.set(profile.name + '-' + width, layout);
       await page.locator('[data-showcase-next]').click();
       await page.waitForFunction(() => document.querySelector('[data-showcase-current]').textContent === '02');
@@ -67,20 +67,31 @@ async function main() {
       await page.locator('#loginBtn').click(); await page.locator('#loginIdentifier').waitFor({ state: 'visible' });
       await bounds(page, ['#authSheet .side-sheet', '#loginForm .form-field__input', '#authSheet .dialog-close']);
       await bounds(page, ['#authSheet .dialog-close', '#authLoginTab', '#authRegisterTab'], { tapTargets: true });
-      await page.locator('#loginIdentifier').focus(); assert.equal(await page.evaluate(() => visualViewport.scale), 1);
+      await page.locator('#loginIdentifier').focus(); assert(Math.abs((await page.evaluate(() => visualViewport.scale)) - scale.zoom) < 0.002);
       await page.locator('#authRegisterTab').click(); await page.locator('#registerForm').waitFor({ state: 'visible' });
       await bounds(page, ['#registerForm .form-field__input', '#registerForm .birth-field']);
       await page.locator('#authSheet button[data-close-layer]').click();
-      cases.push({ name: profile.name + '-guest-' + width, home: true, carousel: true, authForms: true, compact: true });
+      await ctx.addInitScript(identity => { globalThis.__qaIdentity = identity; }, { uid: 'owneruid', email: app.users.get('owneruid').email, token: app.idToken('owneruid') });
+      await page.goto(app.origin + '/admin/index.html', { waitUntil: 'domcontentloaded' });
+      await page.locator('.gate-step[data-step="3"]').waitFor({ state: 'visible' });
+      await page.evaluate(() => document.fonts.ready);
+      const gateLayout = await bounds(page, ['.gate-shell', '.gate-brandbar', '.security-meter', '.step-track', '#firebasePasswordForm .field-shell']);
+      const gateScale = await page.evaluate(() => ({ width: innerWidth, overflow: document.documentElement.scrollWidth, zoom: visualViewport.scale }));
+      assert(Math.abs(gateScale.width - width / 0.8) <= 1); assert(gateScale.overflow <= gateScale.width + 1); assert(Math.abs(gateScale.zoom - 0.8) < 0.002);
+      metrics.set(profile.name + '-admin-' + width, gateLayout);
+      if (width === 390) await page.screenshot({ path: path.join(output, profile.name + '-admin-gate-' + width + '.png') });
+      cases.push({ name: profile.name + '-guest-' + width, home: true, carousel: true, authForms: true, adminGate: true, requestedScale: 0.8, compact: true });
       await ctx.close();
     }
     for (const width of widths) {
-      const ios = metrics.get('iphone-' + width), android = metrics.get('android-' + width);
-      assert.equal(ios.length, android.length);
-      ios.forEach((row, i) => {
-        assert.equal(row.selector, android[i].selector); assert.equal(row.fontSize, android[i].fontSize);
-        for (const key of ['x', 'width', 'height']) assert(Math.abs(row[key] - android[i][key]) <= 1, `Device geometry differs at ${width}: ${row.selector}.${key}`);
-      });
+      for (const area of ['', 'admin-']) {
+        const ios = metrics.get('iphone-' + area + width), android = metrics.get('android-' + area + width);
+        assert.equal(ios.length, android.length);
+        ios.forEach((row, i) => {
+          assert.equal(row.selector, android[i].selector); assert.equal(row.fontSize, android[i].fontSize);
+          for (const key of ['x', 'width', 'height']) assert(Math.abs(row[key] - android[i][key]) <= 1, `Device geometry differs at ${width}: ${area}${row.selector}.${key}`);
+        });
+      }
     }
     cases.push({ name: 'shared-iphone-android-layout', widths, matchingGeometryWithinPixels: 1, engine: 'Chromium emulation' });
     const catalog = (await app.request('/api/store/catalog')).body.catalog;
@@ -99,14 +110,14 @@ async function main() {
       await page.locator('#accountButton').click(); await page.locator('#customerViewProfile').waitFor({ state: 'visible' });
       await bounds(page, ['.client-shell', '.client-header', '.client-nav', '.client-header__actions', '.account-page__wallet', '#accountTopupAmount', '#accountTopupButton']);
       await bounds(page, ['.client-nav button', '.screen-icon-button', '.account-topup__presets button'], { tapTargets: true });
-      await page.locator('#accountTopupAmount').fill('250'); assert.equal(await page.evaluate(() => visualViewport.scale), 1);
+      await page.locator('#accountTopupAmount').fill('250'); assert(Math.abs((await page.evaluate(() => visualViewport.scale)) - 0.8) < 0.002);
       await page.locator('[data-customer-nav="orders"]').click(); await page.locator('#customerViewOrders').waitFor({ state: 'visible' });
       await bounds(page, ['.orders-page__summary', '.orders-page__search', '.orders-page__filters', '.orders-page__results']);
       await page.locator('.client-nav [data-customer-home]').click();
       await page.evaluate(id => { location.hash = '#product/' + id; }, product.id);
       await page.locator('#purchaseModal.is-open').waitFor(); await page.locator('#addToCartButton').waitFor({ state: 'visible' });
       await bounds(page, ['.product-detail', '.product-detail__header', '.product-detail__footer', '.product-detail__actions', '.product-gallery__viewport', '.detail-plan']);
-      const footer = await page.locator('.product-detail__footer').boundingBox(); assert(footer.y >= 0 && footer.y + footer.height <= height + 1);
+      const footer = await page.locator('.product-detail__footer').boundingBox(), visualBottom = await page.evaluate(() => visualViewport.offsetTop + visualViewport.height); assert(footer.y >= 0 && footer.y + footer.height <= visualBottom + 1);
       await bounds(page, ['.product-gallery__arrow', '#addToCartButton'], { tapTargets: true });
       if (width === 390) await page.screenshot({ path: path.join(output, 'member-product-390.png') });
       await page.locator('#addToCartButton').click();
@@ -129,7 +140,7 @@ async function main() {
     await bounds(page, ['.brand', '#guestActions', '.showcase-slider__viewport', '.mobile-nav']);
     await page.setViewportSize({ width: 844, height: 390 });
     await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, bottom: 21, left: 44, right: 44 } });
-    await page.waitForFunction(() => getComputedStyle(document.querySelector('.page-shell')).marginLeft === '44px');
+    await page.waitForFunction(() => parseFloat(getComputedStyle(document.querySelector('.page-shell')).marginLeft) >= 43.9);
     await bounds(page, ['.brand', '#guestActions', '.showcase-slider__viewport', '.mobile-nav']);
     cases.push({ name: 'safe-area-and-orientation', portraitInsets: safe, landscapeInsets: { left: 44, right: 44, bottom: 21 } });
     await ctx.close();

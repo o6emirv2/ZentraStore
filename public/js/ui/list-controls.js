@@ -1,4 +1,4 @@
-import { categoryKey } from '../store/catalog-schema.mjs?v=zentra-ui-v86r1';
+import { categoryKey, isSupportedProduct } from '../store/catalog-schema.mjs?v=zentra-ui-v87r1';
 
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 
@@ -13,6 +13,7 @@ export function sortRecords(records, mode = 'newest') {
 }
 
 export function matchesAdminProduct(product, { query = '', category = 'all', status = 'all' } = {}) {
+  if (!isSupportedProduct(product)) return false;
   const text = `${product.name || ''} ${product.id || ''} ${product.category || ''}`.toLocaleLowerCase('tr-TR');
   if (query.trim() && !text.includes(query.trim().toLocaleLowerCase('tr-TR'))) return false;
   const key = categoryKey(product);

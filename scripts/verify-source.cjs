@@ -31,7 +31,7 @@ function cssStructureValid(source) {
   }
   return !quote && !comment && stack.length === 0;
 }
-const viewport = '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />';
+const viewport = '<meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, viewport-fit=cover" />';
 for (const filename of files) {
   if (!/\.(?:js|mjs|cjs|html|css|json)$/.test(filename)) continue;
   const source = fs.readFileSync(filename, 'utf8');
@@ -60,7 +60,7 @@ for (const filename of files) {
   }
   if (name.endsWith('.html')) {
     const metas = [...source.matchAll(/<meta\b[^>]*\bname=["']viewport["'][^>]*>/gi)].map((x) => x[0]);
-    const expectedViewport = name.startsWith('odeme/') ? '<meta name="viewport" content="width=device-width, initial-scale=1" />' : viewport;
+    const expectedViewport = viewport;
     if (metas.length !== 1 || metas[0] !== expectedViewport) failures.push(name + ': viewport değişti veya çoğaltıldı');
     const ids = [...source.matchAll(/\sid="([^"]+)"/g)].map((x) => x[1]);
     if (ids.length !== new Set(ids).size) failures.push(name + ': tekrarlanan HTML kimliği');
@@ -142,4 +142,4 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '1.0 / zoom enabled', result: 'PASS' }));
+console.log(JSON.stringify({ syntaxFiles: jsCount, cssStructureFiles: cssCount, htmlPages: files.filter((f) => f.endsWith('.html')).length, localReferences: referenceCount, literalDomReferences, products: productIds.size, officialLinks: expectedChannelUrls.length, viewport: '0.8 / 0.8 / 0.8', result: 'PASS' }));
