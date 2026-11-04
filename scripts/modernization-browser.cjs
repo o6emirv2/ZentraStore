@@ -7,10 +7,11 @@ const firebaseSdk = require('./helpers/browser-firebase.cjs');
 const output = path.resolve(process.env.MODERNIZATION_BROWSER_OUTPUT || 'test-results/modernization');
 async function main() {
   fs.mkdirSync(output, { recursive: true });
-  let app, browser, provider, maintenance; const contexts = [], pages = [], errors = [], assetFailures = [], cases = [];
+  let app, browser, provider, maintenance, providerJobs; const contexts = [], pages = [], errors = [], assetFailures = [], cases = [];
   try {
     app = await applicationFixture({ shopier: true, transientStore: 'memory', rateLimitStore: 'memory', appCheckMode: 'monitor' });
     provider = shopierFixture(); maintenance = require('../server/core/orderMaintenanceService'); maintenance.startMaintenanceWorker();
+    providerJobs = require('../server/core/shopierJobs'); providerJobs.startShopierWorker();
     const store = require('../server/core/storeService'), catalog = await require('../server/core/storeCatalogService').getEffectiveCatalog();
     const product = catalog.products.find(row => row.telegramEnabled), plan = product.plans[0];
     const orders = [];
@@ -101,7 +102,8 @@ async function main() {
     const closeResponse = page.waitForResponse(row => row.request().method() === 'POST' && row.url().includes('/shopier/close'));
     await page.locator(`[data-admin-order="${shopier.order.id}"] [data-shopier-action=close]`).click(); await authorize(page);
     await page.locator(`[data-admin-order="${shopier.order.id}"] [data-shopier-action=close]:disabled`).waitFor();
-    assert.equal((await closeResponse).status(), 200);
+    assert.equal((await closeResponse).status(), 202);
+    await page.waitForFunction(id => document.querySelector(`[data-admin-order="${id}"] [data-shopier-action=close]`)?.textContent.includes('kapatıldı'), shopier.order.id);
     assert.equal(app.db.records.get('storeOrders/' + shopier.order.id).paymentState, 'link_closed');
     assert.equal(provider.products.get(shopier.order.shopier.productId).stockQuantity, 0); cases.push({ name: 'provider-verified-link-close', closedButtonDisabled: true, providerStockVerified: true });
     await page.locator('[data-bulk-operation=cancel_telegram]').click(); await page.locator('dialog[open]').waitFor();
@@ -114,6 +116,39 @@ async function main() {
     assert.equal(app.db.records.get('storeOrders/' + orders[1].id).status, 'cancelled');
     assert.equal(app.db.records.get('storeOrders/' + orders[2].id).status, 'cancelled');
     cases.push({ name: 'bulk-preview-confirm-progress-and-reload-recovery', paidExternalOrderExcluded: true, resumable: true });
+    const extraOrder = (await store.createOrder({ uid: 'member', authUser: app.users.get('member'), paymentMethod: 'telegram',
+      rawItems: [{ productId: product.id, planKey: plan.key, quantity: 1 }], idempotencyKey: crypto.randomUUID() })).order;
+    await page.locator('[data-refresh=orders]').click(); await page.locator(`[data-admin-order="${extraOrder.id}"]`).waitFor();
+    await page.locator('[data-bulk-operation=cancel_all]').click(); await page.locator('dialog[open]').waitFor();
+    const mixedConfirmation = page.waitForResponse(row => row.request().method() === 'POST' && /\/maintenance\/[^/]+\/orders\/confirm/.test(row.url()) && row.status() === 202);
+    await page.locator('dialog[open] button[type=submit]').click(); await authorize(page);
+    const mixed = (await (await mixedConfirmation).json()).job;
+    await page.waitForFunction(id => document.querySelector(`[data-admin-order="${id}"] .order-state`)?.textContent.includes('İPTAL EDİLDİ'), extraOrder.id);
+    assert.notEqual(app.db.records.get('storeMaintenanceJobs/' + mixed.id).state, 'completed');
+    await page.locator('#orderMaintenance summary').click(); await page.locator('#orderMaintenance [data-refresh-results]').click();
+    assert.match(await page.locator('#orderMaintenance .maintenance-results').textContent(), /İptal edildi/);
+    const closedRow = app.db.records.get('storeOrders/' + shopier.order.id);
+    closedRow.shopier.linkClosedAt = Date.now() - 11 * 60_000; closedRow.shopier.closeReviewAfter = 0;
+    for (const [key, item] of app.db.records) if (key.startsWith('storeMaintenanceJobs/' + mixed.id + '/items/') && item.state === 'waiting') item.availableAt = 0;
+    app.db.records.get('storeMaintenanceJobs/' + mixed.id).availableAt = 0; maintenance.wakeMaintenanceWorker();
+    await page.locator('#orderMaintenance h3', { hasText: 'İşlem sonuçlandı' }).waitFor();
+    assert.equal(app.db.records.get('storeOrders/' + shopier.order.id).status, 'cancelled');
+    cases.push({ name: 'mixed-bulk-shows-real-partial-telegram-results-before-shopier-finalization', partialResultVisible: true, eventualProviderVerifiedCancellation: true });
+    const refundable = await require('../server/core/shopierService').createShopierPayment({ uid: 'member', authUser: app.users.get('member'), purpose: 'wallet_topup', amountKurus: 10000, idempotencyKey: crypto.randomUUID() });
+    provider.paid(refundable.order.shopier.productId);
+    const walletBefore = app.db.records.get('users/member').storeBalanceKurus;
+    await page.locator('[data-refresh=orders]').click(); await page.locator(`[data-admin-order="${refundable.order.id}"]`).waitFor();
+    await page.locator(`[data-admin-order="${refundable.order.id}"] [data-shopier-action=cancel]`).click();
+    await page.locator('dialog[open] button[type=submit]').click();
+    const cancelResponse = page.waitForResponse(row => row.request().method() === 'POST' && row.url().includes(`/orders/${refundable.order.id}/shopier/cancel`));
+    await authorize(page); assert.equal((await cancelResponse).status(), 202);
+    for (let attempt = 0; attempt < 100 && !app.db.records.get('storeOrders/' + refundable.order.id).shopier.refundRequest?.providerRefundId; attempt++) await new Promise(resolve => setTimeout(resolve, 100));
+    const refundId = app.db.records.get('storeOrders/' + refundable.order.id).shopier.refundRequest?.providerRefundId;
+    assert.ok(refundId); assert.equal(app.db.records.get('users/member').storeBalanceKurus, walletBefore);
+    provider.completeRefund(refundId); app.db.records.get('shopierJobs/cancel_' + refundable.order.id).availableAt = 0; providerJobs.wakeShopierWorker();
+    await page.waitForFunction(id => document.querySelector(`[data-admin-order="${id}"] .order-state`)?.textContent.includes('İade Tamamlandı'), refundable.order.id);
+    assert.equal(provider.calls.filter(call => call.method === 'POST' && call.path === '/refunds' && call.body.orderId === provider.refunds.get(refundId).orderId).length, 1);
+    cases.push({ name: 'single-cancel-dialog-durable-refund-and-no-intermediate-wallet-credit', actualProofAndQueue: true, noDuplicateRefund: true });
     await panel(page, 'audit'); await page.locator('.audit-record').first().waitFor();
     await page.locator('#auditSearch').fill('long-operation'); assert.equal(await page.locator('.audit-record').count(), 1); await page.locator('#auditSearch').fill('');
     await page.locator('[data-bulk-operation=delete_audit]').click(); await page.locator('dialog[open]').waitFor();
@@ -125,6 +160,12 @@ async function main() {
     await panel(page, 'security'); await page.locator('#securityChecks .security-check').first().waitFor();
     assert.equal(await page.locator('#securityChecks .security-check').count(), 20); assert.match(await page.locator('#securityEvidence').textContent(), /Doğrulanmamış/);
     assert(Number(await page.locator('#securityScore').textContent()) < 98); cases.push({ name: 'evidence-based-security', noInventedHighScore: true, unknownControlsVisible: true });
+    assert(!/KORUMA HAZIR/.test(await page.locator('#securityRuntime').textContent()));
+    assert.match(await page.locator('#securityChecks').textContent(), /Gerekli işlem:/);
+    const securityColor = await page.locator('#securityLevel').evaluate(node => getComputedStyle(node).color);
+    assert(['rgb(255, 116, 133)', 'rgb(231, 183, 101)'].includes(securityColor));
+    assert.equal(await page.locator('#securityRing').evaluate(node => getComputedStyle(node).borderTopWidth), '0px');
+    cases.push({ name: 'security-warning-colors-and-remediation-match-failed-controls', noFalseReadyBanner: true, noStaticGreenCriticalState: true });
     for (const width of [320, 360, 390, 430, 768, 1440]) {
       await page.setViewportSize({ width, height: 844 });
       for (const name of ['links', 'orders', 'audit', 'security']) {
@@ -155,7 +196,7 @@ async function main() {
     for (let index = 0; index < pages.length; index++) if (!pages[index].isClosed()) await pages[index].screenshot({ path: path.join(output, `failure-${index}.png`), fullPage: false }).catch(() => {});
     throw error;
   } finally {
-    maintenance?.stopMaintenanceWorker(); for (const ctx of contexts) await ctx.close().catch(() => {});
+    maintenance?.stopMaintenanceWorker(); providerJobs?.stopShopierWorker(); for (const ctx of contexts) await ctx.close().catch(() => {});
     if (browser) await browser.close(); provider?.close(); if (app) await app.close();
   }
 }

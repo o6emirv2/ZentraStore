@@ -1,6 +1,6 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v88r1';
-import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v88r1';
-import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '../public/js/store/social-links.js?v=zentra-ui-v88r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
+import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v89r1';
+import { LINK_PLATFORM_META, MAX_QUICK_LINKS, validateQuickLink } from '../public/js/store/social-links.js?v=zentra-ui-v89r1';
 
 export function createLinkManager({ host, statusHost, addButton, request, authorize, canWrite, toast, onSaved = () => {} }) {
   let links = [], revision = 0, busy = false;

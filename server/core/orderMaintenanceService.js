@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { sanitizeAuditValue } = require('./adminReauthService');
 const { invalidateCreatedAtPageCache } = require('./firestorePagination');
+const { paymentChannel, hasPaymentEvidence } = require('./orderChannel');
 const FINAL_TIME = 8640000000000000;
 const OPERATIONS = Object.freeze({
   cancel_telegram: { channels: ['telegram'], remove: false },
@@ -22,7 +23,11 @@ function database() {
 }
 function safeId(id) { if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,160}$/.test(id)) failure('BULK_JOB_INVALID', 400); return id; }
 function permission(op) { return OPERATIONS[op]?.audit ? 'store.audit.delete' : 'store.orders.bulk'; }
-function fingerprint(row) { return crypto.createHash('sha256').update(JSON.stringify([row.status, row.paymentState, row.updatedAt, row.paidAt, row.approvedAt, row.totalKurus, row.delivery?.itemCount, row.shopier?.refundedKurus])).digest('hex'); }
+function fingerprint(row, version = 2) {
+  const values = [row.status, row.paymentState, row.updatedAt, row.paidAt, row.approvedAt, row.totalKurus, row.delivery?.itemCount, row.shopier?.refundedKurus];
+  if (version >= 2) values.push(paymentChannel(row), row.legalHold, row.retentionUntil);
+  return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex');
+}
 function auditPolicy(row, now = Date.now()) {
   const name = `${row.type || ''} ${row.action || ''}`;
   const days = Number(process.env.AUDIT_RETENTION_DAYS || 90);
@@ -34,26 +39,29 @@ function auditPolicy(row, now = Date.now()) {
   return at > 0 && at <= now - days * 86400_000 ? { eligible: true, reason: '' } : { eligible: false, reason: 'RETENTION_PERIOD_ACTIVE' };
 }
 function deletionPolicy(row) {
+  const channel = paymentChannel(row);
+  if (channel === 'unknown') return { eligible: false, reason: 'STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED' };
   if (row.legalHold || row.retentionUntil > Date.now()) return { eligible: false, reason: 'RETENTION_HOLD' };
   if (!['cancelled', 'refunded'].includes(row.status)) return { eligible: false, reason: 'ORDER_NOT_FINAL' };
   if (row.inventoryReservations?.length && !row.delivery?.itemCount) return { eligible: false, reason: 'RESERVATION_ACTIVE' };
-  if (row.paymentMethod === 'shopier') {
+  if (channel === 'shopier') {
     if (row.shopierOpen || row.shopier?.refundPending || ['requesting', 'uncertain', 'pending'].includes(row.shopier?.refundRequest?.state)) return { eligible: false, reason: 'PROVIDER_REVIEW_PENDING' };
     if (row.status === 'refunded' && (row.shopier?.refundStatus !== 'full' || row.paymentState !== 'refunded' || row.shopier.refundedKurus !== row.totalKurus)) return { eligible: false, reason: 'REFUND_NOT_VERIFIED' };
     if (row.status === 'cancelled' && (row.paidAt || !row.shopier?.closureFinalizedAt)) return { eligible: false, reason: 'PROVIDER_CANCELLATION_NOT_VERIFIED' };
-  } else if (row.paymentMethod === 'wallet') {
+  } else if (channel === 'wallet') {
     if (!row.walletRefundedAt || row.walletRefundedKurus !== row.totalKurus) return { eligible: false, reason: 'WALLET_REFUND_NOT_VERIFIED' };
-  } else if ((row.approvedAt || row.status === 'refunded') && !row.manualRefund?.verifiedAt) return { eligible: false, reason: 'EXTERNAL_REFUND_NOT_VERIFIED' };
+  } else if ((hasPaymentEvidence(row) || row.status === 'refunded') && !row.manualRefund?.verifiedAt) return { eligible: false, reason: 'EXTERNAL_REFUND_NOT_VERIFIED' };
   return { eligible: true, reason: '' };
 }
 function orderPolicy(row, op) {
   const spec = OPERATIONS[op];
-  if (!spec || !spec.channels.includes(row.paymentMethod) || (spec.status && spec.status !== row.status)) return { targeted: false };
+  const channel = paymentChannel(row);
+  if (!spec || !spec.channels.includes(channel) || (spec.status && spec.status !== row.status)) return { targeted: false };
   if (spec.status) return { targeted: true, ...deletionPolicy(row), deletable: true };
   if (['cancelled', 'refunded'].includes(row.status)) return spec.remove ? { targeted: true, ...deletionPolicy(row), deletable: true } : { targeted: true, eligible: false, reason: 'ALREADY_FINAL' };
   if (row.legalHold || row.delivery?.itemCount && row.orderType !== 'wallet_topup' || row.status === 'delivered' && row.orderType !== 'wallet_topup') return { targeted: true, eligible: false, reason: 'DELIVERED_OR_PROTECTED' };
-  if (row.paymentMethod === 'telegram' && (row.approvedAt || !['awaiting_payment', 'payment_review', 'payment_rejected'].includes(row.status))) return { targeted: true, eligible: false, reason: 'EXTERNAL_PAYMENT_REVIEW_REQUIRED' };
-  return { targeted: true, eligible: true, cancellable: true, deletable: spec.remove, refundRequired: row.paymentMethod === 'shopier' && !!row.paidAt };
+  if (channel === 'telegram' && (hasPaymentEvidence(row) || !['awaiting_payment', 'payment_review', 'payment_rejected'].includes(row.status))) return { targeted: true, eligible: false, reason: 'EXTERNAL_PAYMENT_REVIEW_REQUIRED' };
+  return { targeted: true, eligible: true, cancellable: true, deletable: spec.remove, refundRequired: channel === 'shopier' && !!row.paidAt };
 }
 function jobView(row, id) {
   return { id, operation: row.operation, state: row.state, createdAt: row.createdAt, updatedAt: row.updatedAt,
@@ -70,7 +78,7 @@ async function createPreview({ operation, actor, idempotencyKey }) {
     const existing = (await tx.get(ref)).data();
     if (existing) { if (existing.operation !== operation || existing.actor.uid !== actor.uid) failure('BULK_JOB_CONFLICT'); return; }
     const now = Date.now();
-    tx.create(ref, { operation, actor: { uid: actor.uid, email: actor.email || '' }, state: 'preparing',
+    tx.create(ref, { operation, policyVersion: 2, actor: { uid: actor.uid, email: actor.email || '' }, state: 'preparing',
       createdAt: now, updatedAt: now, expiresAt: now + 30 * 60_000, scanCursor: '', scanSource: 0,
       total: 0, eligible: 0, excluded: 0, cancellable: 0, deletable: 0, refunds: 0,
       completed: 0, succeeded: 0, failed: 0, skipped: 0, channels: {}, lease: '', availableAt: now });
@@ -85,7 +93,8 @@ async function getJob(id, actor, cursor = '', { includeResults = true } = {}) {
   if (cursor) query = query.startAfter(safeId(cursor));
   const snapshot = await query.get();
   return { job: jobView(row, id), results: snapshot.docs.map(doc => ({ id: doc.id, channel: doc.data().channel, reference: doc.data().reference,
-    state: doc.data().state, code: doc.data().code || '', result: doc.data().result || '' })), nextCursor: snapshot.size === 100 ? snapshot.docs.at(-1).id : '' };
+    state: doc.data().state, code: doc.data().code || '', result: doc.data().result || '',
+    nextCheckAt: doc.data().state === 'waiting' ? doc.data().availableAt : 0 })), nextCursor: snapshot.size === 100 ? snapshot.docs.at(-1).id : '' };
 }
 async function confirmJob(id, actor, confirmation = '') {
   const { db } = database(), ref = db.collection('storeMaintenanceJobs').doc(safeId(id));
@@ -96,7 +105,7 @@ async function confirmJob(id, actor, confirmation = '') {
     if (!['ready', 'paused'].includes(row.state) || row.state === 'ready' && row.expiresAt < Date.now()) failure('BULK_PREVIEW_EXPIRED');
     if (OPERATIONS[row.operation].remove && confirmation !== 'KALICI SIL') failure('BULK_CONFIRMATION_REQUIRED', 400);
     const now = Date.now();
-    tx.update(ref, { state: 'running', error: '', confirmedAt: row.confirmedAt || now, availableAt: now, updatedAt: now });
+    tx.update(ref, { state: 'running', error: '', firstConfirmedAt: row.firstConfirmedAt || row.confirmedAt || now, confirmedAt: now, availableAt: now, updatedAt: now });
     tx.create(db.collection('protectedSecurityAudit').doc(), { action: 'maintenance.confirmed', jobId: id, operation: row.operation,
       actor: row.actor, total: row.total, eligible: row.eligible, at: now });
   });
@@ -115,7 +124,7 @@ async function preparePage(db, admin, ref, job, lease) {
     const policy = OPERATIONS[job.operation].audit ? { targeted: true, ...auditPolicy(row, job.createdAt), deletable: true } : orderPolicy(row, job.operation);
     if (!policy.targeted) continue;
     items.push({ id: `${source}_${doc.id}`, source, targetId: doc.id, reference: row.orderNumber || doc.id,
-      channel: OPERATIONS[job.operation].audit ? source : row.paymentMethod, fingerprint: fingerprint(row),
+      channel: OPERATIONS[job.operation].audit ? source : paymentChannel(row), fingerprintVersion: job.policyVersion || 1, fingerprint: fingerprint(row, job.policyVersion || 1),
       state: policy.eligible ? 'queued' : 'skipped', availableAt: policy.eligible ? 0 : FINAL_TIME,
       code: policy.reason || '', ...policy });
   }
@@ -148,6 +157,7 @@ async function deleteOrder(id, actor) {
   await db.runTransaction(async tx => {
     const snap = await tx.get(ref), row = snap.data();
     if (!row) return;
+    const channel = paymentChannel(row);
     const policy = deletionPolicy(row);
     if (!policy.eligible) failure(policy.reason);
     const archived = await tx.get(db.collection('storeOrderArchives').doc(id));
@@ -163,12 +173,12 @@ async function deleteOrder(id, actor) {
     const receipts = await tx.get(db.collection('storeOrderIdempotency').where('orderId', '==', id).limit(101));
     const attempts = await tx.get(db.collection('shopierCheckoutAttempts').where('orderId', '==', id).limit(101));
     const mapping = row.shopier?.productId ? await tx.get(db.collection('shopierProducts').doc(require('./shopierService').hash(row.shopier.productId))) : null;
-    const walletRefund = row.paymentMethod === 'wallet' ? await tx.get(db.collection('storeWalletLedger').doc(`refund_${id}`)) : null;
+    const walletRefund = channel === 'wallet' ? await tx.get(db.collection('storeWalletLedger').doc(`refund_${id}`)) : null;
     if (walletRefund && (!walletRefund.exists || walletRefund.data().uid !== row.uid || walletRefund.data().amountKurus !== row.totalKurus)) failure('WALLET_REFUND_NOT_VERIFIED');
     if (jobs.size >= 100 || deliveries.size > 100 || receipts.size > 100 || attempts.size > 100) failure('ORDER_RELATED_RECORD_LIMIT');
     // Financial evidence and idempotency receipts are intentionally retained, outside active order lists.
     if (!archived.exists) tx.create(db.collection('storeOrderArchives').doc(id), {
-      order: { ...row, username: '', delivery: { status: row.delivery?.status || '', itemCount: row.delivery?.itemCount || 0 } },
+      order: { ...row, paymentMethod: channel, username: '', delivery: { status: row.delivery?.status || '', itemCount: row.delivery?.itemCount || 0 } },
       deletedAt: Date.now(), deletedBy: actor, protected: true, financialEvidenceRetained: true
     });
     for (const doc of jobs.docs) tx.delete(doc.ref);
@@ -191,9 +201,10 @@ async function deleteOrder(id, actor) {
   require('./adminStoreService').invalidateAdminStoreCaches();
 }
 async function executeItem(db, job, item) {
-  const ref = db.collection(item.source).doc(item.targetId), row = (await ref.get()).data();
-  if (!row) return { state: 'succeeded', result: 'ALREADY_REMOVED' };
-  if (!item.startedAt && fingerprint(row) !== item.fingerprint) return { state: 'skipped', code: 'STATE_CHANGED_AFTER_PREVIEW' };
+  const ref = db.collection(item.source).doc(item.targetId);
+  let row = (await ref.get()).data();
+  if (!row) return { state: 'skipped', code: 'RECORD_NO_LONGER_EXISTS' };
+  if (!item.startedAt && fingerprint(row, item.fingerprintVersion || 1) !== item.fingerprint) return { state: 'skipped', code: 'STATE_CHANGED_AFTER_PREVIEW' };
   if (OPERATIONS[job.operation].audit) {
     await db.runTransaction(async tx => {
       const current = (await tx.get(ref)).data();
@@ -208,23 +219,22 @@ async function executeItem(db, job, item) {
     return { state: 'succeeded', result: 'DELETED' };
   }
   if (item.startedAt && ['cancelled', 'refunded'].includes(row.status) && !OPERATIONS[job.operation].remove) {
-    if (row.paymentMethod === 'shopier') await require('./shopierService').reconcileShopierOrder(item.targetId);
-    return { state: 'succeeded', result: row.status === 'refunded' ? 'REFUNDED' : 'CANCELLED' };
+    if (paymentChannel(row) === 'shopier' && row.shopier?.closureReason !== 'no_listing_issued') {
+      await require('./shopierService').reconcileShopierOrder(item.targetId);
+      row = (await ref.get()).data();
+    }
+    if (['cancelled', 'refunded'].includes(row.status)) return { state: 'succeeded', result: row.status === 'refunded' ? 'REFUNDED' : 'CANCELLED' };
   }
   const policy = orderPolicy(row, job.operation);
   if (!policy.eligible) return { state: 'skipped', code: policy.reason || 'NO_LONGER_ELIGIBLE' };
   if (!['cancelled', 'refunded'].includes(row.status) && !OPERATIONS[job.operation].status) {
-    if (row.paymentMethod === 'telegram') {
+    if (paymentChannel(row) === 'telegram') {
       await require('./storeService').updateOrderByAdmin({ orderId: item.targetId,
         input: { status: 'cancelled', cancellationReason: `Toplu işlem ${job.id}`, expectedUpdatedAt: row.updatedAt || 0 }, actor: job.actor });
     } else {
-      const service = require('./shopierService');
-      await service.reconcileShopierOrder(item.targetId);
-      const fresh = (await ref.get()).data();
       const operations = require('./shopierOperations');
-      const outcome = fresh.paidAt ? await operations.refundShopierOrder(item.targetId, job.actor)
-        : await operations.closeShopierOrder(item.targetId, job.actor, { cancel: true });
-      if (outcome.pending) return { state: 'waiting', code: outcome.uncertain ? 'PROVIDER_VERIFICATION_REQUIRED' : outcome.closed ? 'LINK_CLOSED_GRACE_PERIOD' : 'REFUND_PENDING', availableAt: outcome.reviewAfter || Date.now() + 60_000 };
+      const outcome = await operations.cancelShopierOrder(item.targetId, job.actor);
+      if (outcome.pending) return { state: 'waiting', code: outcome.verificationError || (outcome.uncertain ? 'PROVIDER_VERIFICATION_REQUIRED' : outcome.closed ? 'LINK_CLOSED_GRACE_PERIOD' : 'REFUND_PENDING'), availableAt: outcome.reviewAfter || Date.now() + 60_000 };
     }
   }
   const final = (await ref.get()).data();
@@ -249,43 +259,56 @@ async function processMaintenanceJob(db, admin, ref) {
     if (!auth) failure('ADMIN_IDENTITY_UNAVAILABLE', 503);
     const identity = await auth.getUser(job.actor.uid);
     if (identity.disabled || !identity.emailVerified || String(identity.email || '').toLowerCase() !== String(job.actor.email).toLowerCase()) failure('ADMIN_ACCOUNT_DISABLED', 403);
+    const revokedAt = Date.parse(identity.tokensValidAfterTime || '') || 0;
+    if (revokedAt > (job.confirmedAt || job.createdAt)) failure('ADMIN_JOB_AUTHORIZATION_REVOKED', 403);
     const { resolveStaffPolicy, staffHasPermission } = require('./adminStoreService');
     const policy = await resolveStaffPolicy(job.actor.uid, job.actor.email);
     if (!staffHasPermission(policy, permission(job.operation))) failure('ADMIN_PERMISSION_REQUIRED', 403);
     if (job.state === 'preparing') return await preparePage(db, admin, ref, job, lease);
-    const queued = await ref.collection('items').where('availableAt', '<=', Date.now()).orderBy('availableAt').limit(1).get();
+    const queued = await ref.collection('items').where('availableAt', '<=', Date.now()).orderBy('availableAt').limit(4).get();
     if (!queued.size) {
       const next = await ref.collection('items').orderBy('availableAt').limit(1).get();
       const availableAt = next.docs[0]?.data().availableAt || FINAL_TIME;
       await ref.update({ lease: '', state: job.completed >= job.total ? 'completed' : 'running', availableAt, updatedAt: Date.now() });
       return;
     }
-    const doc = queued.docs[0], item = doc.data();
-    let outcome;
-    // Mark the first attempt only AFTER checking the preview fingerprint.
-    const current = (await db.collection(item.source).doc(item.targetId).get()).data();
-    if (!item.startedAt && current && fingerprint(current) !== item.fingerprint) outcome = { state: 'skipped', code: 'STATE_CHANGED_AFTER_PREVIEW' };
-    else {
-      await doc.ref.update({ startedAt: item.startedAt || Date.now() });
-      try { outcome = await executeItem(db, job, { ...item, startedAt: item.startedAt || Date.now() }); }
-      catch (error) {
-        outcome = ['SHOPIER_TIMEOUT', 'SHOPIER_CONNECTION_FAILED', 'SHOPIER_OPERATION_BUSY', 'SHOPIER_RATE_LIMITED'].includes(error.code)
-          ? { state: 'waiting', code: error.code, availableAt: Date.now() + Math.max(60_000, Number(error.retryAfter || 0) * 1000) }
-          : { state: 'failed', code: error.code || 'BULK_ITEM_FAILED' };
+    const outcomes = await Promise.allSettled(queued.docs.map(async doc => {
+      const item = doc.data();
+      let outcome;
+      // Mark the first attempt only AFTER checking the preview fingerprint.
+      const current = (await db.collection(item.source).doc(item.targetId).get()).data();
+      if (!item.startedAt && current && fingerprint(current, item.fingerprintVersion || 1) !== item.fingerprint) outcome = { state: 'skipped', code: 'STATE_CHANGED_AFTER_PREVIEW' };
+      else {
+        await doc.ref.update({ startedAt: item.startedAt || Date.now() });
+        try { outcome = await executeItem(db, job, { ...item, startedAt: item.startedAt || Date.now() }); }
+        catch (error) {
+          outcome = ['SHOPIER_TIMEOUT', 'SHOPIER_CONNECTION_FAILED', 'SHOPIER_OPERATION_BUSY', 'SHOPIER_RATE_LIMITED'].includes(error.code) || [408, 429, 500, 502, 503, 504].includes(error.providerStatus)
+            ? { state: 'waiting', code: error.code, availableAt: Date.now() + Math.max(60_000, Number(error.retryAfter || 0) * 1000) }
+            : { state: 'failed', code: error.code || 'BULK_ITEM_FAILED' };
+        }
       }
-    }
-    if (outcome.state === 'waiting' && ((item.attempts || 0) >= 9 && /SHOPIER_TIMEOUT|SHOPIER_CONNECTION_FAILED|SHOPIER_RATE_LIMITED/.test(outcome.code) || Date.now() - (item.startedAt || Date.now()) > 24 * 60 * 60_000)) outcome = { state: 'failed', code: 'PROVIDER_MANUAL_REVIEW_REQUIRED' };
-    if (outcome.state === 'waiting' && /REFUND|VERIFICATION/.test(outcome.code)) outcome.availableAt = Date.now() + Math.min(30 * 60_000, 60_000 * 2 ** Math.min(5, item.attempts || 0));
+      if (outcome.state === 'waiting' && ((item.attempts || 0) >= 9 && /SHOPIER_TIMEOUT|SHOPIER_CONNECTION_FAILED|SHOPIER_RATE_LIMITED|SHOPIER_API_ERROR/.test(outcome.code) || Date.now() - (item.startedAt || Date.now()) > 24 * 60 * 60_000)) outcome = { state: 'failed', code: 'PROVIDER_MANUAL_REVIEW_REQUIRED' };
+      if (outcome.state === 'waiting' && /REFUND|VERIFICATION/.test(outcome.code)) outcome.availableAt = Date.now() + Math.min(30 * 60_000, 60_000 * 2 ** Math.min(5, item.attempts || 0));
+      await db.runTransaction(async tx => {
+        const row = (await tx.get(ref)).data(), previous = (await tx.get(doc.ref)).data();
+        if (row.lease !== lease || ['succeeded', 'failed', 'skipped'].includes(previous.state)) return;
+        const terminal = outcome.state !== 'waiting', channels = { ...row.channels };
+        if (terminal) channels[item.channel] = { ...channels[item.channel], [outcome.state]: (channels[item.channel]?.[outcome.state] || 0) + 1 };
+        tx.update(doc.ref, { ...outcome, attempts: (previous.attempts || 0) + 1, updatedAt: Date.now(), availableAt: terminal ? FINAL_TIME : outcome.availableAt });
+        tx.update(ref, { channels, completed: row.completed + (terminal ? 1 : 0),
+          succeeded: row.succeeded + (outcome.state === 'succeeded' ? 1 : 0), failed: row.failed + (outcome.state === 'failed' ? 1 : 0),
+          skipped: row.skipped + (outcome.state === 'skipped' ? 1 : 0), updatedAt: Date.now() });
+      });
+    }));
+    const rejected = outcomes.find(outcome => outcome.status === 'rejected');
+    if (rejected) throw rejected.reason;
     await db.runTransaction(async tx => {
-      const row = (await tx.get(ref)).data(), previous = (await tx.get(doc.ref)).data();
-      if (row.lease !== lease || ['succeeded', 'failed', 'skipped'].includes(previous.state)) return;
-      const terminal = outcome.state !== 'waiting', channels = { ...row.channels };
-      if (terminal) channels[item.channel] = { ...channels[item.channel], [outcome.state]: (channels[item.channel]?.[outcome.state] || 0) + 1 };
-      tx.update(doc.ref, { ...outcome, attempts: (previous.attempts || 0) + 1, updatedAt: Date.now(), availableAt: terminal ? FINAL_TIME : outcome.availableAt });
-      tx.update(ref, { lease: '', channels, completed: row.completed + (terminal ? 1 : 0),
-        succeeded: row.succeeded + (outcome.state === 'succeeded' ? 1 : 0), failed: row.failed + (outcome.state === 'failed' ? 1 : 0),
-        skipped: row.skipped + (outcome.state === 'skipped' ? 1 : 0), availableAt: Date.now(), updatedAt: Date.now() });
+      const row = (await tx.get(ref)).data();
+      if (row.lease !== lease) return;
+      const completed = row.completed >= row.total;
+      tx.update(ref, { lease: '', state: completed ? 'completed' : 'running', availableAt: completed ? FINAL_TIME : Date.now(), updatedAt: Date.now() });
     });
+    require('./adminStoreService').invalidateAdminStoreCaches();
   } catch (error) {
     await ref.update({ lease: '', state: 'paused', error: error.code || 'BULK_JOB_FAILED', availableAt: FINAL_TIME, updatedAt: Date.now() });
   }

@@ -5,7 +5,7 @@ import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion
 import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v84r1';
 import { versionedProductImage } from './product-fields.js?v=zentra-ui-v84r1';
 import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v84r1';
-import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v88r1';
+import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v89r1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -19,13 +19,13 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v88r1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v88r1';
+} from './auth.js?v=zentra-ui-v89r1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v89r1';
 import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v87r1';
 import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v84r1';
 import { installProductGallery } from './product-gallery.js?v=zentra-ui-v84r1';
 import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v84r1';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v88r1';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v89r1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -48,7 +48,7 @@ import {
   renderDeliveryCardView
 } from './customer-renderers.js?v=zentra-ui-v84r1';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v88r1';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v89r1';
 import { updateAccountView } from './account-view.js?v=zentra-ui-v84r1';
 import { renderProductPlans, renderProductSummary, renderProductFeatures, productTopupOffer } from './product-detail.js?v=zentra-ui-v84r1';
 

@@ -4,6 +4,7 @@ const { normalizeFeatures } = require('./storeProductSchema');
 const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const crypto = require('crypto');
 const { paymentWorkflow } = require('../../public/js/store/payment-workflow.mjs');
+const { paymentChannel, hasPaymentEvidence } = require('./orderChannel');
 const env = require('../config/env');
 const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -276,16 +277,17 @@ function telegramUrl(message = '', telegramUsername = STORE_CATALOG.telegramUser
 }
 
 function publicOrder(data = {}, id = '') {
+  const channel = paymentChannel(data);
   const delivery = data.delivery && typeof data.delivery === 'object' ? data.delivery : {};
   const status = ORDER_STATUSES.includes(data.status) ? data.status : 'awaiting_payment';
   const deliveryItemCount = Math.max(0, Math.min(100, Math.trunc(Number(delivery.itemCount || 0) || 0)));
   const deliveryVisible = data.orderType !== 'wallet_topup' && deliveryItemCount > 0 && Number(data.approvedAt || 0) > 0 && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(status);
-  const cancellable = status === 'awaiting_payment' && data.paymentMethod !== 'shopier';
+  const cancellable = status === 'awaiting_payment' && channel === 'telegram' && !hasPaymentEvidence(data);
   return {
     id: id || safeText(data.id, 160),
     orderNumber: safeText(data.orderNumber, 40),
     status,
-    paymentMethod: ['wallet', 'shopier'].includes(data.paymentMethod) ? data.paymentMethod : 'telegram',
+    paymentMethod: channel,
     orderType: data.orderType === 'wallet_topup' ? 'wallet_topup' : 'purchase',
     ...(data.orderType === 'wallet_topup' ? { walletTopup: {
       requestedKurus: clampBalance(data.walletTopup?.requestedKurus), netAppliedKurus: clampBalance(data.walletTopup?.netAppliedKurus),
@@ -311,20 +313,21 @@ function publicOrder(data = {}, id = '') {
       discountKurus: clampBalance(data.promotion.discountKurus)
     } : null,
     totalKurus: clampBalance(data.totalKurus),
-    paymentState: data.paymentMethod === 'shopier' ? safeText(data.paymentState || 'pending', 30) : data.paymentMethod === 'wallet' ? 'captured' : 'external',
+    paymentState: channel === 'shopier' ? safeText(data.paymentState || 'pending', 30) : channel === 'wallet' ? 'captured' : 'external',
     paidAt: Math.max(0, Number(data.paidAt || 0)),
-    shopier: data.paymentMethod === 'shopier' ? {
+    shopier: channel === 'shopier' ? {
       orderId: safeText(data.shopier?.orderId, 100), productId: safeText(data.shopier?.productId, 100),
       state: safeText(data.shopier?.state, 40), lastError: safeText(data.shopier?.lastError, 80),
       refundPending: data.shopier?.refundPending === true,
       refundRequest: data.shopier?.refundRequest ? { state: safeText(data.shopier.refundRequest.state, 30), requestedAt: Number(data.shopier.refundRequest.requestedAt) || 0 } : null,
       cancelRequestedAt: Number(data.shopier?.cancelRequestedAt) || 0,
+      closeRequestedAt: Number(data.shopier?.closeRequestedAt) || 0,
       closeReviewAfter: Number(data.shopier?.closeReviewAfter) || 0,
       closureFinalizedAt: Number(data.shopier?.closureFinalizedAt) || 0,
       refundStatus: safeText(data.shopier?.refundStatus, 30), refundedKurus: clampBalance(data.shopier?.refundedKurus),
       verifiedAt: Math.max(0, Number(data.shopier?.verifiedAt || 0)), linkClosedAt: Math.max(0, Number(data.shopier?.linkClosedAt || 0))
     } : null,
-    paymentWorkflow: paymentWorkflow(data),
+    paymentWorkflow: paymentWorkflow({ ...data, paymentMethod: channel }),
     deliveryVisible,
     cancellable,
     approvedAt: Math.max(0, Number(data.approvedAt || 0) || 0),
@@ -622,14 +625,16 @@ async function cancelOrderByUser({ uid = '', orderId = '', reason = '' } = {}) {
       result = publicOrder(current, safeOrderId);
       return;
     }
-    if (current.paymentMethod === 'shopier') throw serviceError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-    const canCancel = currentStatus === 'awaiting_payment' || (currentStatus === 'paid' && current.paymentMethod === 'wallet');
+    const channel = paymentChannel(current);
+    if (channel === 'shopier') throw serviceError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
+    const canCancel = channel === 'telegram' && currentStatus === 'awaiting_payment' && !hasPaymentEvidence(current)
+      || channel === 'wallet' && currentStatus === 'paid';
     if (!canCancel) throw serviceError('STORE_ORDER_CANCELLATION_NOT_ALLOWED', 409);
     const promotionRelease = await readPromotionReleaseInTransaction({
       transaction: tx, db, order: current, orderId: safeOrderId
     });
 
-    const shouldRefund = current.paymentMethod === 'wallet' && currentStatus === 'paid' && !current.walletRefundedAt;
+    const shouldRefund = channel === 'wallet' && currentStatus === 'paid' && !current.walletRefundedAt;
     if (shouldRefund) {
       const userSnapshot = await tx.get(userRef);
       if (!userSnapshot.exists) throw serviceError('STORE_ACCOUNT_NOT_FOUND', 404);
@@ -822,7 +827,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
   const { db, admin } = firebaseStore();
   const orderRef = db.collection('storeOrders').doc(safeOrderId);
   const paymentCheck = await orderRef.get();
-  if (paymentCheck.data()?.paymentMethod === 'shopier') {
+  if (paymentChannel(paymentCheck.data()) === 'shopier') {
     if (!['delivery_pending', 'delivered'].includes(requestedStatus) || manualDeliveryValues.length) throw serviceError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
     const { deliverShopierOrder } = require('./shopierService');
     await deliverShopierOrder(safeOrderId, { actor: { uid: actorUid, email: actorEmail, source: 'admin' } });
@@ -837,15 +842,17 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
     const orderSnapshot = await tx.get(orderRef);
     if (!orderSnapshot.exists) throw serviceError('STORE_ORDER_NOT_FOUND', 404);
     const current = orderSnapshot.data() || {};
+    const channel = paymentChannel(current);
+    if (channel === 'unknown') throw serviceError('STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED', 409);
     const currentStatus = ORDER_STATUSES.includes(current.status) ? current.status : 'awaiting_payment';
     previousStatus = currentStatus;
-    const telegramPayment = current.paymentMethod === 'telegram';
+    const telegramPayment = channel === 'telegram';
     const approving = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(requestedStatus) && !current.approvedAt;
-    const refunding = requestedStatus === 'refunded' || requestedStatus === 'cancelled' && !!current.approvedAt;
+    const refunding = requestedStatus === 'refunded' || requestedStatus === 'cancelled' && hasPaymentEvidence(current);
     const paymentReference = safeText(input.paymentReference, 160);
     if (telegramPayment && (approving || refunding) && (input.paymentConfirmed !== true || paymentReference.length < 6)) throw serviceError('STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED', 409);
     if (input.expectedUpdatedAt !== undefined && Number(current.updatedAt || 0) !== input.expectedUpdatedAt) throw serviceError('STORE_ORDER_CONFLICT', 409);
-    if (input.expectedUpdatedAt !== undefined && current.paymentMethod === 'telegram' && (current.approvedAt || !['awaiting_payment', 'payment_review', 'payment_rejected', 'cancelled'].includes(currentStatus))) throw serviceError('EXTERNAL_PAYMENT_REVIEW_REQUIRED', 409);
+    if (input.expectedUpdatedAt !== undefined && telegramPayment && (hasPaymentEvidence(current) || !['awaiting_payment', 'payment_review', 'payment_rejected', 'cancelled'].includes(currentStatus))) throw serviceError('EXTERNAL_PAYMENT_REVIEW_REQUIRED', 409);
     if (!ORDER_TRANSITIONS[currentStatus].includes(requestedStatus)) throw serviceError('STORE_ORDER_TRANSITION_INVALID', 409);
     if (currentStatus === 'cancelled' && requestedStatus === 'cancelled') {
       result = adminOrder(current, safeOrderId);
@@ -858,7 +865,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
     const customerUid = safeText(current.uid, 160);
     const refundAmountKurus = clampBalance(current.totalKurus);
     const shouldRefundWallet = ['cancelled', 'refunded'].includes(requestedStatus)
-      && current.paymentMethod === 'wallet'
+      && channel === 'wallet'
       && ['paid', 'processing', 'delivery_pending', 'delivered'].includes(currentStatus)
       && !Number(current.walletRefundedAt || 0)
       && refundAmountKurus > 0;
@@ -878,7 +885,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
     const now = Date.now();
     const previousDelivery = current.delivery && typeof current.delivery === 'object' ? current.delivery : {};
     const approvalRequested = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(requestedStatus);
-    const isTelegramOrder = current.paymentMethod === 'telegram' || current.salesChannel === 'telegram';
+    const isTelegramOrder = telegramPayment;
     const currentItems = (Array.isArray(current.items) ? current.items : []).map((item) => {
       const baseProduct = STORE_CATALOG.products.find((product) => product.id === item.productId);
       return {
@@ -927,6 +934,7 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
         }[finalStatus] || 'TELEGRAM_ILETISIM_BEKLIYOR')
       : (finalStatus === 'delivered' ? 'TESLIM_EDILDI' : safeText(current.fulfillmentStatus, 40));
     const patch = {
+      paymentMethod: channel,
       status: finalStatus,
       salesChannel: isTelegramOrder ? 'telegram' : 'automatic',
       fulfillmentStatus,

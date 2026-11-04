@@ -1,4 +1,4 @@
-import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v88r1';
+import { friendlyStoreError, loadStoreRuntimeConfig, setStoreAppCheckTokenProvider, setStoreTokenProvider, storeApi } from './api.js?v=zentra-ui-v89r1';
 import { createAccountReader } from './account-state.js?v=zentra-ui-v84r1';
 
 const FIREBASE_VERSION = '12.17.1';

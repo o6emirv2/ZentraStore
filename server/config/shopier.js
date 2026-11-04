@@ -43,18 +43,19 @@ function getShopierConfig(source = process.env) {
   if (!cancelUrl) blockers.push('SHOPIER_CANCEL_URL');
   const timeoutMs = Number(source.SHOPIER_HTTP_TIMEOUT_MS || 15000);
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 20000) blockers.push('SHOPIER_HTTP_TIMEOUT_MS');
-  return { enabled, configured: blockers.length === 0, blockers, pat, webhookToken, refundWebhookToken,
+  const managementBlockers = blockers.filter(key => ['SHOPIER_API_BASE_URL', 'SHOPIER_PAT', 'SHOPIER_HTTP_TIMEOUT_MS'].includes(key));
+  return { enabled, configured: blockers.length === 0, blockers, managementConfigured: managementBlockers.length === 0, managementBlockers, pat, webhookToken, refundWebhookToken,
     apiBaseUrl, publicBaseUrl: publicOrigin, webhookUrl, successUrl, cancelUrl, timeoutMs };
 }
 function shopierReadiness() {
-  const { enabled, configured, blockers, refundWebhookToken } = getShopierConfig();
+  const { enabled, configured, blockers, managementConfigured, managementBlockers, refundWebhookToken } = getShopierConfig();
   return { enabled, configured, available: enabled && configured, refundNotifications: !!refundWebhookToken,
-    blockers, mode: 'pat-product-link' };
+    blockers, managementConfigured, managementBlockers, mode: 'pat-product-link' };
 }
-function requireShopierConfig({ creating = false } = {}) {
+function requireShopierConfig({ creating = false, management = false } = {}) {
   const config = getShopierConfig();
   if (creating && !config.enabled) throw Object.assign(new Error('SHOPIER_DISABLED'), { code: 'SHOPIER_DISABLED', statusCode: 503 });
-  if (!config.configured) throw Object.assign(new Error('SHOPIER_CONFIGURATION_INVALID'), { code: 'SHOPIER_CONFIGURATION_INVALID', statusCode: 503 });
+  if (!(management && !creating ? config.managementConfigured : config.configured)) throw Object.assign(new Error('SHOPIER_CONFIGURATION_INVALID'), { code: 'SHOPIER_CONFIGURATION_INVALID', statusCode: 503 });
   return config;
 }
 module.exports = { API_BASE, WEBHOOK_PATH, getShopierConfig, shopierReadiness, requireShopierConfig };

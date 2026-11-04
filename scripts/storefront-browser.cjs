@@ -114,7 +114,7 @@ async function main() {
     await page.waitForFunction(() => document.getElementById('paymentStateTitle').textContent === 'İade işlemi kontrol ediliyor');
     assert.equal(app.db.records.get('users/member').storeBalanceKurus, 50000);
     cases.push({ name: 'refund-review-is-not-success', noPrematureWalletCredit: true });
-    await page.evaluate(() => import('/public/js/store/auth.js?v=zentra-ui-v88r1').then(m => m.logoutStore()));
+    await page.evaluate(() => import('/public/js/store/auth.js?v=zentra-ui-v89r1').then(m => m.logoutStore()));
     await page.waitForFunction(() => document.getElementById('paymentFacts').hidden && document.getElementById('paymentAmount').textContent === '—');
     assert.equal(await page.locator('#paymentItems li').count(), 0);
     cases.push({ name: 'payment-details-cleared-on-logout', noStaleAccountFacts: true });

@@ -39,7 +39,7 @@ const CONTRACTS = [
   ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
   ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],
   ['POST', /^\/api\/payments\/shopier\/topups$/, object({ amountKurus: integer(TOPUP_LIMITS.minKurus, TOPUP_LIMITS.maxKurus), idempotencyKey: text(160) })],
-  ['POST', /^\/api\/admin\/store\/orders\/[^/]+\/shopier\/(?:reconcile|close)$/, object({})],
+  ['POST', /^\/api\/admin\/store\/orders\/[^/]+\/shopier\/(?:reconcile|close|cancel)$/, object({})],
   ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
   ['POST', /^\/api\/auth\/password-reset$/, object({ identifier: text(254) })],

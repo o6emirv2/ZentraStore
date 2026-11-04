@@ -30,7 +30,7 @@ function paymentUrl(value) {
   } catch (_) {}
   throw shopierError('SHOPIER_PAYMENT_URL_INVALID', 502);
 }
-function createShopierClient({ config = requireShopierConfig(), transport = global.fetch } = {}) {
+function createShopierClient({ config = requireShopierConfig({ management: true }), transport = global.fetch } = {}) {
   async function requestOnce(method, path, body) {
     if (!/^\/(?:products|orders|refunds|webhooks)(?:\/[A-Za-z0-9_-]{1,100})?(?:\?[A-Za-z0-9_%=&.+:-]+)?$/.test(path)) throw shopierError('SHOPIER_REQUEST_INVALID', 500);
     const controller = new AbortController();

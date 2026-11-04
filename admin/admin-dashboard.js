@@ -4,16 +4,16 @@ import { matchesAdminProduct, sortRecords, enhanceDataTables } from '../public/j
 import { installAppUI, skeletonMarkup, runAction, beginRegion, animateView, rememberForms, hasUnsavedForms, confirmDiscard, setFieldError, setActionBusy, clearFieldError } from '../public/js/ui/app-ui.js?v=zentra-ui-v84r1';
 import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
 import { isUncertainMutationError } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas, escapeHtml } from './admin-core.js?v=zentra-ui-v88r1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas, escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
 import { createNotificationCenter } from '/public/js/ui/notification-center.js?v=zentra-ui-v84r1';
 import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
 import { CATEGORY_PRESETS as PRODUCT_CATEGORY_PRESETS, categoryKey as productCategoryKey, normalizeProductId, validProductId, suggestProductId } from '../public/js/store/catalog-schema.mjs?v=zentra-ui-v87r1';
 
-import { createLinkManager } from './admin-links.js?v=zentra-ui-v88r1';
-import { createMaintenanceController } from './admin-maintenance.js?v=zentra-ui-v88r1';
-import { renderAuditCards } from './admin-audit.js?v=zentra-ui-v88r1';
-import { renderSecurityAssessment } from './admin-security.js?v=zentra-ui-v88r1';
-import { chooseOrderStatus, confirmManualPayment } from './admin-dialogs.js?v=zentra-ui-v88r1';
+import { createLinkManager } from './admin-links.js?v=zentra-ui-v89r1';
+import { createMaintenanceController } from './admin-maintenance.js?v=zentra-ui-v89r1';
+import { renderAuditCards } from './admin-audit.js?v=zentra-ui-v89r1';
+import { renderSecurityAssessment } from './admin-security.js?v=zentra-ui-v89r1';
+import { chooseOrderStatus, confirmManualPayment, openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v89r1';
 
 installInteractionGuard();
 
@@ -325,13 +325,17 @@ function orderMarkup(order) {
   const manualDelivery = canAttachManualDelivery
     ? `<label><span>Şifreli manuel teslimat bilgisi</span><textarea data-manual-delivery maxlength="60000" placeholder="Her ürün/adet için bir satır: key veya hesap için kullanıcı/e-posta | şifre"></textarea><small class="form-hint"><i class="fa-solid fa-shield-halved"></i>Bu alan yalnızca bu Telegram siparişine şifreli teslimat bağlar; otomatik stok kasasına eklemez.</small></label>`
     : telegram && deliveryAttached ? `<div class="form-hint"><i class="fa-solid fa-lock"></i>Manuel teslimat bu siparişe şifreli olarak bağlandı (${escapeHtml(order.delivery.itemCount)} kayıt).</div>` : '';
+  const deliveryLabel = topup
+    ? order.status === 'refunded' ? 'İade tamamlandı' : order.status === 'cancelled' ? 'Yükleme iptal edildi'
+      : order.paymentWorkflow?.key === 'refund_pending' ? 'İade kontrol ediliyor' : order.walletTopup?.settledAt ? 'Bakiye hesaba işlendi' : 'Bakiye onayı bekliyor'
+    : ({ cancelled: 'İptal edildi', delivered: 'Teslim edildi', ready: 'Teslimata hazır', locked: 'Ödeme doğrulaması bekliyor', pending: 'Teslimat bekliyor' }[order.delivery?.status]) || (order.status === 'cancelled' ? 'İptal edildi' : 'Teslimat bekliyor');
   const deliveryPlaceholder = telegram ? 'Müşteriye gösterilecek açıklama/not. Key veya şifreyi bu alana yazmayın.' : 'Teslimat bilgisini buraya yazmayın; sistem güvenli şekilde otomatik teslim eder.';
-  const paymentLabel = order.paymentMethod === 'shopier' ? 'Shopier' : order.paymentMethod === 'wallet' ? 'ZENTRA STORE Bakiye' : 'Telegram';
+  const paymentLabel = order.paymentMethod === 'shopier' ? 'Shopier' : order.paymentMethod === 'wallet' ? 'ZENTRA STORE Bakiye' : order.paymentMethod === 'telegram' ? 'Telegram' : 'Ödeme kanalı incelemesi gerekli';
   const shopierLocked = order.paymentMethod === 'shopier';
   const refundLabel = { none: 'İade yok', pending: 'İade bekliyor', partial: 'Kısmi iade', full: 'İade tamamlandı', failed: 'İade başarısız' }[order.shopier?.refundStatus || 'none'] || 'Doğrulama bekliyor';
-  const shopierMeta = order.paymentMethod === 'shopier' ? `<div class="admin-order__meta shopier-order-meta"><span><small>SHOPIER SİPARİŞ / İŞLEM NO</small><strong>${escapeHtml(order.shopier?.orderId || 'Bekleniyor')}</strong></span><span><small>SHOPIER ÜRÜN</small><strong>${escapeHtml(order.shopier?.productId || 'Oluşturuluyor')}</strong></span><span><small>ÖDEME DURUMU</small><strong>${escapeHtml(order.paymentWorkflow?.label || order.paymentState)}</strong></span><span><small>ÖDEME ZAMANI</small><strong>${escapeHtml(order.paidAt ? formatDate(order.paidAt) : '—')}</strong></span><span><small>İADE DURUMU</small><strong>${escapeHtml(refundLabel)} · ${escapeHtml(formatPrice(order.shopier?.refundedKurus || 0))}</strong></span><span><small>SON DENETİM</small><strong>${escapeHtml(order.shopier?.lastError || '—')}</strong></span></div><div class="shopier-admin-actions"><button class="secondary-action" type="button" data-shopier-action="reconcile" data-shopier-order="${escapeHtml(order.id)}" ${permissionDisabled('store.orders.write')}>Shopier kaydını doğrula</button>${!order.paidAt && order.status !== 'payment_rejected' && order.status !== 'cancelled' ? `<button class="secondary-action" type="button" data-shopier-action="close" data-shopier-order="${escapeHtml(order.id)}" ${order.shopier?.linkClosedAt || order.paymentWorkflow?.key === 'checking' ? 'disabled' : ''} ${permissionDisabled('store.orders.write')}>${order.shopier?.linkClosedAt ? 'Ödeme bağlantısı kapatıldı' : order.paymentWorkflow?.key === 'checking' ? 'Kapatma kontrol ediliyor' : 'Ödeme bağlantısını kapat'}</button>` : ''}${!topup && order.paymentState === 'paid' && order.status !== 'delivered' ? `<button class="secondary-action" type="button" data-shopier-action="deliver" data-shopier-order="${escapeHtml(order.id)}" ${permissionDisabled('store.orders.write')}>Doğrulanmış teslimatı yeniden dene</button>` : ''}<p>Ödeme ve iade Shopier API kaydıyla doğrulanır. Bağlantıyı kapatmak tahsilatı iade etmez. Kapanıştan 10 dakika sonra sağlayıcı otomatik yeniden sorgulanır. Bağlantı kapatma siparişi iptal etmez; iptal ayrı işlemdir.</p></div>` : '';
+  const shopierMeta = order.paymentMethod === 'shopier' ? `<div class="admin-order__meta shopier-order-meta"><span><small>SHOPIER SİPARİŞ / İŞLEM NO</small><strong>${escapeHtml(order.shopier?.orderId || 'Bekleniyor')}</strong></span><span><small>SHOPIER ÜRÜN</small><strong>${escapeHtml(order.shopier?.productId || 'Oluşturuluyor')}</strong></span><span><small>ÖDEME DURUMU</small><strong>${escapeHtml(order.paymentWorkflow?.label || order.paymentState)}</strong></span><span><small>ÖDEME ZAMANI</small><strong>${escapeHtml(order.paidAt ? formatDate(order.paidAt) : '—')}</strong></span><span><small>İADE DURUMU</small><strong>${escapeHtml(refundLabel)} · ${escapeHtml(formatPrice(order.shopier?.refundedKurus || 0))}</strong></span><span><small>SON DENETİM</small><strong>${escapeHtml(order.shopier?.lastError || '—')}</strong></span></div><div class="shopier-admin-actions"><button class="secondary-action" type="button" data-shopier-action="reconcile" data-shopier-order="${escapeHtml(order.id)}" ${permissionDisabled('store.orders.write')}>Shopier kaydını doğrula</button>${!order.paidAt && order.status !== 'payment_rejected' && order.status !== 'cancelled' ? `<button class="secondary-action" type="button" data-shopier-action="close" data-shopier-order="${escapeHtml(order.id)}" ${order.shopier?.linkClosedAt || order.shopier?.closeRequestedAt || order.paymentWorkflow?.key === 'checking' ? 'disabled' : ''} ${permissionDisabled('store.orders.write')}>${order.shopier?.linkClosedAt ? 'Ödeme bağlantısı kapatıldı' : order.shopier?.closeRequestedAt || order.paymentWorkflow?.key === 'checking' ? 'Kapatma kontrol ediliyor' : 'Ödeme bağlantısını kapat'}</button>` : ''}${!topup && order.paymentState === 'paid' && order.status !== 'delivered' ? `<button class="secondary-action" type="button" data-shopier-action="deliver" data-shopier-order="${escapeHtml(order.id)}" ${permissionDisabled('store.orders.write')}>Doğrulanmış teslimatı yeniden dene</button>` : ''}${!locked && (topup || !deliveryAttached && order.status !== 'delivered') ? `<button class="secondary-action" type="button" data-shopier-action="cancel" data-shopier-order="${escapeHtml(order.id)}" ${order.shopier?.cancelRequestedAt ? 'disabled' : permissionDisabled('store.orders.write')}>${order.shopier?.cancelRequestedAt ? 'İptal / iade kontrol ediliyor' : 'Siparişi İptal Et / İadeye Gönder'}</button>` : ''}<details><summary>Kapatma, iptal ve iade bilgisi</summary><p>Ödeme ve iade Shopier API kaydıyla doğrulanır. Bağlantıyı kapatmak tahsilatı iade etmez. Kapanıştan 10 dakika sonra sağlayıcı otomatik yeniden sorgulanır. Bağlantı kapatma siparişi iptal etmez; iptal ayrı işlemdir.</p>${order.shopier?.closeReviewAfter && !order.shopier?.closureFinalizedAt ? `<p>Son kontrol zamanı: ${escapeHtml(formatDate(order.shopier.closeReviewAfter))}</p>` : ''}</details></div>` : '';
   const salesChannelLabel = topup ? 'Shopier · bakiye yükleme' : telegram ? 'Telegram · manuel teslimat' : 'Otomatik teslimat';
-  return `<article class="admin-order" data-admin-order="${escapeHtml(order.id)}"><header class="admin-order__head"><div><small>OLUŞTURULDU · ${escapeHtml(formatDate(order.createdAt))}</small><strong>${escapeHtml(order.orderNumber)}</strong><em>Son güncelleme · ${escapeHtml(formatDate(order.updatedAt || order.createdAt))}</em></div><span class="order-state order-state--${escapeHtml(order.status)}"><i class="fa-solid ${status.icon}"></i>${escapeHtml(order.paymentMethod === 'shopier' && !(topup && order.status === 'delivered' && order.paymentWorkflow?.key === 'paid') ? order.paymentWorkflow?.label || status.label : status.label)}</span></header><div class="admin-order__meta"><span><small>KULLANICI</small><strong>${escapeHtml(order.username || '—')}</strong></span><span><small>E-POSTA</small><strong title="${escapeHtml(order.email)}">${escapeHtml(order.email || '—')}</strong></span><span><small>HESAP KİMLİĞİ</small><strong title="${escapeHtml(order.uid)}">…${escapeHtml(String(order.uid || '').slice(-10))}</strong></span><span><small>ÖDEME</small><strong>${escapeHtml(paymentLabel)}</strong></span><span><small>SATIŞ KANALI</small><strong>${escapeHtml(salesChannelLabel)}</strong></span><span><small>TESLİMAT</small><strong>${escapeHtml(topup ? order.walletTopup?.settledAt ? 'Bakiye hesaba işlendi' : 'Bakiye onayı bekliyor' : order.delivery?.status || (telegram ? 'bekliyor' : 'otomatik'))}</strong></span></div>${shopierMeta}<div class="admin-order__items">${topup ? `<span><em><strong>Mağaza bakiyesi yüklemesi</strong><small>Hesaba işlenen net: ${escapeHtml(formatPrice(order.walletTopup?.netAppliedKurus || 0))} · İade bakiyesine ayrılan: ${escapeHtml(formatPrice(order.walletTopup?.debtSettledKurus || 0))}</small></em><b>${escapeHtml(formatPrice(order.totalKurus))}</b></span>` : items || '<span><em>Ürün bilgisi bulunamadı</em><b>—</b></span>'}</div><div class="admin-order__total"><span>Sipariş toplamı</span><strong>${escapeHtml(formatPrice(order.totalKurus))}</strong></div><div class="admin-order__editor"${shopierLocked ? ' hidden' : ''}><label><span>Yeni durum</span><input data-order-status type="hidden" value="${escapeHtml(order.status)}"/><button class="order-status-button" type="button" data-order-status-open="${escapeHtml(order.id)}" ${locked ? 'disabled' : permissionDisabled('store.orders.write')}><span data-order-status-label>${escapeHtml(STATUS[order.status]?.label || order.status)}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button></label>${manualDelivery}<label><span>Kullanıcıya teslimat notu</span><textarea data-delivery-message maxlength="500" placeholder="${escapeHtml(deliveryPlaceholder)}" ${locked ? 'disabled' : ''}>${escapeHtml(order.delivery?.message || '')}</textarea></label><button class="primary-action" type="button" data-save-order="${escapeHtml(order.id)}" ${locked || state.busyOrder === order.id ? 'disabled' : permissionDisabled('store.orders.write')}><i class="fa-solid ${state.busyOrder === order.id ? 'fa-spinner fa-spin' : 'fa-lock'}"></i>${state.busyOrder === order.id ? 'Güncelleniyor' : ['awaiting_payment', 'payment_review'].includes(order.status) ? 'Ödemeyi Onayla / Güncelle' : 'Güvenli Şekilde Güncelle'}</button></div></article>`;
+  return `<article class="admin-order" data-admin-order="${escapeHtml(order.id)}"><header class="admin-order__head"><div><small>OLUŞTURULDU · ${escapeHtml(formatDate(order.createdAt))}</small><strong>${escapeHtml(order.orderNumber)}</strong><em>Son güncelleme · ${escapeHtml(formatDate(order.updatedAt || order.createdAt))}</em></div><span class="order-state order-state--${escapeHtml(order.status)}"><i class="fa-solid ${status.icon}"></i>${escapeHtml(order.paymentMethod === 'shopier' && !(topup && order.status === 'delivered' && order.paymentWorkflow?.key === 'paid') ? order.paymentWorkflow?.label || status.label : status.label)}</span></header><div class="admin-order__meta"><span><small>KULLANICI</small><strong>${escapeHtml(order.username || '—')}</strong></span><span><small>E-POSTA</small><strong title="${escapeHtml(order.email)}">${escapeHtml(order.email || '—')}</strong></span><span><small>HESAP KİMLİĞİ</small><strong title="${escapeHtml(order.uid)}">…${escapeHtml(String(order.uid || '').slice(-10))}</strong></span><span><small>ÖDEME</small><strong>${escapeHtml(paymentLabel)}</strong></span><span><small>SATIŞ KANALI</small><strong>${escapeHtml(salesChannelLabel)}</strong></span><span><small>TESLİMAT</small><strong>${escapeHtml(deliveryLabel)}</strong></span></div>${shopierMeta}<div class="admin-order__items">${topup ? `<span><em><strong>Mağaza bakiyesi yüklemesi</strong><small>Hesaba işlenen net: ${escapeHtml(formatPrice(order.walletTopup?.netAppliedKurus || 0))} · İade bakiyesine ayrılan: ${escapeHtml(formatPrice(order.walletTopup?.debtSettledKurus || 0))}</small></em><b>${escapeHtml(formatPrice(order.totalKurus))}</b></span>` : items || '<span><em>Ürün bilgisi bulunamadı</em><b>—</b></span>'}</div><div class="admin-order__total"><span>Sipariş toplamı</span><strong>${escapeHtml(formatPrice(order.totalKurus))}</strong></div><div class="admin-order__editor"${shopierLocked ? ' hidden' : ''}><label><span>Yeni durum</span><input data-order-status type="hidden" value="${escapeHtml(order.status)}"/><button class="order-status-button" type="button" data-order-status-open="${escapeHtml(order.id)}" ${locked ? 'disabled' : permissionDisabled('store.orders.write')}><span data-order-status-label>${escapeHtml(STATUS[order.status]?.label || order.status)}</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button></label>${manualDelivery}<label><span>Kullanıcıya teslimat notu</span><textarea data-delivery-message maxlength="500" placeholder="${escapeHtml(deliveryPlaceholder)}" ${locked ? 'disabled' : ''}>${escapeHtml(order.delivery?.message || '')}</textarea></label><button class="primary-action" type="button" data-save-order="${escapeHtml(order.id)}" ${locked || state.busyOrder === order.id ? 'disabled' : permissionDisabled('store.orders.write')}><i class="fa-solid ${state.busyOrder === order.id ? 'fa-spinner fa-spin' : 'fa-lock'}"></i>${state.busyOrder === order.id ? 'Güncelleniyor' : ['awaiting_payment', 'payment_review'].includes(order.status) ? 'Ödemeyi Onayla / Güncelle' : 'Güvenli Şekilde Güncelle'}</button></div></article>`;
 }
 
 function visibleOrders() {
@@ -368,7 +372,19 @@ async function retryShopierJob(jobId) {
   await loadOrders({ silent: true });
 }
 
-let orderLoadSequence = 0;
+let orderLoadSequence = 0, orderPollTimer;
+function scheduleOrderRefresh() {
+  clearTimeout(orderPollTimer);
+  const pending = state.orders.some(order => order.paymentMethod === 'shopier'
+    && (order.shopier?.closeRequestedAt || order.shopier?.linkClosedAt || order.shopier?.cancelRequestedAt)
+    && !order.shopier?.closureFinalizedAt && !['refunded', 'cancelled'].includes(order.status)
+    && !/AUTH_FAILED|CONFIGURATION|MISMATCH|MANUAL_REVIEW/.test(order.shopier?.lastError || ''));
+  if (state.activePanel !== 'orders' || !pending) return;
+  orderPollTimer = setTimeout(() => {
+    if (document.hidden || hasUnsavedForms($('#adminOrderList'))) return scheduleOrderRefresh();
+    void loadOrders({ silent: true }).catch(() => scheduleOrderRefresh());
+  }, 5000);
+}
 async function loadOrders({ silent = false } = {}) {
   const sequence = ++orderLoadSequence;
   if (!silent) $('#adminOrderList').innerHTML = loadingMarkup('Siparişler yükleniyor');
@@ -383,6 +399,7 @@ async function loadOrders({ silent = false } = {}) {
   const newest = state.orders.reduce((max, order) => Math.max(max, Number(order.createdAt || 0)), 0);
   renderLiveStatus('#ordersLiveMeta', { icon: 'fa-database', title: 'Güncel sipariş kayıtları', detail: state.orders.length ? `${state.orders.length} kayıt yüklendi · Son sipariş ${formatDate(newest)}` : 'Henüz sipariş kaydı bulunmuyor.', tone: 'ok', meta: 'CANLI' });
   renderOrders();
+  scheduleOrderRefresh();
 }
 
 async function loadMoreAdminOrders() {
@@ -410,13 +427,17 @@ async function loadMoreAdminOrders() {
 
 async function runShopierAction(orderId, action) {
   if (!requirePermission('store.orders.write', 'Shopier işlemi')) return;
-  if (!['reconcile', 'close', 'deliver'].includes(action) || !(await requestAdminReauth())) return;
+  if (!['reconcile', 'close', 'cancel', 'deliver'].includes(action)) return;
+  if (action === 'cancel' && !(await openAdminDialog({ title: 'Shopier Siparişini İptal Et', confirmLabel: 'İptal Sürecini Başlat', destructive: true,
+    description: 'Ödeme alınmamışsa bağlantı kapatılıp son kontrolün ardından sipariş iptal edilir. Tahsilat doğrulanırsa uygun sipariş iade sürecine girer. Sağlayıcı sonucu kesinleşmeden iptal veya iade tamamlandı sayılmaz.' }))) return;
+  if (!(await requestAdminReauth())) return;
   try {
   const target = `/api/admin/store/orders/${encodeURIComponent(orderId)}`;
   const result = action === 'deliver' ? await adminFetch(target, { method: 'PATCH', body: { status: 'delivered' }, timeoutMs: 60_000 })
     : await adminFetch(`${target}/shopier/${action}`, { method: 'POST', body: {}, timeoutMs: 60_000 });
-  toast('success', action === 'close' ? 'Bağlantı kontrol edildi' : 'Shopier kaydı kontrol edildi', action === 'close' && !result.released
-    ? 'Sağlayıcıda bağlantı kapatıldığı yeniden sorgulanarak doğrulandı. Son kontrol otomatik yapılacak. Bu işlem iptal veya iade değildir.'
+  toast(result.pending ? 'info' : 'success', action === 'cancel' ? result.pending ? 'İptal isteği kaydedildi' : 'İptal / iade sonucu doğrulandı' : action === 'close' ? result.closed ? 'Bağlantı kapalı' : result.noLinkIssued ? 'Açık ödeme bağlantısı yok' : 'Kapatma isteği kaydedildi' : 'Shopier kaydı kontrol edildi',
+    action === 'cancel' ? result.pending ? 'Kalıcı iş kuyruğu sağlayıcı durumunu doğrulayacak. Bu istek, henüz tamamlanmış iptal veya iade değildir.' : 'Siparişin kesinleşmiş durumu yeniden okundu.' :
+    action === 'close' ? result.pending ? 'Kalıcı sunucu işi bağlantıyı kapatıp sağlayıcıdan doğrulayacak. Kart otomatik yenilenir; henüz iptal veya iade tamamlandı sayılmaz.' : result.noLinkIssued ? 'Sağlayıcıda bağlantı oluşturulmadığı kaydı doğrulandı.' : 'Sağlayıcı kapatması ve son kontrol doğrulandı. Bu işlem para iadesi değildir.'
     : result.found === false ? 'Henüz doğrulanmış ödeme bulunamadı.' : 'Siparişin güncel durumu kaydedildi.');
   } finally { await loadOrders({ silent: true }).catch(() => null); }
 }
@@ -1740,8 +1761,9 @@ async function loadSecurity() {
   const inventoryReady = runtime.inventory?.ready === true;
   const expires = runtime.adminAccessExpiresAt ? formatDate(runtime.adminAccessExpiresAt) : 'Oturum süresi güvenli biçimde yönetiliyor';
   const requestProtection = { off: 'kapalı', monitor: 'izleniyor', enforce: 'zorunlu' }[String(runtime.appCheckMode || '').toLowerCase()] || 'denetleniyor';
-  const accessMode = { 'httpOnly-cookie': 'korumalı HttpOnly oturumu' }[String(runtime.adminAccessMode || '').toLowerCase()] || 'denetleniyor';
-  renderLiveStatus('#securityRuntime', { icon: 'fa-shield-halved', title: `İstek koruması ${requestProtection} · Stok kasası ${inventoryReady ? 'hazır' : 'kontrol'}`, detail: `Yönetici erişimi: ${accessMode} · ${expires}`, tone: runtime.configurationReady && runtime.keyVaultReady ? 'ok' : 'warning', meta: runtime.configurationReady && runtime.keyVaultReady ? 'KORUMA HAZIR' : 'EKSİK AYAR' });
+  const accessMode = { 'httpOnly-cookie': 'korumalı HttpOnly oturumu', 'browser-key': 'tarayıcı anahtarına bağlı imzalı oturum' }[String(runtime.adminAccessMode || '').toLowerCase()] || 'denetleniyor';
+  const assessment = payload.security || {};
+  renderLiveStatus('#securityRuntime', { icon: 'fa-shield-halved', title: `İstek koruması ${requestProtection} · Stok kasası ${inventoryReady ? 'hazır' : 'kontrol'}`, detail: `Yönetici erişimi: ${accessMode} · ${expires}`, tone: assessment.ready === true ? 'ok' : 'warning', meta: assessment.criticalCount > 0 ? 'KRİTİK KONTROL EKSİĞİ' : assessment.ready === true ? 'KONTROLLER DOĞRULANDI' : 'DOĞRULAMA BEKLENİYOR' });
 }
 
 function renderPanelFailure(name, error) {
@@ -1813,6 +1835,7 @@ function switchPanel(name = 'overview', { record = true } = {}) {
   const requested = PANELS.includes(name) ? name : 'overview';
   const safe = panelAllowed(requested) ? requested : PANELS.find((panel) => panelAllowed(panel)) || 'overview';
   state.activePanel = safe;
+  scheduleOrderRefresh();
   $$('[data-panel]').forEach((button) => { const selected = button.dataset.panel === safe; button.classList.toggle('is-active', selected); if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); });
   $$('[data-admin-panel]').forEach((panel) => { const active = panel.dataset.adminPanel === safe && panelAllowed(safe); panel.classList.toggle('is-active', active); panel.hidden = !active; panel.inert = !active; });
   const activeNavButton = document.querySelector(`.admin-sidebar [data-panel="${safe}"]`);
@@ -2015,10 +2038,14 @@ function renderAdminEntryFailure(error) {
 
 function initMaintenance() {
   const options = { request: adminFetch, authorize: requestAdminReauth, identity: () => state.adminPolicy?.uid || '', toast };
-  const orders = createMaintenanceController({ ...options, host: $('#orderMaintenance'), scope: 'orders', canWrite: () => hasPermission('store.orders.bulk'), onChanged: () => loadOrders({ silent: true }) });
+  const orders = createMaintenanceController({ ...options, host: $('#orderMaintenance'), scope: 'orders', canWrite: () => hasPermission('store.orders.bulk'), onChanged: () => hasUnsavedForms($('#adminOrderList')) ? null : loadOrders({ silent: true }) });
   const audit = createMaintenanceController({ ...options, host: $('#auditMaintenance'), scope: 'audit', canWrite: () => hasPermission('store.audit.delete'), onChanged: loadAudit });
   void orders.resume(); void audit.resume();
-  window.addEventListener('pagehide', () => { orders.stop(); audit.stop(); }, { once: true });
+  window.addEventListener('pagehide', () => { orders.stop(); audit.stop(); clearTimeout(orderPollTimer); });
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    void orders.resume(); void audit.resume(); scheduleOrderRefresh();
+  });
 }
 
 async function boot() {

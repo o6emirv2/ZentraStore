@@ -136,9 +136,9 @@ test('every first-party page uses the requested initial minimum and maximum view
 });
 
 test('changed client bundles have fresh cache versions', () => {
-  assert.match(read('index.html'), /\/script\.js\?v=zentra-ui-v88r1/);
-  assert.match(read('script.js'), /\/storefront\.js\?v=zentra-ui-v88r1/);
-  assert.match(read('public/js/store/storefront.js'), /products\.js\?v=zentra-ui-v88r1/);
-  assert.match(read('admin/admin-entry.js'), /admin-dashboard\.js\?v=zentra-ui-v88r1/);
+  assert.match(read('index.html'), /\/script\.js\?v=zentra-ui-v89r1/);
+  assert.match(read('script.js'), /\/storefront\.js\?v=zentra-ui-v89r1/);
+  assert.match(read('public/js/store/storefront.js'), /products\.js\?v=zentra-ui-v89r1/);
+  assert.match(read('admin/admin-entry.js'), /admin-dashboard\.js\?v=zentra-ui-v89r1/);
   assert.match(read('public/js/store/products.js'), /catalog-schema\.mjs\?v=zentra-ui-v87r1/);
 });

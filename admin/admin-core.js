@@ -37,6 +37,8 @@ function errorMessage(payload = {}, status = 0) {
   const code = String((typeof payload.error === 'object' ? payload.error?.code : payload.error) || payload.code || '');
   const messages = {
     STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED: 'Ödeme veya iade için doğrulanmış harici işlem referansı gerekli.',
+    STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED: 'Bu eski kaydın ödeme kanalı güvenle belirlenemedi. Ödeme kaydını inceleyin; işlem uygulanmadı.',
+    ADMIN_JOB_AUTHORIZATION_REVOKED: 'Yönetici oturumları iptal edildi. Toplu iş için yeniden giriş ve onay gerekli.',
     STORE_LINK_REVISION_CONFLICT: 'Bağlantılar başka bir işlemde değişti. Listeyi yenileyip güncel kayıt üzerinden tekrar deneyin.',
     SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. İşlem başarısı doğrulanmadı; aynı kaydın durumunu kontrol edin.',
     SHOPIER_OPERATION_BUSY: 'Bu sipariş için bir sağlayıcı işlemi devam ediyor.',

@@ -1091,9 +1091,9 @@ img {
   display:grid;
   justify-items:center;
   gap:10px;
-  border:1px solid rgba(77,222,157,.2);
+  border:1px solid var(--assessment-color,#34435c);
   border-radius:16px;
-  background:linear-gradient(145deg,rgba(77,222,157,.05),#080d15);
+  background:#0b1322;
   text-align:center
 }
 .security-ring {
@@ -1102,10 +1102,9 @@ img {
   display:grid;
   place-items:center;
   align-content:center;
-  border:9px solid rgba(77,222,157,.14);
-  border-top-color:var(--green);
+  border:0;
   border-radius:50%;
-  box-shadow:0 0 30px rgba(77,222,157,.1)
+  box-shadow:none
 }
 .security-ring strong {
   font-size:1.35rem
@@ -1119,7 +1118,7 @@ img {
   gap:4px
 }
 .security-overview span {
-  color:var(--green);
+  color:var(--assessment-color,var(--dim));
   font-size:0.875rem;
   font-weight:900
 }

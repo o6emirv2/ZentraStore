@@ -3,6 +3,8 @@
 const crypto = require('node:crypto');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
 const { createShopierClient, shopierError, decimalKurus, money, providerId } = require('./shopierClient');
+const { requireShopierConfig } = require('../config/shopier');
+const { paymentChannel } = require('./orderChannel');
 const GRACE_MS = 10 * 60_000;
 function storage() {
   const { db } = initFirebaseAdmin();
@@ -20,9 +22,9 @@ async function operation(db, ref, kind, actor, callback) {
   const token = crypto.randomUUID();
   await db.runTransaction(async tx => {
     const row = (await tx.get(ref)).data();
-    if (!row || row.paymentMethod !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
+    if (!row || paymentChannel(row) !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
     if (row.shopier?.operation?.until > Date.now()) throw shopierError('SHOPIER_OPERATION_BUSY', 409);
-    tx.update(ref, { shopier: { ...row.shopier, operation: { token, kind, until: Date.now() + 5 * 60_000 } } });
+    tx.update(ref, { paymentMethod: 'shopier', shopier: { ...row.shopier, operation: { token, kind, until: Date.now() + 5 * 60_000 } } });
   });
   try { return await callback(); }
   catch (error) {
@@ -43,45 +45,95 @@ async function operation(db, ref, kind, actor, callback) {
     require('./adminStoreService').invalidateAdminStoreCaches();
   }
 }
+async function requestShopierOperation(orderId, actor, { cancel = false } = {}) {
+  requireShopierConfig({ management: true });
+  const db = storage(), ref = reference(db, orderId), service = require('./shopierService');
+  let result;
+  await db.runTransaction(async tx => {
+    const row = (await tx.get(ref)).data();
+    if (!row || paymentChannel(row) !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
+    const kind = cancel ? 'cancel' : 'close';
+    const jobRef = db.collection('shopierJobs').doc(`${kind}_${orderId}`), job = (await tx.get(jobRef)).data();
+    if (!cancel && (row.paidAt || row.shopier?.orderId)) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
+    if (cancel && row.orderType !== 'wallet_topup' && (row.delivery?.itemCount || row.status === 'delivered')) throw shopierError('SHOPIER_DELIVERED_REFUND_REVIEW_REQUIRED', 409);
+    if ((cancel && ['cancelled', 'refunded'].includes(row.status)) || (!cancel && row.shopier?.closureFinalizedAt)) {
+      result = { closed: !!row.shopier.linkClosedAt, noLinkIssued: row.shopier.closureReason === 'no_listing_issued', cancelled: row.status === 'cancelled', refunded: row.status === 'refunded', released: true, pending: false }; return;
+    }
+    const now = Date.now();
+    tx.update(ref, { paymentMethod: 'shopier', shopier: { ...row.shopier, ...(cancel
+      ? { cancelRequestedAt: row.shopier?.cancelRequestedAt || now, cancelRequestedBy: row.shopier?.cancelRequestedBy || actor }
+      : { closeRequestedAt: row.shopier?.closeRequestedAt || now }) }, updatedAt: now });
+    if (!job || job.failedAt || job.completedAt) service.queueJob(tx, db, { id: jobRef.id, kind, orderId });
+    tx.set(jobRef, { requestedBy: { uid: actor.uid }, authorizedAt: now }, { merge: true });
+    if (!(cancel ? row.shopier?.cancelRequestedAt : row.shopier?.closeRequestedAt)) audit(tx, db, row, cancel ? 'shopier.cancellation.requested' : 'shopier.link.close_requested', actor);
+    result = { accepted: true, closed: !!row.shopier?.linkClosedAt, released: false, pending: true, jobId: jobRef.id };
+  });
+  require('./shopierJobs').wakeShopierWorker();
+  require('./adminStoreService').invalidateAdminStoreCaches();
+  return result;
+}
+async function markCancellation(orderId, actor) {
+  const db = storage(), ref = reference(db, orderId);
+  await db.runTransaction(async tx => {
+    const row = (await tx.get(ref)).data();
+    if (!row || paymentChannel(row) !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
+    if (row.orderType !== 'wallet_topup' && (row.delivery?.itemCount || row.status === 'delivered')) throw shopierError('SHOPIER_DELIVERED_REFUND_REVIEW_REQUIRED', 409);
+    if (row.shopier?.cancelRequestedAt) return;
+    tx.update(ref, { paymentMethod: 'shopier', shopier: { ...row.shopier, cancelRequestedAt: Date.now(), cancelRequestedBy: actor }, updatedAt: Date.now() });
+    audit(tx, db, row, 'shopier.cancellation.requested', actor);
+  });
+}
+function transient(error) {
+  return ['SHOPIER_TIMEOUT', 'SHOPIER_CONNECTION_FAILED', 'SHOPIER_RATE_LIMITED'].includes(error.code)
+    || [408, 429, 500, 502, 503, 504].includes(error.providerStatus);
+}
 async function closeShopierOrder(orderId, actor = { uid: 'system', source: 'worker' }, { cancel = false } = {}) {
   const db = storage(), ref = reference(db, orderId), service = require('./shopierService');
+  if (cancel) await markCancellation(orderId, actor);
   return operation(db, ref, 'close', actor, async () => {
     let order = (await ref.get()).data();
-    if (cancel && !order.shopier.cancelRequestedAt) await db.runTransaction(async tx => {
-      const row = (await tx.get(ref)).data();
-      tx.update(ref, { shopier: { ...row.shopier, cancelRequestedAt: Date.now(), cancelRequestedBy: actor }, updatedAt: Date.now() });
-      audit(tx, db, row, 'shopier.cancellation.requested', actor);
-    });
-    await service.reconcileShopierOrder(orderId);
-    order = (await ref.get()).data();
     if (order.paidAt || order.shopier.orderId) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-    if (!order.shopier.productId) throw shopierError('SHOPIER_CREATION_REVIEW_REQUIRED', 409);
-    const client = createShopierClient();
-    const product = await client.getProduct(order.shopier.productId);
-    service.validateProduct(product, order);
-    if (product.stockQuantity !== 0) {
-      try { await client.updateProduct(order.shopier.productId, { stockQuantity: 0 }); }
-      catch (error) {
-        if (!error.uncertain && ![408, 500, 502, 503, 504].includes(error.providerStatus)) throw error;
-        // A timeout does not prove the PUT failed. Read back; never report a local-only closure.
+    // A definitively rejected create never issued a link. This is distinct from a closed provider link.
+    const noListing = order.shopier.state === 'creation_failed' && !order.shopier.productId && !order.shopier.paymentUrl && order.shopierOpen === false;
+    if (!noListing) {
+      if (!order.shopier.productId) {
+        await service.recoverShopierProduct(orderId);
+        order = (await ref.get()).data();
       }
+      if (!order.shopier.productId) throw shopierError('SHOPIER_CREATION_REVIEW_REQUIRED', 409);
+      const client = createShopierClient();
+      const product = await client.getProduct(order.shopier.productId);
+      service.validateProduct(product, order);
+      if (product.stockQuantity !== 0) {
+        try { await client.updateProduct(order.shopier.productId, { stockQuantity: 0 }); }
+        catch (error) { if (!error.uncertain && !transient(error)) throw error; }
+      }
+      const verified = await client.getProduct(order.shopier.productId);
+      service.validateProduct(verified, order);
+      if (verified.id !== order.shopier.productId || verified.stockQuantity !== 0) throw shopierError('SHOPIER_LINK_CLOSE_UNVERIFIED', 409);
+      await db.runTransaction(async tx => {
+        const row = (await tx.get(ref)).data(), now = Date.now();
+        const queued = await tx.get(db.collection('shopierJobs').doc(`close_${orderId}`));
+        const closedAt = row.shopier.linkClosedAt || now;
+        tx.update(ref, { paymentState: row.paidAt ? row.paymentState : 'link_closed',
+          shopier: { ...row.shopier, linkClosedAt: closedAt, closeReviewAfter: closedAt + GRACE_MS, closeVerifiedAt: now,
+            state: row.paidAt ? row.shopier.state : 'link_closed', lastError: '' }, updatedAt: now });
+        if (!queued.exists || queued.data().failedAt) service.queueJob(tx, db, { id: `close_${orderId}`, kind: 'close', orderId, availableAt: closedAt + GRACE_MS });
+        if (!row.shopier.linkClosedAt) audit(tx, db, row, 'shopier.link.closed', actor, { providerProductId: verified.id });
+      });
+      try { await service.reconcileShopierOrder(orderId); }
+      catch (error) {
+        if (!transient(error)) throw error;
+        await db.runTransaction(async tx => {
+          const row = (await tx.get(ref)).data();
+          tx.update(ref, { shopier: { ...row.shopier, lastError: error.code }, updatedAt: Date.now() });
+        });
+        return { closed: true, released: false, pending: true, uncertain: true, verificationError: error.code, reviewAfter: Date.now() + 60_000 };
+      }
+      order = (await ref.get()).data();
+      if (order.paidAt) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
+      if (Date.now() < order.shopier.closeReviewAfter) return { closed: true, released: false, pending: true, reviewAfter: order.shopier.closeReviewAfter };
     }
-    const verified = await client.getProduct(order.shopier.productId);
-    service.validateProduct(verified, order);
-    if (verified.id !== order.shopier.productId || verified.stockQuantity !== 0) throw shopierError('SHOPIER_LINK_CLOSE_UNVERIFIED', 409);
-    await db.runTransaction(async tx => {
-      const row = (await tx.get(ref)).data(), now = Date.now();
-      const closedAt = row.shopier.linkClosedAt || now;
-      tx.update(ref, { paymentState: row.paidAt ? row.paymentState : 'link_closed',
-        shopier: { ...row.shopier, linkClosedAt: closedAt, closeReviewAfter: closedAt + GRACE_MS, closeVerifiedAt: now,
-          state: row.paidAt ? row.shopier.state : 'link_closed', lastError: '' }, updatedAt: now });
-      if (!row.shopier.linkClosedAt) service.queueJob(tx, db, { id: `close_${orderId}`, kind: 'close', orderId, availableAt: closedAt + GRACE_MS });
-      if (!row.shopier.linkClosedAt) audit(tx, db, row, 'shopier.link.closed', actor, { providerProductId: verified.id });
-    });
-    await service.reconcileShopierOrder(orderId);
-    order = (await ref.get()).data();
-    if (order.paidAt) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-    if (Date.now() < order.shopier.closeReviewAfter) return { closed: true, released: false, pending: true, reviewAfter: order.shopier.closeReviewAfter };
     let released = false;
     await db.runTransaction(async tx => {
       const row = (await tx.get(ref)).data();
@@ -94,17 +146,18 @@ async function closeShopierOrder(orderId, actor = { uid: 'system', source: 'work
       const promotionReleased = releasePromotionInTransaction({ transaction: tx, release, reason: 'shopier-link-closed', now });
       const cancelled = cancel || !!row.shopier.cancelRequestedAt;
       tx.update(ref, { ...(cancelled ? { status: 'cancelled', cancelledAt: now, cancelledBy: row.shopier.cancelRequestedBy || actor } : {}),
-        paymentState: cancelled ? 'cancelled' : 'link_closed', shopierOpen: false, inventoryReservations: [],
-        shopier: { ...row.shopier, state: cancelled ? 'cancelled' : 'link_closed', closureFinalizedAt: now, lastError: '' },
+        paymentState: cancelled ? 'cancelled' : noListing ? row.paymentState : 'link_closed', shopierOpen: false, inventoryReservations: [],
+        shopier: { ...row.shopier, state: cancelled ? 'cancelled' : noListing ? 'creation_failed' : 'link_closed', closureFinalizedAt: now, ...(noListing ? { closureReason: 'no_listing_issued' } : {}), lastError: '' },
         ...(promotionReleased ? { promotion: { ...row.promotion, releasedAt: now } } : {}), updatedAt: now });
-      audit(tx, db, row, cancelled ? 'shopier.order.cancelled' : 'shopier.link.finalized', actor);
+      audit(tx, db, row, cancelled ? 'shopier.order.cancelled' : noListing ? 'shopier.no_listing.confirmed' : 'shopier.link.finalized', actor);
       released = true;
     });
-    return { closed: true, released, pending: false };
+    return { closed: !noListing, noLinkIssued: noListing, released, pending: false };
   });
 }
 async function refundShopierOrder(orderId, actor) {
   const db = storage(), ref = reference(db, orderId), service = require('./shopierService');
+  await markCancellation(orderId, actor);
   return operation(db, ref, 'refund', actor, async () => {
     await service.reconcileShopierOrder(orderId);
     let row = (await ref.get()).data();
@@ -145,4 +198,15 @@ async function refundShopierOrder(orderId, actor) {
     return { refunded: row.paymentState === 'refunded', pending: row.paymentState !== 'refunded', uncertain: !!failure };
   });
 }
-module.exports = { closeShopierOrder, refundShopierOrder, GRACE_MS };
+async function cancelShopierOrder(orderId, actor) {
+  await markCancellation(orderId, actor);
+  const row = (await reference(storage(), orderId).get()).data();
+  if (row.paidAt) return refundShopierOrder(orderId, actor);
+  try { return await closeShopierOrder(orderId, actor, { cancel: true }); }
+  catch (error) {
+    if (error.code !== 'SHOPIER_PROVIDER_ACTION_REQUIRED') throw error;
+    return refundShopierOrder(orderId, actor);
+  }
+}
+module.exports = { closeShopierOrder, requestShopierClosure: (id, actor) => requestShopierOperation(id, actor),
+  requestShopierCancellation: (id, actor) => requestShopierOperation(id, actor, { cancel: true }), cancelShopierOrder, refundShopierOrder, GRACE_MS };

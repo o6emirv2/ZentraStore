@@ -1,5 +1,5 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v88r1';
-import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v88r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
+import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v89r1';
 
 export const ORDER_BULK_ACTIONS = Object.freeze([
   ['cancel_telegram', 'Tüm Telegram Siparişlerini İptal Et'],
@@ -23,7 +23,15 @@ const REASONS = Object.freeze({
   DELETED_FINANCIAL_EVIDENCE_RETAINED: 'Sipariş kaldırıldı; zorunlu finans kayıtları korundu', ALREADY_REMOVED: 'Daha önce kaldırılmış',
   SHOPIER_REFUND_FAILED_REVIEW_REQUIRED: 'Sağlayıcı iadesi başarısız; otomatik yeni iade gönderilmez, yönetici incelemesi gerekli',
   SHOPIER_DELIVERED_REFUND_REVIEW_REQUIRED: 'Teslim edilen ürün için tekil iade incelemesi gerekli',
-  WALLET_REFUND_NOT_VERIFIED: 'Bakiye iadesi doğrulanmadı', PROVIDER_CANCELLATION_NOT_VERIFIED: 'Sağlayıcı iptali kesinleşmedi'
+  WALLET_REFUND_NOT_VERIFIED: 'Bakiye iadesi doğrulanmadı', PROVIDER_CANCELLATION_NOT_VERIFIED: 'Sağlayıcı iptali kesinleşmedi',
+  RECORD_NO_LONGER_EXISTS: 'Kayıt artık bulunamıyor; bu işlemde iptal veya silme doğrulanmadı.',
+  ADMIN_JOB_AUTHORIZATION_REVOKED: 'Yönetici oturumları iptal edildi. Yeniden doğrulayarak devam edin.',
+  SHOPIER_CONFIGURATION_INVALID: 'Shopier erişim anahtarı veya API adresi yapılandırması eksik.',
+  SHOPIER_AUTH_FAILED: 'Shopier erişim yetkisi reddedildi; PAT yetkisini kontrol edin.',
+  SHOPIER_CONNECTION_FAILED: 'Shopier bağlantısı kurulamadı; yeniden kontrol edilecek.',
+  SHOPIER_API_ERROR: 'Shopier API isteği başarısız; sağlayıcı durumunu kontrol edin.',
+  STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED: 'Eski kaydın ödeme kanalı doğrulanamadı; işlem yapılmadı.',
+  STORE_ORDER_CONFLICT: 'Sipariş başka bir işlemde değişti; güncel kayıt üzerinden tekrar deneyin.'
 });
 const PHASE = { preparing: 'Kapsam hesaplanıyor', ready: 'Onay bekliyor', running: 'İşlem devam ediyor', completed: 'İşlem sonuçlandı', paused: 'İşlem duraklatıldı' };
 export function createMaintenanceController({ host, scope = 'orders', request, authorize, canWrite, identity, toast, onChanged }) {
@@ -44,14 +52,23 @@ export function createMaintenanceController({ host, scope = 'orders', request, a
     const job = current;
     const channelNames = { telegram: 'Telegram', shopier: 'Shopier', wallet: 'Bakiye', audit: 'Mağaza denetimi', adminAudit: 'Yönetim denetimi' };
     const channels = Object.entries(job.channels || {}).map(([name, row]) => `<div><strong>${escapeHtml(channelNames[name] || name)}</strong><span>${row.succeeded || 0} başarılı · ${row.failed || 0} başarısız · ${row.skipped || 0} kapsam dışı</span></div>`).join('');
-    progress.innerHTML = `<header><h3>${escapeHtml(PHASE[job.state] || job.state)}</h3><small>İşlem: …${escapeHtml(job.id.slice(-12))}</small></header><progress max="${Math.max(1, job.total)}" value="${job.completed || 0}">${job.completed || 0}/${job.total}</progress><p role="status" aria-live="polite">${job.total} hedef · ${job.completed || 0} sonuçlandı · ${job.succeeded || 0} başarılı · ${job.failed || 0} başarısız · ${job.skipped || 0} kapsam dışı</p><div class="maintenance-channels">${channels}</div>${job.state === 'running' ? '<p>Bekleyen sağlayıcı işlemleri kesinleşmeden başarılı sayılmaz. Sayfayı kapatsanız da sunucu kaldığı yerden devam eder.</p>' : ''}${job.error ? `<p role="alert">${escapeHtml(job.error)}</p>` : ''}${['ready', 'paused'].includes(job.state) ? '<button type="button" class="primary-action" data-review-job>Önizlemeyi Aç ve İncele</button>' : ''}<details><summary>Sipariş / kayıt sonuçları (${results.length} gösteriliyor)</summary><ul class="maintenance-results">${results.map(row => `<li><strong>${escapeHtml(row.reference)}</strong><span>${escapeHtml(REASONS[row.code || row.result] || row.code || row.result || ({ queued: 'Sırada', waiting: 'Doğrulama bekleniyor', skipped: 'Kapsam dışı', failed: 'Başarısız', succeeded: 'Doğrulandı' }[row.state]) || row.state)}</span></li>`).join('')}</ul>${cursor || results.length === 0 && job.total > 0 ? '<button type="button" class="secondary-action" data-more-results>Diğer sonuçları yükle</button>' : ''}</details>`;
+    progress.innerHTML = `<header><h3>${escapeHtml(PHASE[job.state] || job.state)}</h3><small>İşlem: …${escapeHtml(job.id.slice(-12))}</small></header><progress max="${Math.max(1, job.total)}" value="${job.completed || 0}">${job.completed || 0}/${job.total}</progress><p role="status" aria-live="polite">${job.total} hedef · ${job.completed || 0} sonuçlandı · ${job.succeeded || 0} başarılı · ${job.failed || 0} başarısız · ${job.skipped || 0} kapsam dışı</p><div class="maintenance-channels">${channels}</div>${job.state === 'running' ? '<p>Bekleyen sağlayıcı işlemleri kesinleşmeden başarılı sayılmaz. İlerleme sunucuda saklanır; sunucu yeniden başlatıldığında tamamlanmamış kayıtlar sürdürülür.</p>' : ''}${job.error ? `<p role="alert">${escapeHtml(REASONS[job.error] || job.error)}</p>` : ''}${['ready', 'paused'].includes(job.state) ? '<button type="button" class="primary-action" data-review-job>Önizlemeyi Aç ve İncele</button>' : ''}<details><summary>Sipariş / kayıt sonuçları (${results.length} gösteriliyor)</summary><ul class="maintenance-results">${results.map(row => `<li><strong>${escapeHtml(row.reference)}</strong><span>${escapeHtml(REASONS[row.code || row.result] || row.code || row.result || ({ queued: 'Sırada', waiting: 'Doğrulama bekleniyor', skipped: 'Kapsam dışı', failed: 'Başarısız', succeeded: 'Doğrulandı' }[row.state]) || row.state)}</span>${row.nextCheckAt ? `<small>Sonraki kontrol: ${escapeHtml(new Date(row.nextCheckAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</small>` : ''}</li>`).join('')}</ul><button type="button" class="secondary-action" data-refresh-results>Sonuçları Yenile</button>${cursor || results.length === 0 && job.total > 0 ? '<button type="button" class="secondary-action" data-more-results>Diğer sonuçları yükle</button>' : ''}</details>`;
     if (wasOpen) progress.querySelector('details')?.setAttribute('open', '');
     progress.querySelector('[data-review-job]')?.addEventListener('click', () => void confirm());
+    progress.querySelector('[data-refresh-results]')?.addEventListener('click', async event => {
+      event.currentTarget.disabled = true;
+      try { await loadResults(); render(); }
+      catch (error) { toast('error', 'Sonuçlar okunamadı', error.message); event.currentTarget.disabled = false; }
+    });
     progress.querySelector('[data-more-results]')?.addEventListener('click', async event => {
       event.currentTarget.disabled = true;
       try { const next = await request(`/api/admin/store/maintenance/${job.id}?cursor=${encodeURIComponent(cursor)}`); results.push(...next.results); cursor = next.nextCursor; render(); }
       catch (error) { toast('error', 'Sonuçlar okunamadı', error.message); event.currentTarget.disabled = false; }
     });
+  }
+  async function loadResults() {
+    const detail = await request(`/api/admin/store/maintenance/${current.id}`);
+    results = detail.results || []; cursor = detail.nextCursor || '';
   }
   async function refresh(schedule = true) {
     clearTimeout(timer);
@@ -60,9 +77,9 @@ export function createMaintenanceController({ host, scope = 'orders', request, a
       const response = await request(`/api/admin/store/maintenance/${current.id}?results=0`);
       const changed = current.completed !== response.job.completed || current.state !== response.job.state;
       current = response.job;
-      if (changed && current.state === 'completed') { const detail = await request(`/api/admin/store/maintenance/${current.id}`); results = detail.results || []; cursor = detail.nextCursor || ''; }
+      if (changed || progress.querySelector('details')?.open) await loadResults();
       render();
-      if (changed && current.state === 'completed') await onChanged?.();
+      if (changed && ['running', 'completed'].includes(current.state)) await onChanged?.();
     } catch (error) { toast('error', 'Toplu işlem durumu okunamadı', `${error.message} İşlem kimliği korunuyor; sayfayı yenileyerek yeniden kontrol edin.`); }
     if (schedule && ['preparing', 'running'].includes(current.state)) timer = setTimeout(() => refresh(), 2500);
   }
@@ -101,6 +118,7 @@ export function createMaintenanceController({ host, scope = 'orders', request, a
   });
   async function resume() {
     if (!canWrite()) { render(); return; }
+    stopped = false;
     let id = ''; try { id = localStorage.getItem(key()) || ''; } catch (_) {}
     if (/^[a-f0-9]{64}$/.test(id)) { current = { id }; await refresh(); } else render();
   }

@@ -1,4 +1,4 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v88r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
 
 const ACTIONS = { 'store-order-update': 'Sipariş Durumu Değiştirildi', 'store.order.update': 'Sipariş Durumu Değiştirildi',
   'store-order-cancelled-by-customer': 'Müşteri Siparişi İptal Etti', 'shopier.link.closed': 'Ödeme Bağlantısı Kapatıldı',

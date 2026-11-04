@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "checkedAt": 1793790624302,
-  "sourceDigest": "7c5ac157ef2e656584413fc338a3ea9ad14c3e3ef6d7b65b435a1639af3ae03a",
+  "checkedAt": 1793799782557,
+  "sourceDigest": "87dba51688c836cde321523cccdb5e7f155fb7c9ab239242f03195a9f5a053a9",
   "source": {
     "exitCode": 0
   },
@@ -13,14 +13,14 @@
   },
   "regression": {
     "exitCode": 0,
-    "passed": 434,
+    "passed": 451,
     "failed": 0,
-    "total": 434,
+    "total": 451,
     "skipped": 0
   },
   "dependencies": {
     "verified": true,
-    "checkedAt": 1793790683539,
+    "checkedAt": 1793799809216,
     "vulnerabilities": 0,
     "moderate": 0,
     "high": 0,

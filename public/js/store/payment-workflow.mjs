@@ -14,6 +14,7 @@ export function paymentWorkflow(order = {}) {
   else if (order.status === 'cancelled') key = 'cancelled';
   else if (order.paidAt || ['paid', 'processing', 'delivery_pending', 'delivered'].includes(order.status)) key = 'paid';
   else if (shopier.linkClosedAt) key = 'link_closed';
+  else if (shopier.closeRequestedAt) key = 'checking';
   else if (/TIMEOUT|CONNECTION|AUTH_FAILED|API_ERROR|RATE_LIMITED/.test(shopier.lastError || '')) key = 'api_error';
   else if (['creation_uncertain', 'paid_review', 'close_uncertain'].includes(shopier.state)) key = 'provider_review';
   else if (['payment_rejected'].includes(order.status) || order.paymentState === 'failed') key = 'rejected';

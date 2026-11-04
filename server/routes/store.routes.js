@@ -109,9 +109,13 @@ router.post('/admin/store/orders/:orderId/shopier/reconcile', ...sensitiveAdminC
   invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, found });
 }));
 router.post('/admin/store/orders/:orderId/shopier/close', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
-  const result = await require('../core/shopierService').closeShopierOrder(req.params.orderId, { uid: req.user.uid, source: 'admin' });
-  await writeSupplementalAdminAudit(req, 'shopier.admin.close', { orderId: req.params.orderId, released: result.released });
-  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, ...result });
+  const result = await require('../core/shopierOperations').requestShopierClosure(req.params.orderId, { uid: req.user.uid, source: 'admin' });
+  invalidateAdminStoreCaches(); noStore(res); res.status(result.pending ? 202 : 200).json({ ok: true, ...result });
+}));
+
+router.post('/admin/store/orders/:orderId/shopier/cancel', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
+  const result = await require('../core/shopierOperations').requestShopierCancellation(req.params.orderId, { uid: req.user.uid, source: 'admin' });
+  invalidateAdminStoreCaches(); noStore(res); res.status(result.pending ? 202 : 200).json({ ok: true, ...result });
 }));
 
 function noStore(res) {

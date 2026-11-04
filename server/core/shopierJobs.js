@@ -13,16 +13,28 @@ async function processShopierJob(db, ref) {
   const job = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref), row = snap.data();
     if (!row || row.completedAt || row.failedAt || row.availableAt > now) return null;
-    if (!['order.created', 'refund.updated', 'reconcile', 'recover', 'delivery', 'close'].includes(row.kind)) throw shopierError('SHOPIER_JOB_INVALID', 500);
-    tx.update(ref, { lease, availableAt: now + 90_000 });
+    if (!['order.created', 'refund.updated', 'reconcile', 'recover', 'delivery', 'close', 'cancel'].includes(row.kind)) throw shopierError('SHOPIER_JOB_INVALID', 500);
+    tx.update(ref, { lease, availableAt: now + 5 * 60_000 });
     return row;
   });
   if (!job) return;
-  let repeat = false;
+  let repeat = false, reviewAfter = 0;
   try {
-    if (job.kind === 'close') {
-      const result = await require('./shopierOperations').closeShopierOrder(job.orderId);
+    if (job.requestedBy?.uid) {
+      const auth = initFirebaseAdmin().auth;
+      if (!auth) throw shopierError('ADMIN_IDENTITY_UNAVAILABLE');
+      const identity = await auth.getUser(job.requestedBy.uid);
+      const { resolveStaffPolicy, staffHasPermission } = require('./adminStoreService');
+      const policy = await resolveStaffPolicy(identity.uid, identity.email);
+      if (identity.disabled || !identity.emailVerified || !staffHasPermission(policy, 'store.orders.write')) throw shopierError('ADMIN_PERMISSION_REQUIRED', 403);
+      if ((Date.parse(identity.tokensValidAfterTime || '') || 0) > job.authorizedAt) throw shopierError('ADMIN_JOB_AUTHORIZATION_REVOKED', 403);
+    }
+    if (job.kind === 'close' || job.kind === 'cancel') {
+      const operations = require('./shopierOperations');
+      const result = await (job.kind === 'cancel' ? operations.cancelShopierOrder(job.orderId, { uid: 'system', source: 'shopier-worker' }) : operations.closeShopierOrder(job.orderId));
       repeat = result.pending === true;
+      reviewAfter = result.reviewAfter || Date.now() + 60_000;
+      if (repeat && Date.now() - job.createdAt > 24 * 60 * 60_000) throw shopierError('SHOPIER_PROVIDER_MANUAL_REVIEW_REQUIRED', 409);
     } else if (job.kind === 'delivery') await deliverShopierOrder(job.orderId);
     else if (job.kind === 'recover') await recoverShopierProduct(job.orderId);
     else if (job.kind === 'reconcile') {
@@ -45,7 +57,7 @@ async function processShopierJob(db, ref) {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref), current = snap.data();
       if (current?.lease !== lease) return;
-      tx.update(ref, { lease: '', availableAt: repeat ? Date.now() + 5 * 60_000 : FINAL_TIME,
+      tx.update(ref, { lease: '', availableAt: repeat ? Math.max(Date.now() + 30_000, reviewAfter || Date.now() + 5 * 60_000) : FINAL_TIME,
         completedAt: repeat ? 0 : Date.now(), lastError: '', attempts: 0 });
     });
   } catch (error) {
@@ -53,9 +65,10 @@ async function processShopierJob(db, ref) {
       const snap = await tx.get(ref), current = snap.data();
       if (current?.lease !== lease) return;
       const attempts = (current.attempts || 0) + 1;
+      const terminal = attempts >= 10 || ['SHOPIER_PROVIDER_MANUAL_REVIEW_REQUIRED', 'ADMIN_PERMISSION_REQUIRED', 'ADMIN_JOB_AUTHORIZATION_REVOKED'].includes(error.code);
       tx.update(ref, { lease: '', attempts, lastError: error.code || 'SHOPIER_JOB_FAILED',
-        availableAt: attempts >= 10 ? FINAL_TIME : Date.now() + Math.max(Math.min(3600_000, 30_000 * 2 ** (attempts - 1)), (error.retryAfter || 0) * 1000),
-        failedAt: attempts >= 10 ? Date.now() : 0 });
+        availableAt: terminal ? FINAL_TIME : Date.now() + Math.max(Math.min(3600_000, 30_000 * 2 ** (attempts - 1)), (error.retryAfter || 0) * 1000),
+        failedAt: terminal ? Date.now() : 0 });
     });
     if (job.orderId) await db.runTransaction(async (tx) => {
       const ref = db.collection('storeOrders').doc(job.orderId), snap = await tx.get(ref), order = snap.data();
@@ -66,7 +79,7 @@ async function processShopierJob(db, ref) {
 }
 async function drainShopierJobs() {
   // Disabling new checkouts must not stop verification of already-issued payment links.
-  if (!getShopierConfig().configured) return;
+  if (!getShopierConfig().managementConfigured) return;
   const { db } = initFirebaseAdmin();
   if (!db) return;
   const jobs = await db.collection('shopierJobs').where('availableAt', '<=', Date.now()).orderBy('availableAt').limit(4).get();
@@ -107,7 +120,8 @@ async function retryShopierJob(id, actor) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref), row = snap.data();
     if (!row || !row.failedAt || row.availableAt !== FINAL_TIME) throw shopierError('SHOPIER_JOB_NOT_FAILED', 409);
-    tx.update(ref, { failedAt: 0, completedAt: 0, attempts: 0, lease: '', availableAt: Date.now() });
+    tx.update(ref, { failedAt: 0, completedAt: 0, attempts: 0, lease: '', availableAt: Date.now(),
+      ...(['close', 'cancel'].includes(row.kind) ? { requestedBy: { uid: actor.uid }, authorizedAt: Date.now() } : {}) });
     tx.create(db.collection('audit').doc(), { type: 'shopier.job.retry', jobId: id, orderId: row.orderId || '',
       actor: { uid: actor.uid, source: 'admin' }, at: Date.now() });
   });

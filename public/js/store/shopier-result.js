@@ -1,6 +1,6 @@
-import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v88r1';
-import { initStoreAuth, getStoreAuthSnapshot, subscribeStoreAuth } from './auth.js?v=zentra-ui-v88r1';
-import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v88r1';
+import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v89r1';
+import { initStoreAuth, getStoreAuthSnapshot, subscribeStoreAuth } from './auth.js?v=zentra-ui-v89r1';
+import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v89r1';
 import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v84r1';
 
 const $ = (id) => document.getElementById(id);
