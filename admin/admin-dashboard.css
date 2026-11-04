@@ -747,7 +747,7 @@ img {
   display:grid;
   gap:9px
 }
-.admin-form>label,.admin-form .form-grid>label,.wallet-form label,.product-admin-card>label,.quick-link-editor__fields label {
+.admin-form>label,.admin-form .form-grid>label,.wallet-form label,.product-admin-card>label{
   min-width:0;
   display:grid;
   gap:5px;
@@ -755,7 +755,7 @@ img {
   font-size:0.875rem;
   font-weight:750
 }
-.admin-form input,.admin-form textarea,.admin-form select,.wallet-form input,.wallet-form textarea,.wallet-form select,.product-admin-card input,.product-admin-card textarea,.product-admin-card select,.quick-link-editor input,.quick-link-editor select,.reauth-card input,.reauth-card textarea,.reauth-card select {
+.admin-form input,.admin-form textarea,.admin-form select,.wallet-form input,.wallet-form textarea,.wallet-form select,.product-admin-card input,.product-admin-card textarea,.product-admin-card select,.reauth-card input,.reauth-card textarea,.reauth-card select {
   min-width:0;
   width:100%;
   height:46px;
@@ -1071,53 +1071,6 @@ img {
   border-radius:9px;
   background:#080d15;
   font-size:0.75rem
-}
-.quick-link-editor {
-  display:grid;
-  gap:8px
-}
-.quick-link-editor__card {
-  padding:9px;
-  display:grid;
-  grid-template-columns:31px minmax(0,1fr);
-  gap:8px;
-  border:1px solid var(--line);
-  border-radius:11px;
-  background:#080d15
-}
-.quick-link-editor__index {
-  width:31px;
-  height:31px;
-  display:grid;
-  place-items:center;
-  border-radius:9px;
-  background:rgba(71,138,255,.1);
-  color:var(--red-bright);
-  font-size:0.875rem;
-  font-weight:900
-}
-.quick-link-editor__fields {
-  display:grid;
-  gap:7px
-}
-.quick-link-editor__url {
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  gap:6px
-}
-.quick-link-editor__actions {
-  display:flex;
-  justify-content:flex-end;
-  gap:5px
-}
-.quick-link-editor__actions button {
-  min-height:32px;
-  padding:0 8px;
-  border:1px solid var(--line);
-  border-radius:8px;
-  background:#070b12;
-  color:var(--soft);
-  font-size:0.875rem
 }
 .coupon-code-input {
   display:grid;
@@ -1475,7 +1428,7 @@ img {
 .wallet-form label>div>input,.wallet-form label>div>select {
   padding-left:37px
 }
-.admin-form input:focus,.admin-form textarea:focus,.admin-form select:focus,.wallet-form input:focus,.wallet-form textarea:focus,.wallet-form select:focus,.product-admin-card input:focus,.product-admin-card textarea:focus,.product-admin-card select:focus,.quick-link-editor input:focus,.quick-link-editor select:focus,.reauth-card input:focus,.reauth-card textarea:focus,.reauth-card select:focus {
+.admin-form input:focus,.admin-form textarea:focus,.admin-form select:focus,.wallet-form input:focus,.wallet-form textarea:focus,.wallet-form select:focus,.product-admin-card input:focus,.product-admin-card textarea:focus,.product-admin-card select:focus,.reauth-card input:focus,.reauth-card textarea:focus,.reauth-card select:focus {
   border-color:rgba(71,138,255,.58);
   box-shadow:0 0 0 4px rgba(71,138,255,.07)
 }
@@ -1535,12 +1488,6 @@ img {
   }
   .user-facts {
     grid-template-columns:repeat(4,minmax(0,1fr))
-  }
-  .quick-link-editor__fields {
-    grid-template-columns:repeat(2,minmax(0,1fr))
-  }
-  .quick-link-editor__url,.quick-link-editor__actions {
-    grid-column:1/-1
   }
   .security-overview {
     grid-template-columns:120px minmax(0,1fr);
@@ -1731,12 +1678,6 @@ img {
   }
   .admin-order__meta {
     grid-template-columns:repeat(2,minmax(0,1fr))
-  }
-  .quick-link-editor__card {
-    grid-template-columns:1fr
-  }
-  .quick-link-editor__index {
-    display:none
   }
   .plan-admin-list>div {
     grid-template-columns:1fr

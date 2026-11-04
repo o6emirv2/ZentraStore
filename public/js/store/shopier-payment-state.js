@@ -1,12 +1,12 @@
 export function verifiedPaymentComplete(order = {}) {
   return order.paymentMethod === 'shopier' && order.paymentState === 'paid' && order.paidAt > 0
     && order.shopier?.state === 'paid' && order.shopier.verifiedAt > 0 && !!order.shopier.orderId
-    && !order.shopier.refundPending && !Number(order.shopier.refundedKurus || 0) && !['pending', 'partial', 'full'].includes(order.shopier.refundStatus)
+    && !order.shopier.refundRequest && !order.shopier.cancelRequestedAt && !order.shopier.refundPending && !Number(order.shopier.refundedKurus || 0) && !['pending', 'partial', 'full'].includes(order.shopier.refundStatus)
     && (order.orderType !== 'wallet_topup' || order.walletTopup?.settledAt > 0);
 }
 
 export function paymentNeedsRefresh(order = {}) {
-  return order.paymentState === 'pending' || (order.paymentState === 'paid' && order.shopier?.refundPending === true) || (order.paymentState === 'paid' && order.orderType === 'wallet_topup'
+  return (order.paymentState === 'link_closed' && !order.shopier?.closureFinalizedAt) || ['requesting', 'pending', 'uncertain'].includes(order.shopier?.refundRequest?.state) || order.paymentState === 'pending' || (order.paymentState === 'paid' && order.shopier?.refundPending === true) || (order.paymentState === 'paid' && order.orderType === 'wallet_topup'
     && !order.walletTopup?.settledAt && order.shopier?.state !== 'paid_review');
 }
 

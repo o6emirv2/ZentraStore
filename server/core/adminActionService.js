@@ -8,6 +8,8 @@ const { verifyFirebasePassword } = require('./adminGateService');
 const transient = require('./adminTransientStore');
 const TTL_MS = 90_000;
 const TARGETS = [
+  ['POST', /^\/api\/admin\/store\/maintenance\/[A-Za-z0-9_-]+\/orders\/confirm$/, 'store.orders.bulk'],
+  ['POST', /^\/api\/admin\/store\/maintenance\/[A-Za-z0-9_-]+\/audit\/confirm$/, 'store.audit.delete'],
   ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[A-Za-z0-9_-]+\/retry$/, 'store.orders.write'],
   ['POST', /^\/api\/admin\/store\/orders\/[^/?#]+\/shopier\/(?:reconcile|close)$/, 'store.orders.write'],
   ['POST', /^\/api\/admin\/store\/products(?:\/bulk)?$/, 'store.catalog.write'],

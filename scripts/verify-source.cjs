@@ -109,7 +109,7 @@ for (const file of files) {
   const name = relative(file);
   if (!/\.(?:js|mjs|cjs|html|css|json|yaml)$/.test(name) || name === 'scripts/verify-source.cjs') continue;
   const content = fs.readFileSync(file, 'utf8');
-  const withoutExplicitOldTiktok = content.replaceAll('https://www.tiktok.com/@shelbystorelive', '');
+  const withoutExplicitOldTiktok = content.replaceAll('https://www.tiktok.com/@zentrastorelive', '');
   if (oldVisualBrand.test(withoutExplicitOldTiktok)) failures.push(name + ': eski mağaza markası görünür kaynakta bulunuyor');
 }
 
@@ -131,11 +131,15 @@ const expectedChannelUrls = [
   'https://t.me/+t17sK4mUhbszZTM0',
   'https://t.me/+chmRui3czAdhNTE0',
   'https://t.me/zentrastorefree',
-  'https://www.tiktok.com/@shelbystorelive',
+  'https://www.tiktok.com/@zentrastorelive',
   'https://wa.me/905339673730',
   'https://t.me/ZENTRA_STORE'
 ];
-if (CHANNEL_LINKS_REVISION !== 70 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
+if (CHANNEL_LINKS_REVISION !== 88 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
+for (const filename of ['admin/index.html', 'admin/admin.html']) if (!fs.readFileSync(path.join(root, filename), 'utf8').includes('name="zentra-admin-release" content="88"')) failures.push(filename + ': yönetim sürümü uyuşmuyor');
+const entryRelease = fs.readFileSync(path.join(root, 'admin/admin-entry.js'), 'utf8');
+const serverRelease = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+if (!entryRelease.includes('?view=v88') || !serverRelease.includes("req.query.view === 'v88'")) failures.push('Yönetim görünümü istemci/sunucu sürümü uyuşmuyor');
 const homeSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if ((homeSource.match(/data-quick-link-id=/g) || []).length !== expectedChannelUrls.length || expectedChannelUrls.some((url) => !homeSource.includes(`href="${url}"`))) failures.push('Ana sayfa bağlantı kartları sunucu bağlantı paketiyle uyuşmuyor');
 if (failures.length) {

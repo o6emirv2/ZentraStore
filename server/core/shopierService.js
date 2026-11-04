@@ -245,6 +245,24 @@ async function applyShopierOrder(remote) {
   const orderRef = db.collection('storeOrders').doc(mapping.data().orderId), receiptRef = db.collection('shopierPayments').doc(hash(providerId(remote.id)));
   await db.runTransaction(async (tx) => {
     const [snap, receipt] = await Promise.all([tx.get(orderRef), tx.get(receiptRef)]), order = snap.data();
+    if (!order) {
+      const archiveRef = db.collection('storeOrderArchives').doc(orderRef.id), archived = (await tx.get(archiveRef)).data();
+      if (!archived?.order || archived.order.paymentMethod !== 'shopier') throw shopierError('SHOPIER_ORDER_UNMAPPED', 409);
+      const refund = validateProviderOrder(remote, archived.order);
+      if (archived.order.shopier.orderId && archived.order.shopier.orderId !== remote.id) throw shopierError('SHOPIER_PAYMENT_ALREADY_BOUND', 409);
+      if (receipt.exists && receipt.data().orderId !== orderRef.id) throw shopierError('SHOPIER_PAYMENT_ALREADY_BOUND', 409);
+      if (remote.paymentStatus !== 'paid' || refund.refundedKurus < (archived.refundedKurus || archived.order.shopier.refundedKurus || 0)) return;
+      const now = Date.now();
+      const reviewRef = db.collection('storeLatePaymentReviews').doc(orderRef.id), review = await tx.get(reviewRef);
+      tx.update(archiveRef, { lastProviderVerificationAt: now, providerPaymentStatus: remote.paymentStatus, ...refund,
+        order: { ...archived.order, shopier: { ...archived.order.shopier, orderId: remote.id } } });
+      tx.set(receiptRef, { orderId: orderRef.id, providerOrderId: remote.id, amountKurus: archived.order.totalKurus, currency: 'TRY', archived: true, verifiedAt: now }, { merge: true });
+      if (remote.paymentStatus === 'paid' && refund.refundStatus !== 'full') {
+        tx.set(reviewRef, { orderId: orderRef.id, providerOrderId: remote.id,
+          amountKurus: archived.order.totalKurus, createdAt: review.data()?.createdAt || now, code: 'SHOPIER_ARCHIVED_PAYMENT_REVIEW', resolved: false });
+      } else if (review.exists) tx.update(reviewRef, { resolved: true, resolvedAt: now });
+      return;
+    }
     if (!order || order.paymentMethod !== 'shopier') throw shopierError('SHOPIER_ORDER_UNMAPPED', 409);
     const refund = validateProviderOrder(remote, order);
     if ((receipt.exists && receipt.data().orderId !== snap.id) || (order.shopier.orderId && order.shopier.orderId !== remote.id)) throw shopierError('SHOPIER_PAYMENT_ALREADY_BOUND', 409);
@@ -252,7 +270,7 @@ async function applyShopierOrder(remote) {
     if (refund.refundedKurus < Number(order.shopier.refundedKurus || 0) || (order.paymentState === 'refunded' && refund.refundStatus !== 'full')) return;
     const now = Date.now(), alreadyPaid = Number(order.paidAt || 0) > 0;
     const fullRefund = refund.refundStatus === 'full';
-    const late = order.paymentState === 'cancelled' || order.shopier.state === 'creation_failed' || order.shopier.state === 'paid_review' || !!order.cancelledAt;
+    const late = ['cancelled', 'link_closed'].includes(order.paymentState) || !!order.shopier.cancelRequestedAt || order.shopier.state === 'creation_failed' || order.shopier.state === 'paid_review' || !!order.cancelledAt;
     const paymentState = fullRefund ? 'refunded' : 'paid';
     const walletSettlement = await readWalletSettlement({ tx, db, order, refund, late, now });
     const walletReady = walletSettlement?.settled && walletSettlement.wallet.netAppliedKurus > 0;
@@ -262,10 +280,11 @@ async function applyShopierOrder(remote) {
     if (shouldRelease) await releaseShopierReservationInTransaction({ tx, db, order, now });
     const promotionReleased = releasePromotionInTransaction({ transaction: tx, release, reason: 'shopier-refunded', now });
     const shopier = { ...order.shopier, orderId: remote.id, state: fullRefund ? 'refunded' : late ? 'paid_review' : 'paid',
-      verifiedAt: now, lastError: late ? 'SHOPIER_LATE_PAYMENT_REVIEW' : '', ...refund };
+      verifiedAt: now, lastError: late && !fullRefund ? 'SHOPIER_LATE_PAYMENT_REVIEW' : '', ...refund,
+      ...(fullRefund && order.shopier.refundRequest ? { refundRequest: { ...order.shopier.refundRequest, state: 'succeeded' } } : {}) };
     applyWalletSettlement({ tx, db, order, settlement: walletSettlement });
     tx.set(receiptRef, { orderId: snap.id, providerOrderId: remote.id, productId, amountKurus: order.totalKurus, currency: 'TRY', verifiedAt: now }, { merge: true });
-    tx.update(orderRef, { status, paymentState, shopierOpen: false, shopier, approvedAt: order.approvedAt || now,
+    tx.update(orderRef, { status, paymentState, shopierOpen: !fullRefund && (!!order.shopier.refundRequest || refund.refundPending), shopier, approvedAt: order.approvedAt || now,
       approvedBy: { uid: 'system', source: 'shopier-api-verified' }, paidAt: order.paidAt || now,
       ...(shouldRelease ? { inventoryReservations: [] } : {}), ...(fullRefund ? { refundedAt: order.refundedAt || now } : {}),
       ...(walletSettlement ? { walletTopup: walletSettlement.wallet, fulfillmentStatus: fullRefund ? 'BAKIYE_IADE_EDILDI' : walletReady ? 'BAKIYE_YUKLENDI' : 'BAKIYE_ONAY_BEKLIYOR' } : {}),
@@ -288,7 +307,7 @@ async function deliverShopierOrder(orderId, { actor = { uid: 'system', source: '
       const payment = order.shopier.orderId ? await tx.get(db.collection('shopierPayments').doc(hash(order.shopier.orderId))) : null;
       if (!payment?.exists || payment.data().orderId !== orderId || order.paymentState !== 'paid' || !order.paidAt) throw shopierError('SHOPIER_PAYMENT_NOT_VERIFIED', 409);
       if (order.delivery?.itemCount > 0 || order.status === 'delivered') return;
-      if (['partial', 'pending', 'full'].includes(order.shopier.refundStatus) || order.shopier.state === 'paid_review') throw shopierError('SHOPIER_DELIVERY_REVIEW_REQUIRED', 409);
+      if (['partial', 'pending', 'full'].includes(order.shopier.refundStatus) || order.shopier.state === 'paid_review' || order.shopier.cancelRequestedAt || order.shopier.refundRequest) throw shopierError('SHOPIER_DELIVERY_REVIEW_REQUIRED', 409);
       const now = Date.now();
       const allocations = await allocateInventoryInTransaction({ tx, db, admin, items: order.items, reservations: order.inventoryReservations || [], orderId, uid: order.uid, now });
       tx.update(ref, { status: 'delivered', fulfillmentStatus: 'TESLIM_EDILDI', delivery: { status: 'delivered', title: 'Otomatik teslimat hazır',
@@ -319,48 +338,12 @@ async function reconcileShopierOrder(orderId) {
   }
   const client = createShopierClient();
   if (order.shopier.orderId) { await applyShopierOrder(await client.getOrder(order.shopier.orderId)); return true; }
-  const orders = await client.listOrders({ productId: order.shopier.productId, limit: '50', page: '1' });
+  const orders = await client.listOrders({ productId: order.shopier.productId, dateStart: new Date(Math.max(0, order.createdAt - 86400_000)).toISOString().replace(/\.\d{3}Z$/, 'Z'), dateEnd: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), limit: '50', page: '1' });
   if (orders.length > 1) throw shopierError('SHOPIER_MULTIPLE_PAYMENTS_REVIEW', 409);
   if (!orders.length) return false;
   await applyShopierOrder(await client.getOrder(providerId(orders[0].id)));
   return true;
 }
-async function closeShopierOrder(orderId, actor) {
-  const { db } = database(), ref = db.collection('storeOrders').doc(identifier(orderId));
-  let order = (await ref.get()).data();
-  if (!order || order.paymentMethod !== 'shopier') throw shopierError('STORE_ORDER_NOT_FOUND', 404);
-  if (order.paidAt || order.shopier.orderId) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-  if (!order.shopier.productId) { await recoverShopierProduct(orderId); order = (await ref.get()).data(); }
-  if (!order.shopier.productId) throw shopierError('SHOPIER_CREATION_REVIEW_REQUIRED', 409);
-  const client = createShopierClient();
-  validateProduct(await client.getProduct(order.shopier.productId), order);
-  const closed = await client.updateProduct(order.shopier.productId, { stockQuantity: 0 });
-  if (closed.id !== order.shopier.productId || closed.stockQuantity !== 0) throw shopierError('SHOPIER_LINK_CLOSE_UNVERIFIED', 409);
-  // This closes the listing only; it is not a refund or proof that an in-flight card payment was cancelled.
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref), current = snap.data();
-    if (current.paidAt) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-    tx.update(ref, { shopier: { ...current.shopier, linkClosedAt: current.shopier.linkClosedAt || Date.now() }, updatedAt: Date.now() });
-    audit(tx, db, current, 'shopier.link.closed', { actor });
-  });
-  const found = await reconcileShopierOrder(orderId);
-  if (found) throw shopierError('SHOPIER_PROVIDER_ACTION_REQUIRED', 409);
-  // Require a second explicit check after a grace interval before making reserved keys available again.
-  order = (await ref.get()).data();
-  if (Date.now() - order.shopier.linkClosedAt < 10 * 60_000) return { closed: true, released: false, reviewAfter: order.shopier.linkClosedAt + 10 * 60_000 };
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref), current = snap.data();
-    if (current.paidAt || !current.shopier.linkClosedAt || current.paymentState === 'cancelled') return;
-    const now = Date.now(), release = await readPromotionReleaseInTransaction({ transaction: tx, db, order: current, orderId });
-    await releaseShopierReservationInTransaction({ tx, db, order: current, now });
-    const promotionReleased = releasePromotionInTransaction({ transaction: tx, release, reason: 'shopier-link-closed', now });
-    tx.update(ref, { status: 'cancelled', paymentState: 'cancelled', shopierOpen: false, cancelledAt: now,
-      inventoryReservations: [], shopier: { ...current.shopier, state: 'cancelled' },
-      ...(promotionReleased ? { promotion: { ...current.promotion, releasedAt: now } } : {}), updatedAt: now });
-    audit(tx, db, current, 'shopier.order.closed', { actor });
-  });
-  refresh();
-  return { closed: true, released: true };
-}
+async function closeShopierOrder(...args) { return require('./shopierOperations').closeShopierOrder(...args); }
 module.exports = { hash, FINAL_TIME, queueJob, createShopierPayment, getShopierPayment, recoverShopierProduct,
-  reconcileShopierOrder, validateProviderOrder, applyShopierOrder, deliverShopierOrder, closeShopierOrder, productRequest, listingTitle, listingDescription };
+  reconcileShopierOrder, validateProviderOrder, applyShopierOrder, deliverShopierOrder, closeShopierOrder, validateProduct, productRequest, listingTitle, listingDescription };

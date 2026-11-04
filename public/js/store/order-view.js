@@ -3,9 +3,10 @@ import { escapeViewText as text, viewIcon as icon, safeExternalLink } from './vi
 export function renderOrderCardView(order = {}, context = {}) {
   const items = Array.isArray(order.items) ? order.items : [];
   const topup = order.orderType === 'wallet_topup';
-  const status = topup && order.status === 'delivered' ? { label: 'Bakiye yüklendi', icon: 'fa-wallet' } : context.status || { label: 'Durum bekleniyor', icon: 'fa-clock' };
+  const baseStatus = topup && order.status === 'delivered' ? { label: 'Bakiye yüklendi', icon: 'fa-wallet' } : context.status || { label: 'Durum bekleniyor', icon: 'fa-clock' };
+  const status = order.paymentMethod === 'shopier' && order.paymentWorkflow && !(topup && order.status === 'delivered' && order.paymentWorkflow.key === 'paid') ? { ...baseStatus, label: order.paymentWorkflow.label } : baseStatus;
   const price = (value) => text(context.formatPrice?.(value) || '—');
-  const closed = ['cancelled', 'payment_rejected', 'refunded'].includes(order.status);
+  const closed = ['cancelled', 'payment_rejected', 'refunded'].includes(order.status) || order.paymentState === 'link_closed';
   const delivered = order.status === 'delivered';
   const approved = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(order.status);
   const steps = closed

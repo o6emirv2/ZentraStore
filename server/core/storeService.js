@@ -3,6 +3,7 @@
 const { normalizeFeatures } = require('./storeProductSchema');
 const { GAME_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const crypto = require('crypto');
+const { paymentWorkflow } = require('../../public/js/store/payment-workflow.mjs');
 const env = require('../config/env');
 const { checkedBalance, MAX_STORE_BALANCE_KURUS } = require('./storeMoney');
 const { initFirebaseAdmin } = require('../config/firebaseAdmin');
@@ -316,9 +317,14 @@ function publicOrder(data = {}, id = '') {
       orderId: safeText(data.shopier?.orderId, 100), productId: safeText(data.shopier?.productId, 100),
       state: safeText(data.shopier?.state, 40), lastError: safeText(data.shopier?.lastError, 80),
       refundPending: data.shopier?.refundPending === true,
+      refundRequest: data.shopier?.refundRequest ? { state: safeText(data.shopier.refundRequest.state, 30), requestedAt: Number(data.shopier.refundRequest.requestedAt) || 0 } : null,
+      cancelRequestedAt: Number(data.shopier?.cancelRequestedAt) || 0,
+      closeReviewAfter: Number(data.shopier?.closeReviewAfter) || 0,
+      closureFinalizedAt: Number(data.shopier?.closureFinalizedAt) || 0,
       refundStatus: safeText(data.shopier?.refundStatus, 30), refundedKurus: clampBalance(data.shopier?.refundedKurus),
       verifiedAt: Math.max(0, Number(data.shopier?.verifiedAt || 0)), linkClosedAt: Math.max(0, Number(data.shopier?.linkClosedAt || 0))
     } : null,
+    paymentWorkflow: paymentWorkflow(data),
     deliveryVisible,
     cancellable,
     approvedAt: Math.max(0, Number(data.approvedAt || 0) || 0),
@@ -344,6 +350,7 @@ async function readIdempotentOrder({ db, uid, idempotencyRef, requestHash }) {
   if (!snapshot.exists) return null;
   const data = snapshot.data() || {};
   if (data.status === 'cancelled') throw serviceError('STORE_ORDER_ATTEMPT_CANCELLED', 409);
+  if (data.status === 'archived') throw serviceError('STORE_ORDER_ARCHIVED', 410);
   if (data.requestHash && data.requestHash !== requestHash) throw serviceError('STORE_ORDER_CONFLICT', 409);
   const orderId = safeText(data.orderId, 160);
   if (!orderId) throw serviceError('STORE_ORDER_CONFLICT', 409);
@@ -373,6 +380,7 @@ async function readOrderAttempt({ uid = '', authUser = {}, idempotencyKey = '' }
   const snapshot = await ref.get();
   if (!snapshot.exists) return { found: false };
   const data = snapshot.data() || {};
+  if (safeText(data.uid, 160) === safeUid && data.status === 'archived') return { found: false, archived: true };
   if (safeText(data.uid, 160) === safeUid && data.status === 'cancelled') return { found: false, cancelled: true };
   if (safeText(data.uid, 160) !== safeUid || !safeText(data.orderId, 160)) throw serviceError('STORE_ORDER_CONFLICT', 409);
   const orderSnapshot = await db.collection('storeOrders').doc(data.orderId).get();
@@ -831,6 +839,13 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
     const current = orderSnapshot.data() || {};
     const currentStatus = ORDER_STATUSES.includes(current.status) ? current.status : 'awaiting_payment';
     previousStatus = currentStatus;
+    const telegramPayment = current.paymentMethod === 'telegram';
+    const approving = ['paid', 'processing', 'delivery_pending', 'delivered'].includes(requestedStatus) && !current.approvedAt;
+    const refunding = requestedStatus === 'refunded' || requestedStatus === 'cancelled' && !!current.approvedAt;
+    const paymentReference = safeText(input.paymentReference, 160);
+    if (telegramPayment && (approving || refunding) && (input.paymentConfirmed !== true || paymentReference.length < 6)) throw serviceError('STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED', 409);
+    if (input.expectedUpdatedAt !== undefined && Number(current.updatedAt || 0) !== input.expectedUpdatedAt) throw serviceError('STORE_ORDER_CONFLICT', 409);
+    if (input.expectedUpdatedAt !== undefined && current.paymentMethod === 'telegram' && (current.approvedAt || !['awaiting_payment', 'payment_review', 'payment_rejected', 'cancelled'].includes(currentStatus))) throw serviceError('EXTERNAL_PAYMENT_REVIEW_REQUIRED', 409);
     if (!ORDER_TRANSITIONS[currentStatus].includes(requestedStatus)) throw serviceError('STORE_ORDER_TRANSITION_INVALID', 409);
     if (currentStatus === 'cancelled' && requestedStatus === 'cancelled') {
       result = adminOrder(current, safeOrderId);
@@ -929,6 +944,9 @@ async function updateOrderByAdmin({ orderId = '', input = {}, actor = {} } = {})
           : { ...previousDelivery, status: deliveryItemCount > 0 ? 'ready' : (previousDelivery.status || 'locked'), itemCount: deliveryItemCount, automatic: !isTelegramOrder },
       updatedAt: now,
       updatedBy: { uid: actorUid, email: actorEmail }
+    };
+    if (telegramPayment && (approving || refunding)) patch[refunding ? 'manualRefund' : 'manualPayment'] = {
+      reference: paymentReference, verifiedAt: now, verifiedBy: actorUid, verification: 'administrator-external-record-attestation'
     };
     if (approvalRequested && !Number(current.approvedAt || 0)) {
       patch.approvedAt = now;

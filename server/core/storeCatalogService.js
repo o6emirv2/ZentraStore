@@ -137,6 +137,7 @@ function normalizeStorefront(source = {}) {
     : 'catalog';
   return {
     channelLinksRevision: Number(source.channelLinksRevision) || CHANNEL_LINKS_REVISION,
+    quickLinksRevision: Number(source.quickLinksRevision) || 0,
     maintenance: source.maintenance === true,
     announcement: {
       enabled: announcement.enabled === true,
@@ -555,22 +556,25 @@ async function updateStorefrontSettings(input = {}, actor = {}) {
   return normalized;
 }
 
-async function updateStorefrontQuickLinks(input, actor = {}) {
+async function updateStorefrontQuickLinks(input, actor = {}, expectedRevision) {
   const quickLinks = normalizeQuickLinks(input, { defaultsWhenMissing: false });
   const { db } = initFirebaseAdmin();
   if (!db) throw serviceError('STORE_STORAGE_UNAVAILABLE', 503);
   await readOverrides();
-  const batch = db.batch();
-  batch.set(db.collection('storefrontSettings').doc('main'), {
-    channelLinksRevision: CHANNEL_LINKS_REVISION,
-    quickLinks,
-    updatedAt: Date.now(),
-    updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
-  }, { merge: true });
-  recordMutationAudit(batch, db, 'store.links.update', actor, { links: quickLinks });
-  await batch.commit();
+  const reference = db.collection('storefrontSettings').doc('main');
+  await db.runTransaction(async transaction => {
+    const current = (await transaction.get(reference)).data() || {};
+    const revision = Number(current.quickLinksRevision) || 0;
+    if (expectedRevision !== undefined && expectedRevision !== revision) throw serviceError('STORE_LINK_REVISION_CONFLICT', 409);
+    transaction.set(reference, {
+      channelLinksRevision: CHANNEL_LINKS_REVISION, quickLinksRevision: revision + 1, quickLinks,
+      updatedAt: Date.now(), updatedBy: { uid: safeText(actor.uid, 160), email: safeText(actor.email, 254).toLowerCase() }
+    }, { merge: true });
+    recordMutationAudit(transaction, db, 'store.links.update', actor, { before: { links: current.quickLinks || [] }, after: { links: quickLinks } });
+  });
   invalidateCatalogCache();
-  return quickLinks;
+  const persisted = (await reference.get()).data();
+  return normalizeQuickLinks(persisted.quickLinks, { defaultsWhenMissing: false });
 }
 
 module.exports = {

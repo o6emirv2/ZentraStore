@@ -1,6 +1,6 @@
 import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v84r1';
 import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v87r1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v88r1';
 import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
 
 installInteractionGuard();
@@ -83,7 +83,8 @@ function securityView(security = {}) {
   const score = Math.max(0, Math.min(100, Number(security.score || 0) || 0));
   const ready = security.ready === true;
   $('#securityMeter').dataset.ready = String(ready);
-  $('#securityScore').textContent = `${score}/100`;
+  const checks = Array.isArray(security.checks) ? security.checks : [];
+  $('#securityScore').textContent = checks.length ? `${checks.filter(check => check.ok).length}/${checks.length} kontrol` : 'Kontrol ediliyor';
   $('#securityBar').style.width = `${score}%`;
   $('#securityLabel').textContent = ready ? 'Zorunlu doğrulama adımları hazır' : 'Zorunlu güvenlik ayarları tamamlanmalı';
 }

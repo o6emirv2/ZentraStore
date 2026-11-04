@@ -195,10 +195,10 @@ test('36 admin cannot locally mark a Shopier payment as paid/refunded', async ()
 test('37 buyer cannot cancel an active remote payment link locally', async () => {
   const result = await pending(); await assert.rejects(require('../server/core/storeService').cancelOrderByUser({ uid: 'member', orderId: result.order.id }), { code: 'SHOPIER_PROVIDER_ACTION_REQUIRED' });
 });
-test('38 closing a listing requires provider verification and a later second check before stock release', async () => {
-  const result = await pending(); const first = await service.closeShopierOrder(result.order.id, { uid: 'owneruid' }); assert.equal(first.released, false); assert.equal(rows('storeInventory/').find(([, row]) => row.status)?.[1].status, 'reserved');
+test('38 explicit cancellation closes the listing and waits for a verified grace-period check', async () => {
+  const result = await pending(); const first = await service.closeShopierOrder(result.order.id, { uid: 'owneruid' }, { cancel: true }); assert.equal(first.released, false); assert.equal(rows('storeInventory/').find(([, row]) => row.status)?.[1].status, 'reserved');
   const row = app.db.records.get('storeOrders/' + result.order.id); row.shopier.linkClosedAt = Date.now() - 11 * 60_000;
-  const second = await service.closeShopierOrder(result.order.id, { uid: 'owneruid' }); assert.equal(second.released, true); assert.equal(app.db.records.get('storeOrders/' + result.order.id).status, 'cancelled'); assert.equal(rows('storeInventory/').find(([, row]) => row.status)?.[1].status, 'available');
+  const second = await service.closeShopierOrder(result.order.id, { uid: 'owneruid' }, { cancel: true }); assert.equal(second.released, true); assert.equal(app.db.records.get('storeOrders/' + result.order.id).status, 'cancelled'); assert.equal(rows('storeInventory/').find(([, row]) => row.status)?.[1].status, 'available');
 });
 test('39 late payment after local close is paid but never delivers a reallocated key', async () => {
   const result = await pending(); await service.closeShopierOrder(result.order.id, { uid: 'owneruid' }); app.db.records.get('storeOrders/' + result.order.id).shopier.linkClosedAt = Date.now() - 11 * 60_000;
@@ -251,7 +251,7 @@ test('49 paid webhook trusts API, not a forged paid amount in signed notificatio
 });
 test('50 remote read failure leaves a retryable durable job and no delivery', async () => {
   const result = await pending(), remote = provider.paid(result.order.shopier.productId); await webhook('order.created', { id: remote.id });
-  const [path] = rows('shopierJobs/').find(([, row]) => row.kind === 'order.created'); provider.failNext(() => { throw new TypeError('lost connection'); }); await jobs.processShopierJob(app.db, app.db.doc(path));
+  const [path] = rows('shopierJobs/').find(([, row]) => row.kind === 'order.created'); provider.failNext(() => { provider.failNext(() => { throw new TypeError('lost connection again'); }); throw new TypeError('lost connection'); }); await jobs.processShopierJob(app.db, app.db.doc(path));
   assert.equal(app.db.records.get(path).attempts, 1); assert(app.db.records.get(path).availableAt > Date.now()); assert.equal(app.db.records.get('storeOrders/' + result.order.id).paidAt, 0);
   await jobs.processShopierJob(app.db, app.db.doc(path)); assert.equal(app.db.records.get(path).attempts, 1);
   app.db.records.get(path).availableAt = 0; await jobs.processShopierJob(app.db, app.db.doc(path)); assert(app.db.records.get(path).completedAt > 0);

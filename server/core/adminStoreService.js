@@ -571,7 +571,7 @@ function normalizeAudit(doc, source) {
     source,
     action: safeText(row.action || row.type, 160),
     actor: {
-      uid: safeText(row.actor?.uid || row.uid, 160),
+      uid: safeText(row.actor?.uid || (source === 'admin' ? row.uid : 'system'), 160),
       email: safeText(row.actor?.email, 254).toLowerCase(),
       role: safeText(row.actor?.role, 40)
     },
@@ -581,8 +581,10 @@ function normalizeAudit(doc, source) {
     requestId: safeText(row.requestId || details.requestId, 180),
     ipHash: safeText(row.ipHash || details.ipHash, 96),
     userAgent: safeText(row.userAgent || details.userAgent, 180),
-    before: details.before && typeof details.before === 'object' ? details.before : null,
-    after: details.after && typeof details.after === 'object' ? details.after : null,
+    before: details.before ?? (row.previousStatus ? { status: row.previousStatus } : null),
+    after: details.after ?? (row.status ? { status: row.status } : null),
+    result: /fail|denied|reject|uncertain/i.test(row.action || row.type || '') ? 'Başarısız / doğrulama gerekli' : 'Kaydedildi',
+    deletable: require('./orderMaintenanceService').auditPolicy(row).eligible,
     createdAt: Math.max(0, Number(row.createdAt || row.at || 0) || 0)
   };
 }

@@ -108,11 +108,11 @@ test('inventory fingerprints preserve historical domain separators for duplicate
 });
 
 test('user-provided links are complete, unique and limited to permitted platforms', () => {
-  assert.equal(links.CHANNEL_LINKS_REVISION, 70);
+  assert.equal(links.CHANNEL_LINKS_REVISION, 88);
   assert.equal(links.DEFAULT_QUICK_LINKS.length, 7);
   assert.equal(new Set(links.DEFAULT_QUICK_LINKS.map((link) => link.url)).size, 7);
   for (const link of links.DEFAULT_QUICK_LINKS) assert.equal(links.normalizeQuickLinkUrl(link.platform, link.url), link.url);
-  assert.equal(links.TIKTOK_OFFICIAL_URL, 'https://www.tiktok.com/@shelbystorelive');
+  assert.equal(links.TIKTOK_OFFICIAL_URL, 'https://www.tiktok.com/@zentrastorelive');
   assert.throws(() => links.normalizeQuickLinkUrl('telegram', 'javascript:alert(1)'));
   assert.throws(() => links.normalizeQuickLinkUrl('telegram', 'https://t.me@evil.com/+AAAAAAAAAA'));
 });

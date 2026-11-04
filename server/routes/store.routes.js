@@ -2,8 +2,7 @@
 
 const { createRouter } = require('../core/asyncRouter');
 const env = require('../config/env');
-const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, adminActionLimiter, deliveryLimiter, RATE_LIMIT_POLICY } = require('../core/security');
-const { adminAccessCookiePolicy } = require('../core/adminAccessService');
+const { requireAuth, requireRecentUserAuth, requireAdmin, requireStorePermission, strictLimiter, adminActionLimiter, deliveryLimiter } = require('../core/security');
 const adminAuthRouter = require('./admin-auth.routes');
 const { requireAdminReauth, writeSupplementalAdminAudit } = require('../core/adminReauthService');
 const { redactUserFinance } = require('../core/adminOverviewPolicy');
@@ -67,9 +66,32 @@ const {
 } = require('../core/storeProfileService');
 const { redeemBalanceCode, saveBalanceCode, listBalanceCodes } = require('../core/storeBalanceCodeService');
 const router = createRouter();
+const maintenance = require('../core/orderMaintenanceService');
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 const adminChain = [requireAuth, requireAdmin, adminAuthRouter.requireAdminGate];
 const sensitiveAdminChain = (permission, { inspection = false } = {}) => [...adminChain, requireStorePermission(permission), strictLimiter, requireAdminReauth, ...(inspection ? [] : [requireAdminAction])];
+
+router.post('/admin/store/maintenance/preview', ...adminChain, strictLimiter, asyncRoute(async (req, res) => {
+  const needed = maintenance.permission(req.body?.operation);
+  if (!require('../core/adminStoreService').staffHasPermission(req.adminPolicy, needed)) return res.status(403).json({ ok: false, error: 'ADMIN_PERMISSION_REQUIRED' });
+  const result = await maintenance.createPreview({ ...req.body, actor: req.user });
+  maintenance.wakeMaintenanceWorker();
+  noStore(res); res.status(202).json({ ok: true, ...result });
+}));
+router.get('/admin/store/maintenance/:id', ...adminChain, asyncRoute(async (req, res) => {
+  const result = await maintenance.getJob(req.params.id, req.user, req.query.cursor || '', { includeResults: req.query.results !== '0' });
+  if (!require('../core/adminStoreService').staffHasPermission(req.adminPolicy, maintenance.permission(result.job.operation))) return res.status(403).json({ ok: false, error: 'ADMIN_PERMISSION_REQUIRED' });
+  noStore(res); res.json({ ok: true, ...result });
+}));
+for (const [segment, needed] of [['orders', 'store.orders.bulk'], ['audit', 'store.audit.delete']]) {
+  router.post(`/admin/store/maintenance/:id/${segment}/confirm`, ...sensitiveAdminChain(needed), asyncRoute(async (req, res) => {
+    const preview = await maintenance.getJob(req.params.id, req.user);
+    if (maintenance.permission(preview.job.operation) !== needed) return res.status(403).json({ ok: false, error: 'ADMIN_PERMISSION_REQUIRED' });
+    const result = await maintenance.confirmJob(req.params.id, req.user, req.body?.confirmation);
+    maintenance.wakeMaintenanceWorker();
+    noStore(res); res.status(202).json({ ok: true, ...result });
+  }));
+}
 
 router.get('/admin/store/shopier-readiness', ...adminChain, requireStorePermission('store.orders.read'), asyncRoute(async (_req, res) => {
   noStore(res);
@@ -112,54 +134,14 @@ function requireStaffAdministrator(req, res, next) {
   return res.status(403).json({ ok: false, error: 'ADMIN_OWNER_REQUIRED' });
 }
 
-function operationalSecurityPosture(configuration = {}, gateSecurity = {}, inventory = {}, connections = {}) {
-  const gateChecks = new Map((Array.isArray(gateSecurity.checks) ? gateSecurity.checks : []).map((check) => [check.key, check.ok === true]));
-  const cookie = adminAccessCookiePolicy();
-  const strictRateLimitReady = Number(RATE_LIMIT_POLICY?.strict?.windowMs || 0) > 0 && Number(RATE_LIMIT_POLICY?.strict?.max || 0) > 0;
-  const checks = [
-    ['firebase-admin', 'Güvenli yönetim bağlantısı', gateChecks.get('firebase-admin') === true],
-    ['firebase-auth', 'Hesap doğrulama', initFirebaseReady()],
-    ['firestore', 'Korumalı veri alanı', initFirebaseReady()],
-    ['admin-email', 'Yetkili e-posta', env.adminEmails.length === 1],
-    ['admin-uid', 'Yetkili hesap kimliği', env.adminUids.length === 1],
-    ['firebase-password', '3. adım hesap şifresi', gateChecks.get('firebase-password') === true],
-    ['fourth-factor', '4. güvenlik faktörü', gateChecks.get('fourth-factor') === true],
-    ['fifth-factor', '5. güvenlik faktörü', gateChecks.get('fifth-factor') === true],
-    ['signed-access', 'İmzalı yönetim oturumu', gateChecks.get('signed-access') === true],
-    ['cookie-http-only', 'Korumalı oturum alanı', cookie.httpOnly === true],
-    ['cookie-secure', 'Güvenli bağlantı zorunluluğu', cookie.secure === true],
-    ['cookie-samesite', 'Siteler arası istek koruması', String(cookie.sameSite).toLowerCase() === 'strict'],
-    ['strict-csp', 'İçerik koruma politikası', env.security.strictCsp === true],
-    ['cors', 'İzinli bağlantı politikası', Array.isArray(env.allowedOrigins) && env.allowedOrigins.includes(env.canonicalOrigin) && env.allowedOrigins.includes(env.serviceOrigin)],
-    ['rate-limit', 'İstek deneme sınırı', strictRateLimitReady && ['memory', 'firestore'].includes(configuration.rateLimitStore)],
-    ['app-check', 'Zorunlu uygulama doğrulaması', configuration.appCheckConfigured === true && configuration.appCheckMode === 'enforce'],
-    ['totp-factor', 'Tek kullanımlık doğrulama kodu', configuration.adminTotpRequired === true && configuration.adminTotpConfigured === true],
-    ['key-vault', 'Şifreli stok kasası', configuration.keyVaultReady === true],
-    ['encryption-key-id', 'Aktif kasa anahtarı', !!String(configuration.keyVaultActiveKeyId || '').trim()],
-    ['inventory', 'Otomatik teslimat', inventory.ready === true],
-    ['render', 'Canlı mağaza ayarları', configuration.ready === true],
-    ['storage-connection', 'Veritabanı erişim denetimi', connections.storageReady === true],
-    ['identity-connection', 'Kimlik sağlayıcısı erişim denetimi', connections.identityReady === true]
-  ].map(([key, label, ok]) => ({ key, label, ok, weight: 1, earned: ok ? 1 : 0 }));
-  const readyCount = checks.filter((check) => check.ok).length;
-  const score = Math.round((readyCount / checks.length) * 100);
-  return {
-    score, minimum: 100, ready: readyCount === checks.length,
-    level: score === 100 ? 'hazır' : score >= 85 ? 'uyarı' : 'kritik',
-    checks
-  };
-}
-
-function initFirebaseReady() {
-  try {
-    const firebase = require('../config/firebaseAdmin').initFirebaseAdmin();
-    return !!(firebase?.enabled && firebase?.db && firebase?.auth);
-  } catch (_) { return false; }
-}
-
 router.get('/store/catalog', asyncRoute(async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true, catalog: await publicCatalog() });
+}));
+
+router.get('/store/links', asyncRoute(async (_req, res) => {
+  const catalog = await getEffectiveCatalog();
+  noStore(res); res.json({ ok: true, links: catalog.storefront.quickLinks || [], revision: catalog.storefront.quickLinksRevision || 0 });
 }));
 
 router.get('/store/account', requireAuth, asyncRoute(async (req, res) => {
@@ -368,18 +350,19 @@ router.patch('/admin/store/content', ...sensitiveAdminChain('store.content.write
 router.get('/admin/store/links', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
   const catalog = await getEffectiveCatalog({ includeInactive: true, fresh: true });
   noStore(res);
-  res.json({ ok: true, links: catalog.storefront.quickLinks || [] });
+  res.json({ ok: true, links: catalog.storefront.quickLinks || [], revision: catalog.storefront.quickLinksRevision || 0 });
 }));
 
 router.put('/admin/store/links', ...sensitiveAdminChain('store.content.write'), asyncRoute(async (req, res) => {
   const before = (await getEffectiveCatalog({ includeInactive: true, fresh: true })).storefront.quickLinks || [];
-  const links = await updateStorefrontQuickLinks(req.body?.links, req.user);
+  const links = await updateStorefrontQuickLinks(req.body?.links, req.user, req.body?.expectedRevision);
   await writeSupplementalAdminAudit(req, 'store.links.update', {
     before: before.map(({ id, title, description, url, enabled }) => ({ id, title, description, url, enabled })),
     after: links.map(({ id, title, description, url, enabled }) => ({ id, title, description, url, enabled }))
   });
   noStore(res);
-  res.json({ ok: true, links });
+  const saved = await getEffectiveCatalog({ includeInactive: true, fresh: true });
+  res.json({ ok: true, links, revision: saved.storefront.quickLinksRevision || 0 });
 }));
 
 router.get('/admin/store/promotions', ...adminChain, requireStorePermission('store.content.read'), asyncRoute(async (_req, res) => {
@@ -591,7 +574,8 @@ router.get('/admin/store/security', ...adminChain, requireStorePermission('store
   const gateSecurity = adminAuthRouter.securityPosture();
   const inventory = inventoryReadiness();
   const connections = await connectionReadiness();
-  const security = operationalSecurityPosture(configuration, gateSecurity, inventory, connections);
+  const backup = await require('../core/restoreVerification').loadRestoreEvidence();
+  const security = require('../core/securityAssessment').assessSecurity({ configuration, gateSecurity, inventory, connections, backup, req, res });
   noStore(res);
   res.json({
     ok: true,

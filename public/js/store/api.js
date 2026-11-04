@@ -73,6 +73,7 @@ const USER_MESSAGES = Object.freeze({
   BALANCE_CODE_RECEIPT_INVALID: 'Kod kullanım kaydı doğrulanamadı. Destek ekibine ulaşın.',
   BALANCE_CODE_USE_ACCOUNT: 'Promosyon kodunu Hesabım → Kuponlarım alanında kullanın.',
   STORE_PROMOTION_CODE_INVALID: 'İndirim kodu geçersiz. Kodu kontrol edip yeniden deneyin.',
+  STORE_ORDER_ARCHIVED: 'Bu sipariş aktif kayıtlardan kaldırıldı. Aynı işlemi yeniden ödemeyin; destek için sipariş referansınızı kullanın.',
   CLIENT_UPDATE_REQUIRED: 'Mağaza sürümü yenilendi. Devam etmek için sayfayı yenileyin.',
   CLIENT_ACCOUNT_UPDATE_REQUIRED: 'Hesap bilgilerini güvenli yüklemek için sunucu da güncel proje ile yayınlanmalıdır.',
   AUTH_INITIALIZATION_TIMEOUT: 'Hesap bağlantısı zamanında kurulamadı. Yeniden deneyin.',

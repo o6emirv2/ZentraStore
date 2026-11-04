@@ -1,6 +1,6 @@
-import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v84r1';
-import { initStoreAuth, getStoreAuthSnapshot, subscribeStoreAuth } from './auth.js?v=zentra-ui-v84r1';
-import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v84r1';
+import { verifiedPaymentComplete, paymentNeedsRefresh, paymentReturnUrl } from './shopier-payment-state.js?v=zentra-ui-v88r1';
+import { initStoreAuth, getStoreAuthSnapshot, subscribeStoreAuth } from './auth.js?v=zentra-ui-v88r1';
+import { storeApi, friendlyStoreError } from './api.js?v=zentra-ui-v88r1';
 import { verifiedShopierUrl } from './shopier-checkout.js?v=zentra-ui-v84r1';
 
 const $ = (id) => document.getElementById(id);
@@ -50,14 +50,17 @@ async function refresh() {
     $('paymentProviderId').textContent = order.shopier?.orderId || 'Henüz doğrulanmadı';
     $('paymentAmount').textContent = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(order.totalKurus / 100);
     const labels = { pending: 'Ödeme bekleniyor', paid: 'Ödeme doğrulandı', refunded: 'İade doğrulandı', failed: 'Bağlantı oluşturulamadı', cancelled: 'Sipariş kapatıldı' };
-    $('paymentStatus').textContent = labels[order.paymentState] || 'Kontrol ediliyor';
+    $('paymentStatus').textContent = order.paymentWorkflow?.label || labels[order.paymentState] || 'Kontrol ediliyor';
     $('paymentDelivery').textContent = topup ? order.paymentState === 'refunded' ? 'Bakiye yükleme iadesi işlendi' : order.walletTopup?.settledAt ? 'Bakiye hesabınıza işlendi' : 'Bakiye yüklemek için ödeme doğrulaması bekleniyor' : order.status === 'delivered' ? 'Teslim edildi · hesabınızdan açabilirsiniz' : order.paymentState === 'paid' ? 'Hazırlanıyor / kontrol bekliyor' : 'Ödeme doğrulamasını bekliyor';
     if ($('paymentAccountLink')) $('paymentAccountLink').hidden = !topup;
     $('paymentItems').replaceChildren(...(topup ? [] : order.items || []).map((item) => {
       const li = document.createElement('li'); li.textContent = `${item.productName} · ${item.platform === 'ios' ? 'iOS' : 'Android'} · ${item.planLabel} · ${item.quantity} adet`; return li;
     }));
     if (topup) { const li = document.createElement('li'); li.textContent = `Mağaza bakiyesi yüklemesi · Ürün satın alımı ayrıca yapılır.${order.walletTopup?.debtSettledKurus ? ' Yüklemenin bir bölümü doğrulanmış iade bakiyesini kapatmak için kullanıldı.' : ''}`; $('paymentItems').append(li); }
-    if (order.shopier?.state === 'paid_review') message('Ödemeniz kontrol bekliyor', 'Ödeme kaydı bulundu; bakiye veya teslimat için ek kontrol gerekiyor. Yeniden ödeme yapmadan işlem numaranızla destek alın.');
+    if (order.paymentState === 'link_closed') message('Ödeme bağlantısı kapatıldı', 'Bu bağlantıyla yeni ödeme başlatılamaz. Önceden başlatılmış tahsilatlar sağlayıcıdan ayrıca kontrol edilir. Bu işlem tek başına sipariş iptali veya iade değildir.');
+    else if (['requesting', 'pending', 'uncertain'].includes(order.shopier?.refundRequest?.state)) message('İade sonucu doğrulanıyor', 'İade isteği kaydedildi; sağlayıcı sonucu kesinleşmeden tamamlandı sayılmaz. Aynı işlemi yeniden başlatmayın.');
+    else if (order.shopier?.refundRequest?.state === 'failed' || order.shopier?.refundStatus === 'failed') message('İade tamamlanamadı', 'Sağlayıcı iade başarısını doğrulamadı. İşlem otomatik tekrar gönderilmez; sipariş referansıyla destek alın.', 'error');
+    else if (order.shopier?.state === 'paid_review') message('Ödemeniz kontrol bekliyor', 'Ödeme kaydı bulundu; bakiye veya teslimat için ek kontrol gerekiyor. Yeniden ödeme yapmadan işlem numaranızla destek alın.');
     else if (order.shopier?.refundPending || order.shopier?.refundStatus === 'pending') message('İade işlemi kontrol ediliyor', 'İade sonucu kesinleşene kadar bu işlemi yeniden ödemeyin. Güncel bakiye ve iade durumunu hesabınızdan takip edin.');
     else if (order.shopier?.refundStatus === 'partial') message('Kısmi iade doğrulandı', 'İade tutarı ödeme kaydıyla eşleştirildi. Güncel tutarları hesabınızdan kontrol edebilirsiniz.');
     else if (topup && order.paymentState === 'paid') message(order.walletTopup?.settledAt ? 'Bakiye yüklemeniz tamamlandı' : 'Ödemeniz doğrulandı', order.walletTopup?.settledAt ? 'Tutar hesabınıza işlendi. Hesabım bölümünden güncel bakiyenizi görebilir ve ürün satın alımınızı ayrıca tamamlayabilirsiniz.' : 'Bakiye kaydı kontrol bekliyor. Yeniden ödeme yapmadan işlem durumunu kontrol edin veya destek alın.', order.walletTopup?.settledAt ? 'success' : '');

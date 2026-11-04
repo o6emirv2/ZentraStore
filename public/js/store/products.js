@@ -1,5 +1,5 @@
 import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v84r1';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v84r1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v88r1';
 import { CATALOG_FILTERS, CATEGORY_PRESETS, categoryKey, isSupportedProduct, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v87r1';
 
 import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v84r1';

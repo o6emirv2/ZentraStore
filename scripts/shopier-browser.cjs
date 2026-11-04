@@ -66,7 +66,7 @@ async function main() {
       assert.equal(await page.locator('#continuePayment').isVisible(), false); assert.equal(await page.locator('#paymentProviderId').innerText(), remote.id);
       await page.screenshot({ path: path.join(output, name + '-result.png'), fullPage: true });
       await page.goto(app.origin + '/odeme/iptal?order=' + payload.order.id, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => document.getElementById('paymentStatus').textContent === 'Ödeme doğrulandı');
+      await page.waitForFunction(() => document.getElementById('paymentStatus')?.textContent === 'Ödeme Onaylandı');
       assert.equal(app.db.records.get('storeOrders/' + payload.order.id).paymentState, 'paid');
       completed.push({ id: payload.order.id, providerId: remote.id });
       results.cases.push({ name, checkout: true, pendingPageRejectsSpoofedSuccess: true, signedWebhook: true, delivery: true, cancelPageDoesNotCancelPaidOrder: true, layout });

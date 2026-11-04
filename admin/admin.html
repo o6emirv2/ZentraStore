@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="zentra-admin-release" content="78" />
+  <meta name="zentra-admin-release" content="88" />
   <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="theme-color" content="#070B16" />
@@ -11,13 +11,14 @@
   <title>ZENTRA STORE | Yönetim Merkezi</title>
   <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v84r1" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v88r1" />
   <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v85r1" />
   <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" />
   <script src="./admin-browser-session.js?v=zentra-ui-v84r1"></script>
   <script src="./admin-auth.js?v=zentra-ui-v84r1"></script>
   <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" />
   <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v87r1" />
+  <link rel="stylesheet" href="/admin/admin-operations.css?v=zentra-ui-v88r1"/>
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -63,9 +64,9 @@
 
       <section class="admin-panel" data-admin-panel="orders" hidden inert>
         <header class="panel-title"><div><span>SİPARİŞ KONTROLÜ</span><h1>Siparişler</h1><p>Otomatik satışlar şifreli stok kasasından teslim edilir; Telegram siparişleri ise otomatik stoktan bağımsız, yönetici onaylı manuel teslimat akışını kullanır.</p></div><button class="primary-action" type="button" data-refresh="orders"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
-        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><section class="shopier-operations" aria-label="Shopier bağlantı ve iş kuyruğu"><div id="shopierOperationalStatus" role="status">Shopier bağlantısı kontrol ediliyor…</div><div id="shopierFailedJobs"></div></section><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article></div>
+        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><section class="shopier-operations" aria-label="Shopier bağlantı ve iş kuyruğu"><div id="shopierOperationalStatus" role="status">Shopier bağlantısı kontrol ediliyor…</div><div id="shopierFailedJobs"></div></section><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article><article><i class="fa-solid fa-link-slash"></i><span><small>BAĞLANTI KAPALI</small><strong data-summary="link_closed">—</strong></span></article><article><i class="fa-solid fa-hourglass-half"></i><span><small>İADE BEKLİYOR</small><strong data-summary="refund_pending">—</strong></span></article></div>
         <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="WEQ / Shopier no, müşteri, ürün veya paket ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
-        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><label for="orderPaymentFilter">Ödeme yöntemi (yüklenen kayıtlar)<select id="orderPaymentFilter"><option value="all">Tüm yöntemler</option><option value="wallet">Mağaza bakiyesi</option><option value="telegram">Telegram</option><option value="shopier">Shopier</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
+        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><label for="orderPaymentFilter">Ödeme yöntemi (yüklenen kayıtlar)<select id="orderPaymentFilter"><option value="all">Tüm yöntemler</option><option value="wallet">Mağaza bakiyesi</option><option value="telegram">Telegram</option><option value="shopier">Shopier</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div id="orderMaintenance"></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
         <button class="secondary-action admin-pagination" id="adminLoadMoreOrders" type="button" hidden><i class="fa-solid fa-clock-rotate-left"></i> Önceki Siparişleri Yükle</button>
       </section>
 
@@ -143,12 +144,11 @@
       <section class="admin-panel" data-admin-panel="links" hidden inert>
         <header class="panel-title"><div><span>ANA SAYFA · HIZLI BAĞLANTILAR</span><h1>Bağlantı yönetimi</h1><p>Slayder altındaki bağlantıların başlığını, açıklamasını, adresini ve sırasını düzenleyin.</p></div><button class="secondary-action" type="button" data-refresh="links"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Listeyi Yenile</button></header>
         <div class="panel-live-status" id="quickLinksStatus" aria-live="polite"></div>
-        <form class="admin-card admin-form quick-link-admin" id="quickLinksForm" novalidate>
+        <section class="admin-card quick-link-admin" id="quickLinksForm">
           <header><div><small>RESMÎ HESAPLAR</small><h2>Slayder altı bağlantılar</h2></div><button class="secondary-action" id="addQuickLink" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Bağlantı Ekle</button></header>
           <p class="form-hint"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Yalnızca doğrulanmış Telegram, TikTok ve WhatsApp adresleri yayımlanır.</p>
-          <div class="quick-link-editor" id="adminQuickLinks" aria-live="polite"></div>
-          <button class="primary-action primary-action--large" id="saveQuickLinks" type="submit"><i class="fa-solid fa-lock" aria-hidden="true"></i> Parolayla Bağlantıları Yayımla</button>
-        </form>
+          <div class="link-grid" id="adminQuickLinks" aria-live="polite"></div>
+        </section>
       </section>
 
       <section class="admin-panel" data-admin-panel="coupons" hidden inert>
@@ -197,12 +197,12 @@
 
       <section class="admin-panel" data-admin-panel="audit" hidden inert>
         <header class="panel-title"><div><span>İZLENEBİLİRLİK</span><h1>Denetim kayıtları</h1><p>Hangi yöneticinin hangi kritik işlemi ne zaman yaptığını inceleyin.</p></div><button class="primary-action" type="button" data-refresh="audit"><i class="fa-solid fa-rotate"></i> Kayıtları Yenile</button></header>
-        <div class="panel-live-status" id="auditMetrics" aria-live="polite"></div><article class="admin-card"><div id="auditList" class="audit-list"></div></article>
+        <div id="auditMaintenance"></div><label class="audit-filter">Denetim kayıtlarında ara<input type="search" id="auditSearch" placeholder="İşlem, yönetici veya referans"/></label><div class="panel-live-status" id="auditMetrics" aria-live="polite"></div><article class="admin-card"><div id="auditList" class="audit-list"></div></article>
       </section>
 
       <section class="admin-panel" data-admin-panel="security" hidden inert>
         <header class="panel-title"><div><span>CANLI YAPILANDIRMA DENETİMİ</span><h1>Güvenlik durumu</h1><p>Aktif korumaların yapılandırma skoru; penetrasyon testi sonucu değildir.</p></div></header>
-        <div class="panel-live-status" id="securityRuntime" aria-live="polite"></div><div class="security-overview"><div class="security-ring" id="securityRing"><strong id="securityScore">0</strong><small>/100</small></div><div><span id="securityLevel">Denetleniyor</span><h2>Yönetici paneli koruması</h2><p>Beş adımlı yönetici kapısı, yeniden parola doğrulaması, güvenli istek denetimi, oran sınırlama ve şifreli stok kasası birlikte çalışır.</p></div></div><div class="security-checks" id="securityChecks"></div>
+        <div class="panel-live-status" id="securityRuntime" aria-live="polite"></div><div class="security-overview"><div class="security-ring" id="securityRing"><strong id="securityScore">0</strong><small>/100</small></div><div><span id="securityLevel">Denetleniyor</span><h2>Yönetici paneli koruması</h2><p>Çalışma anı kanıtları ve doğrulanan testler değerlendirilir. Eksik veya doğrulanmamış kontroller puan kazandırmaz. Bu gösterge penetrasyon testi sonucu değildir.</p></div></div><div class="security-evidence" id="securityEvidence"></div><div class="security-checks" id="securityChecks"></div>
       </section>
     </main>
   </div>

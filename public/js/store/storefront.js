@@ -5,7 +5,7 @@ import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion
 import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v84r1';
 import { versionedProductImage } from './product-fields.js?v=zentra-ui-v84r1';
 import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v84r1';
-import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v84r1';
+import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v88r1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -19,13 +19,13 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v84r1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v87r1';
+} from './auth.js?v=zentra-ui-v88r1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v88r1';
 import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v87r1';
 import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v84r1';
 import { installProductGallery } from './product-gallery.js?v=zentra-ui-v84r1';
 import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v84r1';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v84r1';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v88r1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -48,7 +48,7 @@ import {
   renderDeliveryCardView
 } from './customer-renderers.js?v=zentra-ui-v84r1';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v84r1';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v88r1';
 import { updateAccountView } from './account-view.js?v=zentra-ui-v84r1';
 import { renderProductPlans, renderProductSummary, renderProductFeatures, productTopupOffer } from './product-detail.js?v=zentra-ui-v84r1';
 
@@ -3055,8 +3055,17 @@ export async function bootStorefront() {
     }
   });
   installInteractions();
+  let catalogRefreshAt = 0;
+  const refreshPublishedCatalog = () => {
+    if (document.hidden || Date.now() - catalogRefreshAt < 5000) return;
+    catalogRefreshAt = Date.now(); void storeApi('/api/store/links', { auth: false }).then(response => renderQuickLinks($('#quickLinksGrid'), response.links || [])).catch(() => null);
+  };
+  window.addEventListener('focus', refreshPublishedCatalog);
+  const publishedTimer = setInterval(refreshPublishedCatalog, 30_000);
+  window.addEventListener('pagehide', () => clearInterval(publishedTimer), { once: true });
+  try { const channel = new BroadcastChannel('zentra-catalog'); channel.addEventListener('message', refreshPublishedCatalog); window.addEventListener('pagehide', () => channel.close(), { once: true }); } catch (_) {}
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') { void refreshShopierAvailability({ force: true }); void refreshPendingShopierStatus(); return; }
+    if (document.visibilityState !== 'hidden') { refreshPublishedCatalog(); void refreshShopierAvailability({ force: true }); void refreshPendingShopierStatus(); return; }
     if (!$('#deliveryAccessModal')?.hidden) closeDeliveryAccess({ restoreFocus: false });
     if (state.deliverySecrets.size) clearExposedDeliverySecrets();
   });

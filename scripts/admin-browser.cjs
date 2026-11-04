@@ -83,7 +83,7 @@ async function main(){
   await delegated.page.locator('[data-edit-staff="viewer"]').click();assert.equal(await delegated.page.locator('#staffUid').inputValue(),'viewer');assert.equal(await delegated.page.locator('#staffRole').inputValue(),'support');await delegated.page.screenshot({path:path.join(output,'mobile-full-authority-staff.png'),fullPage:true});cases.push({name:'delegated-full-authority',allAdminPanels:true,canManageStaff:true,existingRoleEditable:true});
   await role(owner.page,'member','viewer');await delegated.page.reload({waitUntil:'domcontentloaded'});await delegated.page.waitForFunction(()=>!document.querySelector('[data-panel="staff"]')||document.querySelector('[data-panel="staff"]').hidden);cases.push({name:'role-revocation',existingBrowserSessionRejected:true});
   assert.deepEqual(errors,[]);const results={passed:cases.length,failed:0,pageErrors:errors,livePayments:0,liveRefunds:0,cases};fs.writeFileSync(path.join(output,'browser-results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results));
- }catch(error){for(let i=0;i<pages.length;i++)await pages[i].screenshot({path:path.join(output,`failure-${i}.png`),fullPage:true}).catch(()=>{});throw error;}
+ }catch(error){console.error(JSON.stringify({pageErrors:errors}));for(let i=0;i<pages.length;i++)await pages[i].screenshot({path:path.join(output,`failure-${i}.png`),fullPage:true}).catch(()=>{});throw error;}
  finally{for(const ctx of contexts)await ctx.close().catch(()=>{});if(browser)await browser.close();if(app)await app.close();}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

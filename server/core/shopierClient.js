@@ -31,11 +31,11 @@ function paymentUrl(value) {
   throw shopierError('SHOPIER_PAYMENT_URL_INVALID', 502);
 }
 function createShopierClient({ config = requireShopierConfig(), transport = global.fetch } = {}) {
-  async function request(method, path, body) {
+  async function requestOnce(method, path, body) {
     if (!/^\/(?:products|orders|refunds|webhooks)(?:\/[A-Za-z0-9_-]{1,100})?(?:\?[A-Za-z0-9_%=&.+:-]+)?$/.test(path)) throw shopierError('SHOPIER_REQUEST_INVALID', 500);
     const controller = new AbortController();
     let timer;
-    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(shopierError('SHOPIER_TIMEOUT', 504, { uncertain: method === 'POST' })); }, config.timeoutMs); });
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(shopierError('SHOPIER_TIMEOUT', 504, { uncertain: method !== 'GET' })); }, config.timeoutMs); });
     try {
       return await Promise.race([timeout, (async () => {
         const response = await transport(config.apiBaseUrl + path, { method, redirect: 'error', signal: controller.signal,
@@ -63,8 +63,18 @@ function createShopierClient({ config = requireShopierConfig(), transport = glob
       })()]);
     } catch (error) {
       if (error?.code?.startsWith('SHOPIER_')) throw error;
-      throw shopierError(controller.signal.aborted ? 'SHOPIER_TIMEOUT' : 'SHOPIER_CONNECTION_FAILED', 503, { uncertain: method === 'POST' });
+      throw shopierError(controller.signal.aborted ? 'SHOPIER_TIMEOUT' : 'SHOPIER_CONNECTION_FAILED', 503, { uncertain: method !== 'GET' });
     } finally { clearTimeout(timer); }
+  }
+  async function request(method, path, body) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await requestOnce(method, path, body); }
+      catch (error) {
+        const retryable = ['SHOPIER_TIMEOUT', 'SHOPIER_CONNECTION_FAILED'].includes(error.code) || [408, 500, 502, 503, 504].includes(error.providerStatus);
+        if (method !== 'GET' || attempt >= 1 || !retryable) throw error;
+        await new Promise(resolve => setTimeout(resolve, 150 + Math.floor(Math.random() * 150)));
+      }
+    }
   }
   const list = async (path, query) => {
     const result = await request('GET', `${path}?${new URLSearchParams(query)}`);
@@ -79,6 +89,8 @@ function createShopierClient({ config = requireShopierConfig(), transport = glob
     getOrder: (id) => request('GET', `/orders/${providerId(id)}`),
     listOrders: (query) => list('/orders', query),
     getRefund: (id) => request('GET', `/refunds/${providerId(id)}`),
+    createRefund: (body) => request('POST', '/refunds', body),
+    listRefunds: (query) => list('/refunds', query),
     listWebhooks: () => request('GET', '/webhooks'),
     createWebhook: (body) => request('POST', '/webhooks', body)
   };

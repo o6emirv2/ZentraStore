@@ -24,9 +24,9 @@ services:
       - key: APP_CHECK_MODE
         value: monitor
       - key: ADMIN_TRANSIENT_STORE
-        value: memory
+        value: firestore
       - key: RATE_LIMIT_STORE
-        value: memory
+        value: firestore
       - key: FIREBASE_KEY
         sync: false
       - key: ADMIN_EMAILS

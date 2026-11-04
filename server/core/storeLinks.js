@@ -1,9 +1,9 @@
 'use strict';
 
 const MAX_QUICK_LINKS = 16;
-const CHANNEL_LINKS_REVISION = 70;
+const CHANNEL_LINKS_REVISION = 88;
 const QUICK_LINK_PLATFORMS = Object.freeze(['telegram', 'tiktok', 'whatsapp']);
-const TIKTOK_OFFICIAL_URL = 'https://www.tiktok.com/@shelbystorelive';
+const TIKTOK_OFFICIAL_URL = 'https://www.tiktok.com/@zentrastorelive';
 const TELEGRAM_SUPPORT_USERNAME = 'ZENTRA_STORE';
 const LINK_ID_PATTERN = /^[a-z0-9][a-z0-9-]{2,59}$/;
 const HIDDEN_TEXT_PATTERN = /[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u2069<>]/g;
@@ -42,8 +42,11 @@ function channelLinksMigration(source = {}) {
   const support = current.support && typeof current.support === 'object' && !Array.isArray(current.support) ? current.support : {};
   return {
     channelLinksRevision: CHANNEL_LINKS_REVISION,
-    quickLinks: DEFAULT_QUICK_LINKS.map((link) => ({ ...link })),
-    support: { ...support, telegramUsername: TELEGRAM_SUPPORT_USERNAME }
+    quickLinks: (Array.isArray(current.quickLinks) ? current.quickLinks : DEFAULT_QUICK_LINKS).map((link) => ({
+      ...link,
+      ...(link.platform === 'tiktok' && /^https:\/\/(?:www\.)?tiktok\.com\/@shelbystorelive\/?$/i.test(String(link.url)) ? { url: TIKTOK_OFFICIAL_URL } : {})
+    })),
+    support: { ...support, telegramUsername: support.telegramUsername || TELEGRAM_SUPPORT_USERNAME }
   };
 }
 
@@ -98,7 +101,8 @@ function normalizeQuickLink(source = {}) {
     title,
     description,
     url: normalizeQuickLinkUrl(platform, source.url),
-    enabled: source.enabled !== false
+    enabled: source.enabled !== false,
+    showOnHome: source.showOnHome !== false
   };
 }
 
@@ -113,14 +117,8 @@ function normalizeQuickLinks(source, { defaultsWhenMissing = true } = {}) {
   const ids = new Set();
   const urls = new Set();
   const normalized = [];
-  let tiktokAdded = false;
   for (const entry of source) {
-    let link = normalizeQuickLink(entry);
-    if (link.platform === 'tiktok') {
-      if (tiktokAdded) continue;
-      tiktokAdded = true;
-      link = { ...link, id: 'tiktok-official', url: TIKTOK_OFFICIAL_URL };
-    }
+    const link = normalizeQuickLink(entry);
     if (ids.has(link.id) || urls.has(link.url.toLowerCase())) {
       throw linkError('STORE_LINK_DUPLICATE', 409);
     }

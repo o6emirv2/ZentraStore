@@ -1,4 +1,4 @@
-import { adminFetch } from './admin-core.js?v=zentra-ui-v87r1';
+import { adminFetch } from './admin-core.js?v=zentra-ui-v88r1';
 let mounting = null;
 function css(href) {
   if ([...document.querySelectorAll('link[rel=stylesheet]')].some(link => link.href === new URL(href, location.href).href)) return Promise.resolve();
@@ -16,12 +16,12 @@ async function mountDashboard() {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15_000);
     let response, html;
     try {
-      response = await fetch('/admin/admin.html?view=v78', { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal });
+      response = await fetch('/admin/admin.html?view=v88', { credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal });
       if (!response.ok || !String(response.headers.get('content-type')).includes('text/html')) throw new Error('Yönetim dosyaları eksik. Güncel admin klasörünü mağaza alanına birlikte yükleyin.');
       html = await response.text();
     } finally { clearTimeout(timer); }
     const parsed = new DOMParser().parseFromString(html, 'text/html');
-    if (parsed.querySelector('meta[name=zentra-admin-release]')?.content !== '78' || !parsed.querySelector('#adminLoader') || !parsed.querySelector('#promoCodeForm') || !parsed.querySelector('#productCreateForm')) throw new Error('Yönetim görünümü sürümü eşleşmiyor. Güncel admin klasörünü birlikte yayınlayın.');
+    if (parsed.querySelector('meta[name=zentra-admin-release]')?.content !== '88' || !parsed.querySelector('#adminLoader') || !parsed.querySelector('#promoCodeForm') || !parsed.querySelector('#productCreateForm')) throw new Error('Yönetim görünümü sürümü eşleşmiyor. Güncel admin klasörünü birlikte yayınlayın.');
     const styles = [...parsed.querySelectorAll('link[rel=stylesheet]')].map(link => new URL(link.getAttribute('href'), location.origin + '/admin/').href);
     await Promise.all(styles.map(css));
     for (const href of styles) {
@@ -34,13 +34,22 @@ async function mountDashboard() {
     document.querySelector('link[href*="admin-gate.css"]')?.remove();
     document.body.append(...[...parsed.body.childNodes].map(node => document.importNode(node, true)));
     history.replaceState(history.state, '', '/admin/' + (/^#panel\/[a-z]+$/.test(location.hash) ? location.hash : ''));
-    await import('./admin-dashboard.js?v=zentra-ui-v87r1');
+    await import('./admin-dashboard.js?v=zentra-ui-v88r1');
   })();
   try { await mounting; } catch (error) { mounting = null; throw error; }
 }
 function showMountError(error) {
-  const section = document.querySelector('[data-step="6"]');
-  if (!section) return;
+  const section = document.querySelector('.gate-step[data-step="6"]');
+  if (!section) {
+    const loader = document.querySelector('#adminLoader');
+    if (loader) {
+      loader.classList.add('has-entry-error');
+      const title = loader.querySelector('strong'); if (title) title.textContent = 'Yönetim görünümü yüklenemedi';
+      const description = loader.querySelector('small'); if (description) description.textContent = 'Güncel yönetim dosyaları yüklenemedi. Bağlantıyı kontrol edip yeniden deneyin.';
+      if (!loader.querySelector('button')) { const button = document.createElement('button'); button.type = 'button'; button.className = 'primary-action'; button.textContent = 'Yeniden Dene'; button.addEventListener('click', () => location.reload()); loader.querySelector('div').append(button); }
+    }
+    return;
+  }
   document.querySelectorAll('.gate-step').forEach(node => { node.hidden = node !== section; node.inert = node !== section; });
   section.querySelector('h2').textContent = 'Yönetim görünümü yüklenemedi';
   section.querySelector('p').textContent = error?.message || 'Bağlantınızı kontrol edip yeniden deneyin.';
@@ -58,4 +67,4 @@ try {
   authenticated = (await adminFetch('/api/auth/admin/gate/status'))?.authenticated === true;
 } catch (_) {}
 if (authenticated) await mountDashboard().catch(showMountError);
-else await import('./admin-gate.js?v=zentra-ui-v87r1');
+else await import('./admin-gate.js?v=zentra-ui-v88r1');

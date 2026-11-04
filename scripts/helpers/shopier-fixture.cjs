@@ -3,12 +3,15 @@ const crypto = require('node:crypto');
 function shopierFixture() {
   const original = global.fetch, products = new Map(), orders = new Map(), refunds = new Map(), calls = [];
   let nextError = null, sequence = 1000;
+  const interceptors = [];
   const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   global.fetch = async (address, options = {}) => {
     const url = new URL(address);
     if (url.origin !== 'https://api.shopier.com') return original(address, options);
     const method = options.method || 'GET', path = url.pathname.replace('/v1', '');
     calls.push({ method, path, query: Object.fromEntries(url.searchParams), body: options.body ? JSON.parse(options.body) : null });
+    const intercepted = interceptors.findIndex(row => row.method === method && row.path === path);
+    if (intercepted >= 0) return interceptors.splice(intercepted, 1)[0].handler(address, options);
     if (nextError) { const action = nextError; nextError = null; return action(address, options); }
     if (path === '/products' && method === 'POST') {
       const body = JSON.parse(options.body), id = String(++sequence), product = { id, ...body, url: `https://www.shopier.com/${id}` };
@@ -23,6 +26,12 @@ function shopierFixture() {
     if (path === '/products') return response([...products.values()].slice((Number(url.searchParams.get('page') || 1) - 1) * 50, Number(url.searchParams.get('page') || 1) * 50));
     if (path === '/orders') return response([...orders.values()].filter((row) => row.lineItems.some((line) => line.productId === url.searchParams.get('productId'))));
     if (path.startsWith('/orders/')) return orders.has(path.split('/')[2]) ? response(orders.get(path.split('/')[2])) : response({}, 404);
+    if (path === '/refunds' && method === 'POST') {
+      const body = JSON.parse(options.body), order = orders.get(body.orderId);
+      if (!order) return response({}, 404);
+      const row = { id: String(++sequence), orderId: body.orderId, currency: 'TRY', total: body.amount, status: 'pending', type: 'full' };
+      refunds.set(row.id, row); order.refunds.push(row); return response(row);
+    }
     if (path.startsWith('/refunds/')) return refunds.has(path.split('/')[2]) ? response(refunds.get(path.split('/')[2])) : response({}, 404);
     throw new Error('Unexpected mocked Shopier request: ' + method + ' ' + path);
   };
@@ -39,6 +48,8 @@ function shopierFixture() {
     return { raw, signature: crypto.createHmac('sha256', token).update(raw).digest(encoding) };
   }
   return { products, orders, refunds, calls, paid, signed, response,
+    interceptOnce: (method, path, handler) => interceptors.push({ method, path, handler }),
+    completeRefund: id => { const row = refunds.get(id); if (!row) throw new Error('Unknown fixture refund'); row.status = 'succeeded'; return row; },
     failNext: (action) => { nextError = action; }, close: () => { global.fetch = original; } };
 }
 module.exports = { shopierFixture };

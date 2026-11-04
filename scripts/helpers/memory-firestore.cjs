@@ -9,13 +9,15 @@ function memoryFirestore(initial = []) {
   const snapshot = (ref) => { const exists = records.has(ref.path), value = structuredClone(records.get(ref.path)); return { id: ref.id, ref, exists, data: () => structuredClone(value) }; };
   function reference(path) {
     return { path, id: path.split('/').at(-1), collection: (name) => collection(`${path}/${name}`),
+      listCollections: async () => [...new Set([...records.keys()].filter(key => key.startsWith(path + '/')).map(key => key.slice(path.length + 1).split('/')[0]))].map(name => collection(`${path}/${name}`)),
       get: async () => { stats.reads++; return snapshot(reference(path)); },
       set: async (data, options) => apply([{ kind: options?.merge ? 'merge' : 'set', ref: reference(path), data }]),
       update: async (data) => apply([{ kind: 'update', ref: reference(path), data }]),
       delete: async () => records.delete(path) };
   }
   function collection(path, filters = [], orders = [], take = Infinity, cursor = null) {
-    const query = { path, query: true, doc: (id = crypto.randomUUID()) => reference(`${path}/${id}`),
+    const query = { path, id: path.split('/').at(-1), query: true, doc: (id = crypto.randomUUID()) => reference(`${path}/${id}`),
+      listDocuments: async () => [...new Set([...records.keys()].filter(key => key.startsWith(path + '/')).map(key => key.slice(path.length + 1).split('/')[0]))].map(id => reference(`${path}/${id}`)),
       where: (field, op, value) => collection(path, [...filters, [field, op, value]], orders, take, cursor),
       orderBy: (field, direction = 'asc') => collection(path, filters, [...orders, [field, direction]], take, cursor),
       limit: (count) => collection(path, filters, orders, count, cursor),
@@ -62,6 +64,7 @@ function memoryFirestore(initial = []) {
     records.clear(); updated.forEach((value, key) => records.set(key, value)); stats.writes += staged.length; stats.commits++;
   }
   const db = { collection, doc: reference, records, stats,
+    listCollections: async () => [...new Set([...records.keys()].map(key => key.split('/')[0]))].map(name => collection(name)),
     getAll: async (...refs) => Promise.all(refs.map((ref) => ref.get())),
     setFailure: (value) => { failCommit = value; }, setQueryHook: (hook) => { queryHook = hook; },
     runTransaction: (callback) => {

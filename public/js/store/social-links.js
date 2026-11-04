@@ -62,7 +62,7 @@ function validateQuickLink(source = {}) {
   if (!LINK_ID_PATTERN.test(id)) throw linkError('STORE_LINK_ID_INVALID');
   if (!LINK_PLATFORM_META[platform]) throw linkError('STORE_LINK_PLATFORM_INVALID');
   if (!title || !description) throw linkError('STORE_LINK_LABEL_REQUIRED');
-  return { id, platform, title, description, url: normalizeQuickLinkUrl(platform, source.url), enabled: source.enabled !== false };
+  return { id, platform, title, description, url: normalizeQuickLinkUrl(platform, source.url), enabled: source.enabled !== false, showOnHome: source.showOnHome !== false };
 }
 
 function normalizeQuickLinks(source = []) {
@@ -92,7 +92,7 @@ function quickLinkTone(item = {}) {
 
 function renderQuickLinks(host, source = []) {
   if (!host) return [];
-  const links = normalizeQuickLinks(source).filter((item) => item.enabled);
+  const links = normalizeQuickLinks(source).filter((item) => item.enabled && item.showOnHome);
   const signature = JSON.stringify(links.map(({ id, platform, title, description, url }) => [id, platform, title, description, url]));
   if (host.dataset.quickLinksSignature === signature) return links;
   const fragment = document.createDocumentFragment();

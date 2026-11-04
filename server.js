@@ -29,6 +29,7 @@ const adminAuthRouter = require('./server/routes/admin-auth.routes');
 const storeRouter = require('./server/routes/store.routes');
 const shopierRoutes = require('./server/routes/shopier.routes');
 const { startShopierWorker, stopShopierWorker } = require('./server/core/shopierJobs');
+const { startMaintenanceWorker, stopMaintenanceWorker } = require('./server/core/orderMaintenanceService');
 
 const app = express();
 const root = __dirname;
@@ -271,7 +272,7 @@ app.get(['/admin', '/admin/', '/admin/index.html', '/admin/admin.html'], (req, r
   const canonical = env.canonicalOrigin || env.publicBaseUrl;
   const canonicalHost = canonical && new URL(canonical).host.toLowerCase();
   const currentHost = String(req.headers.host || '').toLowerCase();
-  if (canonicalHost && (currentHost !== canonicalHost || (req.path === '/admin/admin.html' && req.query.view !== 'v78') || req.path === '/admin')) {
+  if (canonicalHost && (currentHost !== canonicalHost || (req.path === '/admin/admin.html' && req.query.view !== 'v88') || req.path === '/admin')) {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     return res.redirect(302, `${canonical}${req.path === '/admin/index.html' ? '/admin/index.html' : '/admin/'}`);
   }
@@ -281,11 +282,12 @@ app.get('/admin', (req, res, next) => req.path === '/admin' ? res.redirect(302, 
 app.get(['/admin/', '/admin/index.html'], (_req, res) => { res.setHeader('Cache-Control', 'no-store, max-age=0'); return res.sendFile(path.join(root, 'admin', 'index.html')); });
 app.get('/admin/admin.html', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
-  return req.query.view === 'v78' ? res.sendFile(path.join(root, 'admin', 'admin.html')) : res.redirect(302, '/admin/');
+  return req.query.view === 'v88' ? res.sendFile(path.join(root, 'admin', 'admin.html')) : res.redirect(302, '/admin/');
 });
 app.get(['/admin/session/handoff', '/admin/session/handoff/'], (_req, res) => res.redirect(302, '/admin/'));
 const adminAssetAllowlist = new Set([
   'admin-auth.js', 'admin-core.js', 'admin-dashboard.css', 'admin-dashboard.js', 'promo-codes.js',
+  'admin-dialogs.js', 'admin-links.js', 'admin-maintenance.js', 'admin-audit.js', 'admin-security.js', 'admin-operations.css',
   'admin-gate.css', 'admin-gate.js', 'product-image-upload.js', 'admin-browser-session.js', 'admin-entry.js', 'admin-legacy-entry.js'
 ]);
 app.get('/admin/:asset', (req, res, next) => {
@@ -353,6 +355,7 @@ function startServer() {
 
   startRestockWorker();
   startShopierWorker();
+  startMaintenanceWorker();
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
   return server;
@@ -361,6 +364,7 @@ function startServer() {
 function shutdown(signal) {
   stopRestockWorker();
   stopShopierWorker();
+  stopMaintenanceWorker();
   if (!server) return;
   server.close(() => process.exit(process.exitCode || 0));
   server.closeIdleConnections?.();

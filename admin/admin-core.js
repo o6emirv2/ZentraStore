@@ -1,5 +1,9 @@
 import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
 
+export function escapeHtml(value = '') {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
 export function lockAdminInteractions() {
   document.documentElement.dataset.adminProtected = 'true';
 }
@@ -32,6 +36,12 @@ export function startAmbientCanvas(canvas) {
 function errorMessage(payload = {}, status = 0) {
   const code = String((typeof payload.error === 'object' ? payload.error?.code : payload.error) || payload.code || '');
   const messages = {
+    STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED: 'Ödeme veya iade için doğrulanmış harici işlem referansı gerekli.',
+    STORE_LINK_REVISION_CONFLICT: 'Bağlantılar başka bir işlemde değişti. Listeyi yenileyip güncel kayıt üzerinden tekrar deneyin.',
+    SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. İşlem başarısı doğrulanmadı; aynı kaydın durumunu kontrol edin.',
+    SHOPIER_OPERATION_BUSY: 'Bu sipariş için bir sağlayıcı işlemi devam ediyor.',
+    BULK_PREVIEW_EXPIRED: 'Önizlemenin süresi doldu. Yeni önizleme oluşturun.',
+    BULK_CONFIRMATION_REQUIRED: 'Kalıcı silme doğrulaması için KALICI SIL yazın.',
     SHOPIER_PROVIDER_ACTION_REQUIRED: 'Shopier ödemesi veya iadesi yerel durum seçimiyle değiştirilemez. Shopier kaydını doğrulayın; iadeyi Shopier panelinden yönetin.',
     SHOPIER_PAYMENT_NOT_VERIFIED: 'Ödeme Shopier kaydıyla doğrulanmadan teslimat açılamaz.',
     SHOPIER_CREATION_REVIEW_REQUIRED: 'Ödeme bağlantısının oluşturulma sonucu kesinleştirilemedi. Shopier ürün kaydını kontrol edin; yeni ürün oluşturmayın.',
@@ -261,7 +271,7 @@ export async function adminFetch(path, options = {}) {
       body = JSON.stringify(JSON.parse(body));
     }
     const target = new URL(url, window.location.href).pathname;
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && target.startsWith('/api/admin/store/') && target !== '/api/admin/store/inventory/import-check') {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && target.startsWith('/api/admin/store/') && target !== '/api/admin/store/inventory/import-check' && target !== '/api/admin/store/maintenance/preview') {
       if (!crypto?.subtle) throw Object.assign(new Error('Güvenli işlem doğrulaması kullanılamıyor. HTTPS bağlantısını kontrol edin.'), { code: 'ADMIN_ACTION_UNAVAILABLE' });
       const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body || '{}'));
       const bodyHash = [...new Uint8Array(hash)].map((value) => value.toString(16).padStart(2, '0')).join('');
@@ -281,7 +291,7 @@ export async function adminFetch(path, options = {}) {
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. İşlem durduruldu.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
     const signedHeaders = await waitForSignal(browserHeaders(headers, url, method, body), controller.signal);
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });
-    mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method) && target !== '/api/admin/store/inventory/import-check';
+    mutationSent = !['GET', 'HEAD', 'OPTIONS'].includes(method) && target !== '/api/admin/store/inventory/import-check' && target !== '/api/admin/store/maintenance/preview';
     const response = await fetch(url, { ...options, method, headers: signedHeaders, body, credentials: 'include', cache: 'no-store', redirect: 'error', signal: controller.signal });
     const payload = await readApiJson(response);
     if (initialUid && currentUid() !== initialUid) throw Object.assign(new Error('Yönetici oturumu değişti. Yanıt işlenmedi.'), { code: 'ADMIN_ACTIVE_SESSION_MISMATCH' });

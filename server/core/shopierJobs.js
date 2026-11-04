@@ -13,14 +13,17 @@ async function processShopierJob(db, ref) {
   const job = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref), row = snap.data();
     if (!row || row.completedAt || row.failedAt || row.availableAt > now) return null;
-    if (!['order.created', 'refund.updated', 'reconcile', 'recover', 'delivery'].includes(row.kind)) throw shopierError('SHOPIER_JOB_INVALID', 500);
+    if (!['order.created', 'refund.updated', 'reconcile', 'recover', 'delivery', 'close'].includes(row.kind)) throw shopierError('SHOPIER_JOB_INVALID', 500);
     tx.update(ref, { lease, availableAt: now + 90_000 });
     return row;
   });
   if (!job) return;
   let repeat = false;
   try {
-    if (job.kind === 'delivery') await deliverShopierOrder(job.orderId);
+    if (job.kind === 'close') {
+      const result = await require('./shopierOperations').closeShopierOrder(job.orderId);
+      repeat = result.pending === true;
+    } else if (job.kind === 'delivery') await deliverShopierOrder(job.orderId);
     else if (job.kind === 'recover') await recoverShopierProduct(job.orderId);
     else if (job.kind === 'reconcile') {
       await reconcileShopierOrder(job.orderId);
@@ -84,11 +87,14 @@ function stopShopierWorker() { enabled = false; clearTimeout(timer); }
 async function shopierJobStatus() {
   const { db } = initFirebaseAdmin();
   if (!db) throw shopierError('STORE_STORAGE_UNAVAILABLE');
-  const [failed, due] = await Promise.all([
+  const [failed, due, reviews] = await Promise.all([
     db.collection('shopierJobs').where('failedAt', '>', 0).orderBy('failedAt', 'desc').limit(10).get(),
-    db.collection('shopierJobs').where('availableAt', '<=', Date.now()).orderBy('availableAt').limit(20).get()
+    db.collection('shopierJobs').where('availableAt', '<=', Date.now()).orderBy('availableAt').limit(20).get(),
+    db.collection('storeLatePaymentReviews').where('resolved', '==', false).limit(10).get()
   ]);
-  return { dueSample: due.size, dueSampleLimit: 20, failed: failed.docs.map((doc) => {
+  return { dueSample: due.size, dueSampleLimit: 20, reviews: reviews.docs.map(doc => {
+    const row = doc.data(); return { orderId: row.orderId, providerOrderId: row.providerOrderId, amountKurus: row.amountKurus, createdAt: row.createdAt };
+  }), failed: failed.docs.map((doc) => {
     const row = doc.data(); return { id: doc.id, kind: row.kind, orderId: row.orderId, resourceId: row.resourceId,
       attempts: row.attempts, lastError: row.lastError, failedAt: row.failedAt };
   }) };

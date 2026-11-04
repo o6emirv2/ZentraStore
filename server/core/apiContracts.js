@@ -22,7 +22,7 @@ const productCreate = object({ ...productFields, imageUpload: object({ data: tex
 const planMap = (value) => !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length <= 12
   && Object.entries(value).every(([key, entry]) => /^[a-z0-9-]{1,40}$/.test(key) && object(planFields)(entry));
 const productPatch = object({ ...productFields, plans: planMap });
-const link = object({ id: text(80), platform: text(20), title: text(48), description: text(80), url: text(500), enabled: boolean });
+const link = object({ id: text(80), platform: text(20), title: text(48), description: text(80), url: text(500), enabled: boolean, showOnHome: boolean });
 const promotion = object({ type: text(20), title: text(100), value: integer(1, 100000000), minimumSubtotalKurus: integer(0, 100000000),
   maxDiscountKurus: integer(0, 100000000), startsAt: date, endsAt: date, usageLimit: integer(0, 1000000), perUserLimit: integer(1, 100),
   platforms: list(text(20), 2), productIds: list(text(80), 50), active: boolean, visibleInWallet: boolean, createOnly: boolean });
@@ -34,6 +34,8 @@ const content = object({ maintenance: boolean,
   support: object({ telegramUsername: text(80) }), home: object({ title: text(100), message: text(500) }),
   categoryVisibility: object(Object.fromEntries(CATEGORY_VISIBILITY_KEYS.map((key) => [key, boolean]))), quickLinks: list(link, 16) });
 const CONTRACTS = [
+  ['POST', /^\/api\/admin\/store\/maintenance\/preview$/, object({ operation: text(40), idempotencyKey: text(100) })],
+  ['POST', /^\/api\/admin\/store\/maintenance\/[^/]+\/(?:orders|audit)\/confirm$/, object({ confirmation: text(20) })],
   ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
   ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],
   ['POST', /^\/api\/payments\/shopier\/topups$/, object({ amountKurus: integer(TOPUP_LIMITS.minKurus, TOPUP_LIMITS.maxKurus), idempotencyKey: text(160) })],
@@ -64,9 +66,9 @@ const CONTRACTS = [
   ['POST', /^\/api\/admin\/store\/products$/, productCreate],
   ['PATCH', /^\/api\/admin\/store\/products\/[^/]+$/, productPatch],
   ['POST', /^\/api\/admin\/store\/products\/bulk$/, object({ updates: list(object({ productId: text(80), settings: productPatch }), 100) })],
-  ['PATCH', /^\/api\/admin\/store\/orders\/[^/]+$/, object({ status: text(30), cancellationReason: text(500), refundReason: text(500), deliveryMessage: text(4000), manualDeliveryText: text(100000) })],
+  ['PATCH', /^\/api\/admin\/store\/orders\/[^/]+$/, object({ status: text(30), cancellationReason: text(500), refundReason: text(500), deliveryMessage: text(4000), manualDeliveryText: text(100000), paymentReference: text(160), paymentConfirmed: boolean })],
   ['PATCH', /^\/api\/admin\/store\/content$/, content],
-  ['PUT', /^\/api\/admin\/store\/links$/, object({ links: list(link, 16) })],
+  ['PUT', /^\/api\/admin\/store\/links$/, object({ links: list(link, 16), expectedRevision: integer(0, 1000000000) })],
   ['PUT', /^\/api\/admin\/store\/(?:promotions|balance-codes)\/[^/]+$/, promotion],
   ['POST', /^\/api\/admin\/store\/inventory\/(?:import|import-check)$/, object(inventoryFields)],
   ['POST', /^\/api\/admin\/store\/inventory\/(?:migrate-shared-pool|rotate-encryption)$/, object({ productId: text(80), planKey: text(40), limit: integer(1, 400) })],
