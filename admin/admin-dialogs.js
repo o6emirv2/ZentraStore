@@ -1,4 +1,4 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v90r1';
 
 export function openAdminDialog({ title, description = '', content = '', confirmLabel = 'Onayla', collect = () => true, destructive = false }) {
   const previous = document.activeElement, dialog = document.createElement('dialog');

@@ -93,31 +93,6 @@ for (const [segment, needed] of [['orders', 'store.orders.bulk'], ['audit', 'sto
   }));
 }
 
-router.get('/admin/store/shopier-readiness', ...adminChain, requireStorePermission('store.orders.read'), asyncRoute(async (_req, res) => {
-  noStore(res);
-  res.json({ ok: true, readiness: require('../config/shopier').shopierReadiness(), jobs: await require('../core/shopierJobs').shopierJobStatus() });
-}));
-router.post('/admin/store/shopier/jobs/:id/retry', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
-  await require('../core/shopierJobs').retryShopierJob(req.params.id, req.user);
-  noStore(res); res.json({ ok: true });
-}));
-router.post('/admin/store/orders/:orderId/shopier/reconcile', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
-  const { reconcileShopierOrder } = require('../core/shopierService');
-  const found = await reconcileShopierOrder(req.params.orderId);
-  await writeSupplementalAdminAudit(req, 'shopier.admin.reconcile', { orderId: req.params.orderId, found });
-  require('../core/shopierJobs').wakeShopierWorker();
-  invalidateAdminStoreCaches(); noStore(res); res.json({ ok: true, found });
-}));
-router.post('/admin/store/orders/:orderId/shopier/close', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
-  const result = await require('../core/shopierOperations').requestShopierClosure(req.params.orderId, { uid: req.user.uid, source: 'admin' });
-  invalidateAdminStoreCaches(); noStore(res); res.status(result.pending ? 202 : 200).json({ ok: true, ...result });
-}));
-
-router.post('/admin/store/orders/:orderId/shopier/cancel', ...sensitiveAdminChain('store.orders.write'), asyncRoute(async (req, res) => {
-  const result = await require('../core/shopierOperations').requestShopierCancellation(req.params.orderId, { uid: req.user.uid, source: 'admin' });
-  invalidateAdminStoreCaches(); noStore(res); res.status(result.pending ? 202 : 200).json({ ok: true, ...result });
-}));
-
 function noStore(res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('Pragma', 'no-cache');

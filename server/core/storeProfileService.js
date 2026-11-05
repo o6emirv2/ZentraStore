@@ -6,7 +6,6 @@ const { normalizeStoreProfile } = require('./storeService');
 
 const PROFILE_CHANGE_LIMITS = Object.freeze({ username: 3, fullName: 1, birthDate: 1 });
 
-
 function profileError(code, statusCode = 400, message = '') {
   return Object.assign(new Error(message || code), { code, statusCode });
 }

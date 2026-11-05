@@ -1,4 +1,4 @@
-import { categoryKey, isSupportedProduct } from '../store/catalog-schema.mjs?v=zentra-ui-v87r1';
+import { categoryKey, isSupportedProduct } from '../store/catalog-schema.mjs?v=zentra-ui-v90r1';
 
 const collator = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
 

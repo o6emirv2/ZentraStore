@@ -98,7 +98,6 @@ function gateError(code, statusCode = 409) {
   return error;
 }
 
-
 function verifyAdminGateFactorProof(req, { identity = {}, gateSession = '', ticket = '' } = {}) {
   const sealedStep = readAdminStep(ticket);
   const expectedUid = String(identity?.uid || '').trim();

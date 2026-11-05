@@ -28,7 +28,7 @@ async function main() {
   let app, browser;
   const errors = [], failedAssets = [], cases = [], metrics = new Map();
   try {
-    app = await applicationFixture({ shopier: true, transientStore: 'memory', rateLimitStore: 'memory', appCheckMode: 'monitor' });
+    app = await applicationFixture({ transientStore: 'memory', rateLimitStore: 'memory', appCheckMode: 'monitor' });
     browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : { channel: 'chrome' }), args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'], env: { ...process.env, ...(process.env.CHROMIUM_LIBRARY_PATH ? { LD_LIBRARY_PATH: process.env.CHROMIUM_LIBRARY_PATH } : {}) } });
     const resetLimits = async () => { const { publicLimiter, apiLimiter, adminBootstrapLimiter, strictLimiter } = require('../server/core/security'); await publicLimiter.resetKey('127.0.0.1'); await apiLimiter.resetKey('127.0.0.1'); await adminBootstrapLimiter.resetKey('127.0.0.1'); await strictLimiter.resetKey('127.0.0.1'); };
     const contextFor = async (profile, width, { member = false, height = 844 } = {}) => {
@@ -108,9 +108,8 @@ async function main() {
       assert(wideBalance[0].right <= wideBalance[1].x - 4 && wideBalance[1].right <= wideBalance[2].x - 4, 'Large balance overlaps the header controls');
       await page.locator('#topBalanceValue').evaluate((el, value) => { el.textContent = value; }, originalBalance);
       await page.locator('#accountButton').click(); await page.locator('#customerViewProfile').waitFor({ state: 'visible' });
-      await bounds(page, ['.client-shell', '.client-header', '.client-nav', '.client-header__actions', '.account-page__wallet', '#accountTopupAmount', '#accountTopupButton']);
-      await bounds(page, ['.client-nav button', '.screen-icon-button', '.account-topup__presets button'], { tapTargets: true });
-      await page.locator('#accountTopupAmount').fill('250'); assert(Math.abs((await page.evaluate(() => visualViewport.scale)) - 0.8) < 0.002);
+      await bounds(page, ['.client-shell', '.client-header', '.client-nav', '.client-header__actions', '.account-page__wallet']);
+      await bounds(page, ['.client-nav button', '.screen-icon-button'], { tapTargets: true });
       await page.locator('[data-customer-nav="orders"]').click(); await page.locator('#customerViewOrders').waitFor({ state: 'visible' });
       await bounds(page, ['.orders-page__summary', '.orders-page__search', '.orders-page__filters', '.orders-page__results']);
       await page.locator('.client-nav [data-customer-home]').click();
@@ -124,7 +123,7 @@ async function main() {
       await page.locator('.zentra-notice.is-visible').waitFor();
       await bounds(page, ['.zentra-notice', '.zentra-notice__close'], { tapTargets: true });
       await page.evaluate(() => { location.hash = '#account/cart'; }); await page.locator('.customer-cart-item').waitFor({ state: 'visible' });
-      await bounds(page, ['.customer-cart-item', '.customer-cart-item__controls', '.customer-cart-item__remove', '.customer-quantity', '.cart-shopier-panel', '#shopierCheckoutButton', '#cartTopupButton']);
+      await bounds(page, ['.customer-cart-item', '.customer-cart-item__controls', '.customer-cart-item__remove', '.customer-quantity']);
       await bounds(page, ['.customer-cart-item__remove', '.customer-quantity button'], { tapTargets: true });
       await page.locator('[data-cart-quantity="increase"]').click(); await page.waitForFunction(() => document.querySelector('.customer-quantity output').textContent === '2');
       if (width === 320) await page.screenshot({ path: path.join(output, 'member-cart-320.png') });

@@ -2,7 +2,6 @@
 
 const { CATEGORY_VISIBILITY_KEYS } = require('../../public/js/store/catalog-schema.mjs');
 const { MAX_IMAGE_BASE64 } = require('./storeProductImages');
-const { TOPUP_LIMITS } = require('./shopierWallet');
 
 const text = (max) => (value) => typeof value === 'string' && value.length <= max;
 const integer = (min, max) => (value) => Number.isSafeInteger(value) && value >= min && value <= max;
@@ -36,10 +35,6 @@ const content = object({ maintenance: boolean,
 const CONTRACTS = [
   ['POST', /^\/api\/admin\/store\/maintenance\/preview$/, object({ operation: text(40), idempotencyKey: text(100) })],
   ['POST', /^\/api\/admin\/store\/maintenance\/[^/]+\/(?:orders|audit)\/confirm$/, object({ confirmation: text(20) })],
-  ['POST', /^\/api\/admin\/store\/shopier\/jobs\/[^/]+\/retry$/, object({})],
-  ['POST', /^\/api\/payments\/shopier\/create$/, object({ items: cart, idempotencyKey: text(160), promotionCode: text(32) })],
-  ['POST', /^\/api\/payments\/shopier\/topups$/, object({ amountKurus: integer(TOPUP_LIMITS.minKurus, TOPUP_LIMITS.maxKurus), idempotencyKey: text(160) })],
-  ['POST', /^\/api\/admin\/store\/orders\/[^/]+\/shopier\/(?:reconcile|close|cancel)$/, object({})],
   ['POST', /^\/api\/profile\/update$/, object({ firstName: text(50), lastName: text(50), username: text(20), birthDate: text(10) })],
   ['POST', /^\/api\/auth\/login$/, object({ identifier: text(254), password: text(4096) })],
   ['POST', /^\/api\/auth\/password-reset$/, object({ identifier: text(254) })],
@@ -66,7 +61,7 @@ const CONTRACTS = [
   ['POST', /^\/api\/admin\/store\/products$/, productCreate],
   ['PATCH', /^\/api\/admin\/store\/products\/[^/]+$/, productPatch],
   ['POST', /^\/api\/admin\/store\/products\/bulk$/, object({ updates: list(object({ productId: text(80), settings: productPatch }), 100) })],
-  ['PATCH', /^\/api\/admin\/store\/orders\/[^/]+$/, object({ status: text(30), cancellationReason: text(500), refundReason: text(500), deliveryMessage: text(4000), manualDeliveryText: text(100000), paymentReference: text(160), paymentConfirmed: boolean })],
+  ['PATCH', /^\/api\/admin\/store\/orders\/[^/]+$/, object({ expectedUpdatedAt: integer(0, 8640000000000000), status: text(30), cancellationReason: text(500), refundReason: text(500), deliveryMessage: text(4000), manualDeliveryText: text(100000), paymentReference: text(160), paymentConfirmed: boolean })],
   ['PATCH', /^\/api\/admin\/store\/content$/, content],
   ['PUT', /^\/api\/admin\/store\/links$/, object({ links: list(link, 16), expectedRevision: integer(0, 1000000000) })],
   ['PUT', /^\/api\/admin\/store\/(?:promotions|balance-codes)\/[^/]+$/, promotion],

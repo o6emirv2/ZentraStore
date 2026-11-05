@@ -2,9 +2,8 @@
 
 function paymentChannel(row = {}) {
   const declared = row.paymentMethod;
-  if (['telegram', 'shopier', 'wallet'].includes(declared)) return declared;
+  if (['telegram', 'wallet'].includes(declared)) return declared;
   if (declared !== undefined && declared !== null && declared !== '') return 'unknown';
-  if (row.shopier?.productId || row.shopier?.orderId || row.shopier?.state || row.orderType === 'wallet_topup') return 'shopier';
   if (row.walletPaidAt || row.walletRefundedAt || row.walletDebitedKurus) return 'wallet';
   if (row.salesChannel === 'telegram' || /^TELEGRAM_/.test(String(row.fulfillmentStatus || ''))) return 'telegram';
   return 'unknown';

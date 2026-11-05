@@ -1,8 +1,6 @@
-import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v84r1';
-import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v89r1';
-import { CATALOG_FILTERS, CATEGORY_PRESETS, categoryKey, isSupportedProduct, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v87r1';
-
-import { normalizeShopierAvailability } from './shopier-availability.js?v=zentra-ui-v84r1';
+import { productFeatures, productImagePath } from './product-fields.js?v=zentra-ui-v90r1';
+import { normalizeQuickLinks } from './social-links.js?v=zentra-ui-v90r1';
+import { CATALOG_FILTERS, CATEGORY_PRESETS, categoryKey, isSupportedProduct, normalizeCategoryVisibility, normalizeCategoryKey } from './catalog-schema.mjs?v=zentra-ui-v90r1';
 
 export { CATALOG_FILTERS };
 
@@ -155,7 +153,6 @@ function normalizeStorefront(source = {}) {
   });
 }
 
-
 function normalizeAvatar(source = {}) {
   const id = String(source.id || '').trim().slice(0, 20);
   const label = String(source.label || '').trim().slice(0, 60);
@@ -180,7 +177,6 @@ function normalizeCatalog(source = {}) {
     currency: 'TRY',
     telegramUsername: String(value.telegramUsername || 'ZENTRA_STORE').replace(/[^a-z0-9_]/gi, '').slice(0, 32),
     stockVerified: value.stockVerified !== false,
-    payments: Object.freeze({ shopier: normalizeShopierAvailability(value.payments?.shopier) }),
     badgeOptions,
     storefront: normalizeStorefront(value.storefront),
     avatars: Object.freeze((Array.isArray(value.avatars) ? value.avatars : []).map(normalizeAvatar).filter(Boolean).slice(0, 25)),
@@ -207,7 +203,7 @@ export async function loadStoreCatalog(apiRequest, { force = false } = {}) {
         stockVerified = (source?.catalog || source)?.stockVerified !== false;
       } catch (error) {
         if (catalogCache) {
-          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true, payments: Object.freeze({ shopier: normalizeShopierAvailability({ status: 'unavailable' }) }) });
+          catalogCache = Object.freeze({ ...catalogCache, stockVerified: false, stale: true });
           catalogCachedAt = 0;
           return catalogCache;
         }

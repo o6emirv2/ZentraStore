@@ -138,12 +138,3 @@ test('stock import locks the form before reauthentication and releases it when c
   release(false); await first; assert.equal(state.inventoryImportBusy, false);
 });
 
-test('wallet topups have their own history filter and cannot count as product deliveries', async () => {
-  const { browserModule } = require('./helpers/browser-module.cjs');
-  const { orderMatchesFilter, summarizeCustomerOrders, latestDeliveryLabel } = await browserModule('public/js/store/customer-app.js');
-  const topup = { orderType: 'wallet_topup', status: 'delivered', updatedAt: Date.now() }, purchase = { status: 'delivered', updatedAt: 1 };
-  assert.equal(orderMatchesFilter(topup, 'topups'), true); assert.equal(orderMatchesFilter(topup, 'purchases'), false); assert.equal(orderMatchesFilter(topup, 'delivered'), false);
-  assert.equal(orderMatchesFilter(purchase, 'purchases'), true); assert.equal(orderMatchesFilter(purchase, 'topups'), false);
-  assert.deepEqual(summarizeCustomerOrders([topup, purchase]), { total: 1, delivered: 1, pending: 0, approved: 0 });
-  assert.equal(latestDeliveryLabel([topup]), 'Henüz yok');
-});

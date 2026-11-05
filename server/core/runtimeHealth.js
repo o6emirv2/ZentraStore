@@ -38,11 +38,11 @@ async function connectionReadiness() {
 function sensitiveConfigurationGuard(req, res, next) {
   const path = String(req.originalUrl || '').split('?')[0];
   const sensitive = !['GET', 'HEAD', 'OPTIONS'].includes(req.method)
-    && /^\/api\/(?:admin\/(?:store\/|action-proof$)|store\/(?:orders$|balance-codes\/redeem$)|payments\/shopier\/(?:create|topups)$)/.test(path);
+    && /^\/api\/(?:admin\/(?:store\/|action-proof$)|store\/(?:orders$|balance-codes\/redeem$))/.test(path);
   const configuration = env.configurationReport();
   const target = path === '/api/admin/action-proof' ? String(req.body?.path || '') : path;
   const admin = path.startsWith('/api/admin/');
-  const vault = target.startsWith('/api/admin/store/inventory/') || target === '/api/store/orders' || (target !== '/api/payments/shopier/topups' && /\/shopier\//.test(target));
+  const vault = target.startsWith('/api/admin/store/inventory/') || target === '/api/store/orders';
   const ready = configuration.capabilities
     ? (admin ? configuration.capabilities.admin : configuration.capabilities.identity) && (!vault || configuration.capabilities.vault)
     : configuration.ready;

@@ -1,7 +1,7 @@
-import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v84r1';
-import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
-import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v89r1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
+import { installAppUI, setActionBusy, animateView } from '../public/js/ui/app-ui.js?v=zentra-ui-v90r1';
+import { installErrorReporter } from '../public/js/ui/error-reporter.js?v=zentra-ui-v90r1';
+import { adminFetch, lockAdminInteractions, startAmbientCanvas } from './admin-core.js?v=zentra-ui-v90r1';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v90r1';
 
 installInteractionGuard();
 installAppUI();
@@ -31,7 +31,6 @@ async function verifyCompletedAdminAccess() {
   error.code = 'ADMIN_GATE_ACCESS_INVALID';
   throw error;
 }
-
 
 function maskUid(value = '') {
   const uid = String(value || '').trim();

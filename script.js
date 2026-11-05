@@ -1,6 +1,6 @@
-import { installErrorReporter } from './public/js/ui/error-reporter.js?v=zentra-ui-v84r1';
-import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-ui-v89r1';
-import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v84r1';
+import { installErrorReporter } from './public/js/ui/error-reporter.js?v=zentra-ui-v90r1';
+import { bootStorefront } from '/public/js/store/storefront.js?v=zentra-ui-v90r1';
+import { installInteractionGuard } from '/public/js/ui/interaction-guard.js?v=zentra-ui-v90r1';
 
 window.__ZENTRA_RUNTIME__ = window.__ZENTRA_RUNTIME__ || { apiBase: '' };
 installInteractionGuard();

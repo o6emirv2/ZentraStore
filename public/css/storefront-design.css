@@ -74,25 +74,9 @@
 @media(max-width:359px){.showcase-social{grid-template-columns:minmax(0,1fr);gap:6px}.showcase-social__icon{width:26px;height:26px;font-size:17px}.showcase-social__copy strong{font-size:12px}.showcase-slider__copy strong{font-size:16px}.auth-pending>span:last-child{max-width:14ch}}
 @media(hover:none){.showcase-social:hover,.game-category:hover{background:var(--app-panel)}}
 @media(prefers-reduced-motion:reduce){.showcase-slider__track,.showcase-slider__progress>span,.showcase-social{transition:none}}
-
-/* Hosted card checkout follows the existing storefront controls. */
-.button--shopier{background:linear-gradient(125deg,#564bc5,#7958d5);border:1px solid #aaa0f0;color:#fff;min-height:52px;gap:10px}
-.button--shopier:hover:not(:disabled){filter:brightness(1.12)}
-.button--shopier:focus-visible{outline:3px solid #c5baff;outline-offset:3px}
-.button--shopier:disabled{opacity:.5;cursor:not-allowed}
-.shopier-checkout-status{font-size:12px;line-height:1.6;color:#b6bed3;margin:0;text-align:center;overflow-wrap:anywhere}
 .customer-payment label:has(input:disabled){opacity:.6}
 
-.cart-shopier-panel{width:min(100%,1000px);margin-inline:auto;padding:22px;border:1px solid #465782;border-radius:18px;background:#141e34;display:grid;gap:16px;min-width:0}.cart-shopier-panel>header{display:flex;align-items:center;gap:14px}.cart-shopier-panel>header>i{display:grid;place-items:center;width:44px;height:44px;background:#2c315b;border-radius:12px;color:#c8c0ff;flex-shrink:0}.cart-shopier-panel h3,.account-topup h3{margin:0;font-size:17px;line-height:1.4}.cart-shopier-panel header p,.account-topup header p{margin:5px 0 0;font-size:13px;line-height:1.6;color:#b7c1d8}
-.account-topup{display:grid;gap:12px;padding-top:18px;margin-top:4px;border-top:1px solid #405172;min-width:0}.account-topup>label{font-size:13px;font-weight:650;color:#e6ecff}.account-topup__amount{display:flex;align-items:center;border:1px solid #52658d;background:#10182b;border-radius:12px;min-width:0}.account-topup__amount input{width:100%;min-width:0;border:0;background:transparent;padding:14px;color:#f1f5ff;font-family:inherit;font-size:21px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums;outline-offset:3px}.account-topup__amount>span{padding:0 16px;color:#b7c1d8;font-weight:600}.account-topup__amount:focus-within{outline:2px solid #a49aef;outline-offset:2px}.account-topup__presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.account-topup__presets button{min-height:44px;padding:8px 4px;border:1px solid #465b80;border-radius:10px;background:#192641;color:#e6ecff;font-size:13px;font-weight:650;cursor:pointer}.account-topup__presets button:hover:not(:disabled){background:#303e65;border-color:#a49aef}.account-topup__presets button:focus-visible{outline:3px solid #b9aaf1;outline-offset:2px}.account-topup__presets button:disabled,.account-topup__amount input:disabled{opacity:.55;cursor:not-allowed}.account-topup>small{color:#a9b9d5;font-size:12px;line-height:1.5}.account-topup>p{margin:0;color:#c4cee3;font-size:13px;line-height:1.6}.account-topup .button{white-space:normal}.account-topup [aria-invalid=true]{color:#ffc0cb}
-@media(max-width:480px){.account-topup__presets{grid-template-columns:repeat(2,minmax(0,1fr))}.account-topup__amount input{font-size:16px;min-height:44px}}
-@media(pointer:coarse){.account-topup__presets button,.account-topup .button,.cart-shopier-panel .button{min-height:44px}}
 
-.shopier-status-actions { display:flex; justify-content:center; margin:.5rem 0; }
-.shopier-status-refresh { display:inline-flex; align-items:center; justify-content:center; gap:.6rem; min-height:44px; padding:.6rem 1rem; border:1px solid var(--border-color,#3c4c72); border-radius:12px; color:inherit; background:transparent; font:inherit; cursor:pointer; }
-.shopier-status-refresh:hover { background:rgba(120,135,230,.12); }
-.shopier-status-refresh:focus-visible { outline:2px solid #a5b0ff; outline-offset:3px; }
-.shopier-status-refresh:disabled { opacity:.6; cursor:wait; }
 
 .shopping-guide {
   margin: 20px 0;
@@ -130,7 +114,6 @@
 .shopping-guide p { font-size: 12px; line-height: 1.7; color: #b6c3d6; margin: 7px 0; }
 .shopping-guide .shopping-guide__note { margin: 15px 20px 18px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, .16); }
 .search-hint { margin: 8px 4px 0; color: #aebcd0; font-size: 12px; line-height: 1.6; }
-.cart-shopier-panel--topup { border-color: rgba(96, 165, 250, .3); }
 @media (max-width: 640px) {
   .shopping-guide ol { grid-template-columns: 1fr; gap: 12px; }
   .shopping-guide summary { padding: 15px; font-size: 13px; }
@@ -139,7 +122,5 @@
   .shopping-guide summary > i { transition: none; }
 }
 @media(max-width:899px){
- .cart-shopier-panel{padding:14px;border-radius:14px;gap:12px}.cart-shopier-panel h3,.account-topup h3{font-size:15px}.cart-shopier-panel header p,.account-topup header p{font-size:12px}
- .account-topup__presets{gap:6px}.account-topup__presets button{font-size:12px}.account-topup__amount input{padding:10px}
  .shopping-guide{margin:16px 0;border-radius:14px}.shopping-guide summary{padding:12px 14px;min-height:44px;font-size:13px}.search-hint{font-size:11px}
 }

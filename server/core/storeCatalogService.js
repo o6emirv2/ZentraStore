@@ -476,7 +476,6 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
   return { updated: prepared.length, productIds: [...ids], products: savedProducts, updatedAt: now };
 }
 
-
 async function createProduct(input = {}, actor = {}) {
   const product = normalizeCreatedProduct(input);
   if (input.imageUpload !== undefined) readImageUpload(input.imageUpload);

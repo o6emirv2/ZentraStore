@@ -1,5 +1,5 @@
 {
-  "version": 15,
+  "version": 16,
   "currency": "TRY",
   "telegramUsername": "ZENTRA_STORE",
   "products": [
@@ -854,6 +854,68 @@
           "label": "Aylık",
           "duration": "30 Gün",
           "priceKurus": 135000
+        }
+      ]
+    },
+    {
+      "id": "gbox-iphone",
+      "platform": "ios",
+      "game": "gbox",
+      "categoryKey": "gbox-ios",
+      "category": "GBOX iOS",
+      "name": "GBOX · iPhone",
+      "badge": "YENİ",
+      "badgeKey": "new",
+      "icon": "fa-cube",
+      "image": "/public/assets/products/gbox.webp",
+      "accent": "0,204,102",
+      "description": "iPhone için GBOX yıllık paket. Siparişinizi Telegram üzerinden oluşturun; teslimat ayrıntıları yetkili tarafından doğrulanır.",
+      "inventoryType": "license",
+      "fulfillmentMode": "telegram_only",
+      "sortOrder": 790,
+      "features": [
+        "12 aylık yıllık paket",
+        "iPhone için ayrı ürün kaydı",
+        "Telegram üzerinden sipariş ve destek"
+      ],
+      "tags": [],
+      "plans": [
+        {
+          "key": "yearly",
+          "label": "Yıllık",
+          "duration": "12 ay",
+          "priceKurus": 75000
+        }
+      ]
+    },
+    {
+      "id": "gbox-ipad",
+      "platform": "ios",
+      "game": "gbox",
+      "categoryKey": "gbox-ios",
+      "category": "GBOX iOS",
+      "name": "GBOX · iPad",
+      "badge": "YENİ",
+      "badgeKey": "new",
+      "icon": "fa-cube",
+      "image": "/public/assets/products/gbox.webp",
+      "accent": "0,204,102",
+      "description": "iPad için GBOX yıllık paket. Siparişinizi Telegram üzerinden oluşturun; teslimat ayrıntıları yetkili tarafından doğrulanır.",
+      "inventoryType": "license",
+      "fulfillmentMode": "telegram_only",
+      "sortOrder": 800,
+      "features": [
+        "12 aylık yıllık paket",
+        "iPad için ayrı ürün kaydı",
+        "Telegram üzerinden sipariş ve destek"
+      ],
+      "tags": [],
+      "plans": [
+        {
+          "key": "yearly",
+          "label": "Yıllık",
+          "duration": "12 ay",
+          "priceKurus": 75000
         }
       ]
     }

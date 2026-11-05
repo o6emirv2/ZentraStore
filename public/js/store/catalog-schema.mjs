@@ -1,6 +1,7 @@
 export const GAME_LABELS = Object.freeze({
   pubg: 'PUBG MOBILE',
-  oxide: 'OXİDE'
+  oxide: 'OXİDE',
+  gbox: 'GBOX'
 });
 
 export const GAME_KEYS = Object.freeze(Object.keys(GAME_LABELS));
@@ -9,6 +10,7 @@ const presets = {
   'pubg-android': { category: 'PUBG MOBILE Android', platform: 'android', game: 'pubg', inventoryType: 'license' },
   'pubg-ios': { category: 'PUBG MOBILE iOS', platform: 'ios', game: 'pubg', inventoryType: 'license' },
   'oxide-android': { category: 'OXİDE Android', platform: 'android', game: 'oxide', inventoryType: 'license' },
+  'gbox-ios': { category: 'GBOX iOS', platform: 'ios', game: 'gbox', inventoryType: 'license' },
   'oxide-ios': { category: 'OXİDE iOS', platform: 'ios', game: 'oxide', inventoryType: 'license' }
 };
 export const CATEGORY_PRESETS = Object.freeze(Object.fromEntries(

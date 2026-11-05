@@ -27,8 +27,6 @@ const authRouter = require('./server/routes/auth.routes');
 const identityRouter = require('./server/routes/identity.routes');
 const adminAuthRouter = require('./server/routes/admin-auth.routes');
 const storeRouter = require('./server/routes/store.routes');
-const shopierRoutes = require('./server/routes/shopier.routes');
-const { startShopierWorker, stopShopierWorker } = require('./server/core/shopierJobs');
 const { startMaintenanceWorker, stopMaintenanceWorker } = require('./server/core/orderMaintenanceService');
 
 const app = express();
@@ -62,13 +60,13 @@ function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
     + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
     + (success ? '<meta http-equiv="refresh" content="0;url=/admin/" />\n' : '')
     + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
-    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v85r1" /></head><body>'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=zentra-ui-v90r1" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v90r1" /><link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v90r1" /><link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v90r1" /></head><body>'
     + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
     + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
     + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
     + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
     + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
-    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v84r1"></script></body></html>';
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=zentra-ui-v90r1"></script></body></html>';
 }
 
 app.disable('x-powered-by');
@@ -209,7 +207,6 @@ app.post('/admin/session/handoff', adminAuthLimiter, express.urlencoded({
 
 // Exact server-to-server endpoint, before browser Origin/App Check/JSON middleware.
 // All other payment endpoints retain the normal browser and authentication guards.
-app.use(shopierRoutes.webhookRouter);
 app.use('/api', cors(corsOptions));
 app.options('/api/*', cors(corsOptions));
 app.use('/api', apiLimiter);
@@ -240,7 +237,6 @@ app.use('/api', authRouter);
 app.use('/api', identityRouter);
 app.use('/api', adminAuthRouter);
 app.use('/api', storeRouter);
-app.use('/api', shopierRoutes.router);
 
 const staticOptions = {
   etag: true,
@@ -272,7 +268,7 @@ app.get(['/admin', '/admin/', '/admin/index.html', '/admin/admin.html'], (req, r
   const canonical = env.canonicalOrigin || env.publicBaseUrl;
   const canonicalHost = canonical && new URL(canonical).host.toLowerCase();
   const currentHost = String(req.headers.host || '').toLowerCase();
-  if (canonicalHost && (currentHost !== canonicalHost || (req.path === '/admin/admin.html' && req.query.view !== 'v89') || req.path === '/admin')) {
+  if (canonicalHost && (currentHost !== canonicalHost || (req.path === '/admin/admin.html' && req.query.view !== 'v90') || req.path === '/admin')) {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     return res.redirect(302, `${canonical}${req.path === '/admin/index.html' ? '/admin/index.html' : '/admin/'}`);
   }
@@ -282,7 +278,7 @@ app.get('/admin', (req, res, next) => req.path === '/admin' ? res.redirect(302, 
 app.get(['/admin/', '/admin/index.html'], (_req, res) => { res.setHeader('Cache-Control', 'no-store, max-age=0'); return res.sendFile(path.join(root, 'admin', 'index.html')); });
 app.get('/admin/admin.html', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
-  return req.query.view === 'v89' ? res.sendFile(path.join(root, 'admin', 'admin.html')) : res.redirect(302, '/admin/');
+  return req.query.view === 'v90' ? res.sendFile(path.join(root, 'admin', 'admin.html')) : res.redirect(302, '/admin/');
 });
 app.get(['/admin/session/handoff', '/admin/session/handoff/'], (_req, res) => res.redirect(302, '/admin/'));
 const adminAssetAllowlist = new Set([
@@ -305,10 +301,7 @@ app.get(['/', '/index.html'], (_req, res) => {
   res.setHeader('Cache-Control', 'no-cache, max-age=0, must-revalidate');
   return res.sendFile(path.join(root, 'index.html'));
 });
-app.get(['/odeme/sonuc', '/odeme/sonuc/', '/odeme/iptal', '/odeme/iptal/'], (req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  return res.sendFile(path.join(root, 'odeme', req.path.includes('iptal') ? 'iptal' : 'sonuc', 'index.html'));
-});
+
 
 app.use('/api', (_req, res) => res.status(404).json({ ok: false, error: 'API_ROUTE_NOT_FOUND' }));
 app.use((_req, res) => {
@@ -354,7 +347,6 @@ function startServer() {
   }));
 
   startRestockWorker();
-  startShopierWorker();
   startMaintenanceWorker();
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
@@ -363,7 +355,6 @@ function startServer() {
 
 function shutdown(signal) {
   stopRestockWorker();
-  stopShopierWorker();
   stopMaintenanceWorker();
   if (!server) return;
   server.close(() => process.exit(process.exitCode || 0));

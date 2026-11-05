@@ -1,11 +1,11 @@
-import { createShopierAvailabilityRefresh, shopierUnavailableMessage } from './shopier-availability.js?v=zentra-ui-v84r1';
-import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v84r1';
-import { createShopierCheckout, verifiedShopierUrl, parseTopupAmount } from './shopier-checkout.js?v=zentra-ui-v84r1';
-import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v84r1';
-import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v84r1';
-import { versionedProductImage } from './product-fields.js?v=zentra-ui-v84r1';
-import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v84r1';
-import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v89r1';
+
+import { PRODUCT_MEDIA_GROUPS } from './product-media.js?v=zentra-ui-v90r1';
+
+import { installAppUI, spinnerMarkup, skeletonMarkup, setActionBusy, beginRegion, animateView, restoreViewScroll, confirmDiscard, confirmOperation, setFieldError, clearFieldError } from '../ui/app-ui.js?v=zentra-ui-v90r1';
+import { createPurchaseTracker } from './purchase-tracker.js?v=zentra-ui-v90r1';
+import { versionedProductImage } from './product-fields.js?v=zentra-ui-v90r1';
+import { isUncertainMutationError } from '../request-utils.js?v=zentra-ui-v90r1';
+import { createRequestId, friendlyStoreError, loadStoreRuntimeConfig, storeApi } from './api.js?v=zentra-ui-v90r1';
 import {
   getStoreAuthSnapshot,
   initStoreAuth,
@@ -19,13 +19,13 @@ import {
   resetStorePassword,
   signInStore,
   subscribeStoreAuth
-} from './auth.js?v=zentra-ui-v89r1';
-import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v89r1';
-import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v87r1';
-import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v84r1';
-import { installProductGallery } from './product-gallery.js?v=zentra-ui-v84r1';
-import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v84r1';
-import { renderQuickLinks } from './social-links.js?v=zentra-ui-v89r1';
+} from './auth.js?v=zentra-ui-v90r1';
+import { CATALOG_FILTERS, formatStorePrice, getStorePlan, getStoreProduct, loadStoreCatalog, productMatchesCatalogFilter, resolveCatalogFilter } from './products.js?v=zentra-ui-v90r1';
+import { GAME_LABELS } from './catalog-schema.mjs?v=zentra-ui-v90r1';
+import { createNotificationCenter } from '../ui/notification-center.js?v=zentra-ui-v90r1';
+import { installProductGallery } from './product-gallery.js?v=zentra-ui-v90r1';
+import { installShowcaseSlider } from './showcase-slider.js?v=zentra-ui-v90r1';
+import { renderQuickLinks } from './social-links.js?v=zentra-ui-v90r1';
 import {
   COUPON_FILTERS,
   ORDER_FILTERS,
@@ -38,19 +38,19 @@ import {
   orderMatchesFilter,
   summarizeCustomerCoupons,
   summarizeCustomerOrders
-} from './customer-app.js?v=zentra-ui-v84r1';
-import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v84r1';
+} from './customer-app.js?v=zentra-ui-v90r1';
+import { createCustomerAppController } from './customer-app.js?v=zentra-ui-v90r1';
 import {
   renderAvatarPickerView,
   renderCartItemView,
   renderCouponCardView,
   renderCustomerEmpty,
   renderDeliveryCardView
-} from './customer-renderers.js?v=zentra-ui-v84r1';
+} from './customer-renderers.js?v=zentra-ui-v90r1';
 
-import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v89r1';
-import { updateAccountView } from './account-view.js?v=zentra-ui-v84r1';
-import { renderProductPlans, renderProductSummary, renderProductFeatures, productTopupOffer } from './product-detail.js?v=zentra-ui-v84r1';
+import { renderOrderCardView, renderOrdersEmpty, renderOrdersLoading } from './order-view.js?v=zentra-ui-v90r1';
+import { updateAccountView } from './account-view.js?v=zentra-ui-v90r1';
+import { renderProductPlans, renderProductSummary, renderProductFeatures } from './product-detail.js?v=zentra-ui-v90r1';
 
 const STORE_VERSION = 'storefront-v76';
 const FAVORITES_STORAGE_KEY = 'zentra-store-favorites-v67';
@@ -76,12 +76,10 @@ const ORDER_STATUS = Object.freeze({
 });
 
 const $ = (selector, root = document) => root.querySelector(selector);
-const shopierCheckout = createShopierCheckout({ request: storeApi, storage: { getItem: (key) => window.sessionStorage.getItem(key),
-  setItem: (key, value) => window.sessionStorage.setItem(key, value), removeItem: (key) => window.sessionStorage.removeItem(key) }, createId: () => createRequestId('shopier') });
+
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const state = {
-  shopierChecking: false, shopierRefreshing: false,
   catalog: null,
   activeFilter: 'all',
   searchQuery: '',
@@ -140,29 +138,6 @@ const state = {
 };
 
 const purchaseTracker = createPurchaseTracker({ api: storeApi, userId: () => state.auth.user?.uid });
-
-const refreshShopierAvailability = createShopierAvailabilityRefresh({
-  load: () => loadStoreCatalog(storeApi, { force: true }),
-  onUpdate: (value, catalog) => {
-    if (state.catalog) {
-      const selected = state.selectedProduct, key = state.selectedPlan?.key;
-      state.catalog = { ...(catalog || state.catalog), ...(!catalog ? { stockVerified: false, stale: true } : {}), payments: { shopier: value } };
-      renderCatalog(); renderCart();
-      if (selected && state.activeLayer === $('#purchaseModal')) {
-        const refreshed = getStoreProduct(state.catalog, selected.id);
-        if (refreshed && JSON.stringify(refreshed) !== JSON.stringify(selected)) openPurchase(refreshed.id, key, state.previousFocus);
-        else if (!refreshed) closeActiveLayer();
-        else renderPurchaseSummary();
-      }
-    }
-    syncPaymentChoice();
-  },
-  onLoading: (value) => { state.shopierRefreshing = value; syncPaymentChoice(); if (state.selectedProduct) renderPurchaseSummary();
-    for (const id of ['accountTopupRefresh', 'shopierCheckoutRefresh']) {
-      const button = document.getElementById(id); if (button) { button.disabled = value; button.setAttribute('aria-busy', String(value)); }
-    }
-  }
-});
 
 function loadFavoriteProducts() {
   try {
@@ -424,7 +399,6 @@ function normalizeSearch(value = '') {
   return String(value || '').trim().toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
 }
 
-
 function filteredProducts() {
   const products = state.catalog?.products || [];
   const query = normalizeSearch(state.searchQuery);
@@ -515,7 +489,6 @@ function renderStorefrontConfiguration() {
   $$('[data-telegram-support]').forEach((link) => {
     link.href = `https://t.me/${supportUsername}`;
   });
-
 
 }
 
@@ -803,14 +776,9 @@ function renderPurchaseSummary() {
   const telegram = $('#buyTelegramButton');
   const automaticReady = !!channel?.automaticReady && !maintenance;
   const telegramReady = !!channel?.telegramOpen && !maintenance;
-  const offer = productTopupOffer(plan, state.catalog);
-  $('#purchaseTopupPanel').hidden = !offer.visible;
-  $('#purchaseTopupButton').disabled = !offer.available || state.orderBusy || state.shopierRefreshing;
-  $('#purchaseTopupStatus').textContent = offer.available
-    ? 'Bu paket şu anda stokta yok. Hesabınıza bakiye yükleyebilirsiniz; ürün alımını stok geldiğinde ayrıca onaylamanız gerekir.'
-    : shopierUnavailableMessage(state.catalog?.payments?.shopier, { topup: true, checking: state.shopierRefreshing });
-  add.hidden = !automaticReady;
-  add.disabled = !automaticReady;
+  const cartReady = automaticReady || telegramReady;
+  add.hidden = !cartReady;
+  add.disabled = !cartReady || state.orderBusy || !!purchaseTracker.pending();
   $('span', add).textContent = 'Sepete ekle';
   telegram.hidden = !telegramReady;
   telegram.disabled = !telegramReady;
@@ -849,7 +817,7 @@ function addToCart(product, plan, quantity = 1) {
   state.cart.set(key, current);
   clearAppliedPromotion({ message: 'Sepet değiştiği için indirim kodunu yeniden doğrulayın.' });
   renderCart();
-  showNotice('success', 'Ürün sepetinize eklendi', `${product.name} · ${platformName(product.platform)} · ${plan.label}`);
+  showNotice('success', 'Ürün sepetinize eklendi', `${product.name} · ${platformName(product.platform)} · ${plan.label}`, { sound: true, operation: 'SEPET', actionLabel: 'Sepetimi aç', onAction: () => openCustomer('cart') });
 }
 
 function cartLines() {
@@ -983,44 +951,7 @@ async function applyCartPromotion(event) {
   }
 }
 
-function cartNeedsShopierTopup() {
-  const lines = cartLines();
-  return !lines.length || state.catalog?.payments?.shopier?.available !== true || state.catalog?.stockVerified === false
-    || lines.some((line) => isTelegramOnly(line.product) || line.product.automaticEnabled === false || Number(line.plan.stock?.available || 0) < line.quantity);
-}
-function topupLimits() { return state.catalog?.payments?.shopier?.topupLimits || { minKurus: 10000, maxKurus: 1000000 }; }
-function syncAccountTopup() {
-  const account = state.auth.account, pending = shopierCheckout.pending(state.auth.user?.uid, 'wallet_topup'), button = $('#accountTopupButton');
-  const available = state.catalog?.payments?.shopier?.topupAvailable === true;
-  const allowed = account && (account.walletTopupAllowed ?? account.accountStatus === 'active');
-  if (button && button.getAttribute('aria-busy') !== 'true') {
-    button.disabled = !!(state.orderBusy || state.shopierRefreshing || purchaseTracker.pending() || (!pending && (!available || !allowed || state.auth.accountStale)));
-    button.querySelector('span').textContent = pending ? 'Bekleyen Shopier işlemimi aç' : 'Shopier ile bakiye yükle';
-  }
-  const amount = $('#accountTopupAmount');
-  if (amount) amount.disabled = !!pending || state.orderBusy;
-  $$('[data-topup-amount]').forEach((preset) => { preset.disabled = !!pending || state.orderBusy; });
-  let summary = 'Yüklemek istediğiniz tutarı belirtilen aralıkta girin.';
-  try {
-    const value = pending ? pending.body.amountKurus : parseTopupAmount(amount?.value, topupLimits());
-    const debt = Math.min(value, Math.max(0, Number(account?.walletDebtKurus || 0)));
-    summary = `${formatStorePrice(value)} mağaza bakiyesi yükleme.${debt ? ` Önce ${formatStorePrice(debt)} iade bakiyesi kapatılır; kullanılabilir bakiyenize ${formatStorePrice(value - debt)} eklenir.` : ' Ürün alımını ayrıca tamamlayabilirsiniz.'}`;
-  } catch (_) {}
-  if ($('#accountTopupSummary')) $('#accountTopupSummary').textContent = summary;
-  if ($('#accountTopupStatus') && !state.orderBusy) $('#accountTopupStatus').textContent = pending ? 'Bekleyen işleminiz kontrol edilir; yeni bir ödeme başlatılmaz.'
-    : state.shopierRefreshing || !available ? shopierUnavailableMessage(state.catalog?.payments?.shopier, { checking: state.shopierRefreshing, topup: true }) : !allowed ? 'Hesabınızın işlem yetkisini kontrol edin veya destek alın.'
-    : state.auth.accountStale ? 'İşlem öncesinde hesap bilgilerinizi yenileyin.' : 'Shopier ödeme sayfasında mağaza hesabınızla aynı e-posta adresini kullanın.';
-}
-function openShopierTopupFromCart(requestedKurus) {
-  const cartTotal = cartLines().reduce((sum, line) => sum + line.lineTotalKurus, 0), total = Number.isSafeInteger(requestedKurus) ? requestedKurus : cartTotal, limits = topupLimits();
-  if (!shopierCheckout.pending(state.auth.user?.uid, 'wallet_topup') && $('#accountTopupAmount')) $('#accountTopupAmount').value = (Math.max(limits.minKurus, Math.min(limits.maxKurus, total || 50000)) / 100).toFixed(2).replace('.', ',');
-  if (!requireSignedIn('account')) return;
-  openCustomer('profile'); syncAccountTopup();
-  $('#accountTopupForm')?.scrollIntoView({ block: 'center', behavior: motionBehavior() }); $('#accountTopupAmount')?.focus({ preventScroll: true });
-}
 function syncPaymentChoice() {
-  const shopierButton = $('#shopierCheckoutButton');
-  const shopierPending = !!shopierCheckout.pending(state.auth.user?.uid);
   setActionBusy($('#checkPendingPurchase'), state.checkingPurchase, 'Durum kontrol ediliyor…');
   ['checkPendingPurchase', 'retryPendingPurchase', 'cancelPendingPurchase'].forEach((id) => {
     const button = document.getElementById(id);
@@ -1035,28 +966,16 @@ function syncPaymentChoice() {
   const hasTelegramOnlyProduct = lines.some((line) => isTelegramOnly(line.product));
   const invalidStock = state.catalog?.stockVerified === false || lines.some((line) => !isTelegramOnly(line.product) && Number(line.plan.stock?.available || 0) < line.quantity);
   const maintenance = state.catalog?.storefront?.maintenance === true;
-  const topupMode = cartNeedsShopierTopup();
-  const shopierAvailable = state.catalog?.payments?.shopier?.available === true;
-  const shopierDisabled = state.orderBusy || state.shopierRefreshing || !!purchaseTracker.pending() || (!shopierPending && (maintenance || !shopierAvailable || topupMode));
-  const shopierInput = $('input[name="paymentMethod"][value="shopier"]');
-  if (shopierInput) shopierInput.disabled = shopierDisabled;
-  if (shopierButton && shopierButton.getAttribute('aria-busy') !== 'true') {
-    shopierButton.disabled = shopierDisabled;
-    shopierButton.querySelector('span').textContent = shopierPending ? 'Ürün ödememi kontrol et' : 'Ürün siparişini Shopier ile öde';
-  }
-  if ($('#shopierCheckoutStatus') && !state.orderBusy) $('#shopierCheckoutStatus').textContent = shopierPending
-    ? 'Önceki Shopier siparişinizin sonucunu kontrol ederek devam edin.'
-    : state.shopierRefreshing || !shopierAvailable ? shopierUnavailableMessage(state.catalog?.payments?.shopier, { checking: state.shopierRefreshing, topup: topupMode })
-    : topupMode ? 'Ürün ödemesi için stokta olan bir paket seçin. Bakiye yüklemek isterseniz aşağıdaki ayrı alanı kullanın.'
-    : 'Shopier ödeme sayfasında mağaza hesabınızla aynı e-posta adresini kullanın.';
-  const cartTopup = $('#cartTopupButton');
-  if (cartTopup) cartTopup.disabled = state.orderBusy || state.shopierRefreshing || maintenance || state.catalog?.payments?.shopier?.topupAvailable !== true;
-  const walletDisabled = state.orderBusy || shopierPending || !!purchaseTracker.pending() || !state.auth.account || hasTelegramOnlyProduct || maintenance || invalidStock || insufficientBalance || services.automaticDelivery === false || services.balancePayment === false;
-  const telegramDisabled = state.orderBusy || shopierPending || !!purchaseTracker.pending() || maintenance || services.telegramSupport === false || lines.some((line) => !isTelegramEnabled(line.product));
+  const walletDisabled = state.orderBusy || !!purchaseTracker.pending() || !state.auth.account || hasTelegramOnlyProduct || maintenance || invalidStock || insufficientBalance || services.automaticDelivery === false || services.balancePayment === false;
+  const telegramDisabled = state.orderBusy || !!purchaseTracker.pending() || maintenance || services.telegramSupport === false || lines.some((line) => !isTelegramEnabled(line.product));
   const walletInput = $('input[name="paymentMethod"][value="wallet"]');
   const telegramInput = $('input[name="paymentMethod"][value="telegram"]');
   if (walletInput) {
     walletInput.disabled = walletDisabled;
+    const recommendation = walletInput.closest('label')?.querySelector('b');
+    if (recommendation) recommendation.hidden = walletDisabled;
+    const explanation = walletInput.closest('label')?.querySelector('small');
+    if (explanation) explanation.textContent = hasTelegramOnlyProduct ? 'Bu sepet Telegram ile sipariş edilir' : 'Anında ve korumalı ödeme';
     const walletCard = walletInput.closest('.payment-choice__item');
     walletCard?.classList.toggle('is-disabled', walletDisabled);
     walletCard?.classList.toggle('is-insufficient', insufficientBalance);
@@ -1090,7 +1009,6 @@ function syncPaymentChoice() {
   }
   if ($('#cartWalletAmount')) $('#cartWalletAmount').textContent = state.auth.account ? formatTopbarBalance(balance) : '—';
   if ($('#cartWalletBalance')) $('#cartWalletBalance').textContent = !state.auth.account ? 'Bakiye yükleniyor…' : `Mevcut bakiye: ${formatStorePrice(balance)}${hasTelegramOnlyProduct ? ' · Bu ürün için Telegram siparişi gerekli' : insufficientBalance ? ' · Bakiye yetersiz' : invalidStock ? ' · Otomatik stok yetersiz' : ''}`;
-  syncAccountTopup();
 }
 
 function setButtonBusy(button, busy, label = 'İşlem yapılıyor…') {
@@ -1177,114 +1095,6 @@ function reserveTelegramWindow() {
   }
 }
 
-function reserveShopierWindow() {
-  try {
-    const target = window.open('about:blank', '_blank');
-    if (target) {
-      target.opener = null;
-      target.document.title = 'Shopier güvenli ödeme';
-      target.document.body.style.cssText = 'margin:0;background:#0c1020;color:#fff;font:600 16px system-ui;display:grid;place-items:center;min-height:100vh';
-      target.document.body.textContent = 'Güvenli ödeme hazırlanıyor…';
-    }
-    return target;
-  } catch (_) { return null; }
-}
-function continueShopierPayment(payload, target) {
-  const url = verifiedShopierUrl(payload.paymentUrl);
-  if (target && !target.closed) {
-    try { target.location.replace(url); } catch (_) { target.close(); }
-  }
-  window.location.assign(`/odeme/sonuc?order=${encodeURIComponent(payload.order.id)}`);
-}
-
-async function submitShopierOrder() {
-  if (state.orderBusy || !requireSignedIn('cart')) return;
-  const uid = state.auth.user.uid, lines = cartLines();
-  if (!shopierCheckout.pending(uid) && cartNeedsShopierTopup()) { showNotice('info', 'Ürün ödemesi başlatılmadı', 'Stokta olan bir paket seçin. Bakiye yüklemek için ayrı bakiye yükleme alanını kullanabilirsiniz.'); return; }
-  if (purchaseTracker.pending()) { showNotice('warning', 'Önceki sipariş kontrol edilmeli', 'Bekleyen satın alma işlemini kontrol edip yeniden deneyin.'); return; }
-  const paymentWindow = reserveShopierWindow();
-  let paymentOpened = false;
-  state.orderBusy = true;
-  const button = $('#shopierCheckoutButton');
-  setButtonBusy(button, true, 'Güvenli ödeme hazırlanıyor…'); syncPaymentChoice();
-  if ($('#shopierCheckoutStatus')) $('#shopierCheckoutStatus').textContent = 'Siparişiniz ve fiyatınız doğrulanıyor. Bu sekmeyi açık tutun.';
-  try {
-    const payload = await shopierCheckout.start(uid, lines.map((line) => ({ productId: line.product.id, planKey: line.plan.key, quantity: line.quantity, expectedUnitPriceKurus: line.plan.priceKurus })), state.promotion?.code || '');
-    if (state.auth.user?.uid !== uid) return;
-    if (payload.order) {
-      state.orders = [payload.order, ...state.orders.filter((order) => order.id !== payload.order.id)]; renderOrders();
-    }
-    if (payload.paymentUrl) { continueShopierPayment(payload, paymentWindow); paymentOpened = true; return; }
-    if (['paid', 'refunded'].includes(payload.order?.paymentState)) {
-      await refreshStoreAccount().catch(() => null);
-      if (state.auth.user?.uid !== uid) return;
-      showNotice('success', 'Shopier işlemi doğrulandı', 'Ödeme ve bakiye/teslimat durumunu işlem geçmişinizden görüntüleyebilirsiniz.');
-    } else if (payload.order?.paymentState === 'failed') {
-      showNotice('warning', 'Ödeme bağlantısı oluşturulamadı', friendlyStoreError({ code: payload.order?.shopier?.lastError || 'SHOPIER_REQUEST_REJECTED' }));
-    } else {
-      showNotice('info', 'Shopier işlemi kontrol ediliyor', 'Siparişiniz kaydedildi. Aynı işlemi kontrol ederek devam edin; ödeme doğrulanana kadar teslimat açılmaz.');
-    }
-    openCustomer('orders');
-  } catch (error) {
-    if (state.auth.user?.uid !== uid) return;
-    if (['STORE_PRICE_CHANGED', 'STORE_CATALOG_CHANGED', 'STORE_ITEM_UNAVAILABLE', 'STORE_CART_INVALID', 'STORE_OUT_OF_STOCK', 'STORE_STOCK_CONFLICT', 'API_BODY_INVALID', 'SHOPIER_PENDING_LIMIT'].includes(error.code)) {
-      shopierCheckout.forget(uid); await loadCatalog(true).catch(() => null); renderCart();
-      if (['STORE_OUT_OF_STOCK', 'STORE_STOCK_CONFLICT'].includes(error.code)) { showNotice('warning', 'Paket stoğu değişti', 'Ürün ödemesi başlatılmadı. Stok bildirimini açabilir veya ayrı bakiye yükleme alanını kullanabilirsiniz.'); return; }
-    }
-    showNotice('error', 'Shopier işlemi tamamlanamadı', friendlyStoreError(error), { actionLabel: 'Tekrar kontrol et', onAction: () => submitShopierOrder() });
-  } finally { if (!paymentOpened) paymentWindow?.close(); state.orderBusy = false; setButtonBusy(button, false); syncPaymentChoice(); }
-}
-
-async function submitShopierTopup(event) {
-  event?.preventDefault();
-  if (state.orderBusy || !requireSignedIn('account')) return;
-  const uid = state.auth.user.uid, input = $('#accountTopupAmount'), button = $('#accountTopupButton');
-  if (purchaseTracker.pending()) { showNotice('warning', 'Bekleyen satın alma işlemi var', 'Yeni ödeme başlatmadan önce mevcut satın alma sonucunu kontrol edin.'); return; }
-  let amountKurus;
-  try { const pending = shopierCheckout.pending(uid, 'wallet_topup'); amountKurus = pending ? pending.body.amountKurus : parseTopupAmount(input.value, topupLimits()); }
-  catch (error) { setFieldError(input, friendlyStoreError(error)); input.focus(); return; }
-  const paymentWindow = reserveShopierWindow();
-  let paymentOpened = false;
-  clearFieldError(input); state.orderBusy = true;
-  setButtonBusy(button, true, 'Güvenli ödeme hazırlanıyor…'); syncPaymentChoice();
-  $('#accountTopupStatus').textContent = 'Bakiye yükleme işleminiz hazırlanıyor. Bu sekmeyi açık tutun.';
-  try {
-    const payload = await shopierCheckout.startTopup(uid, amountKurus);
-    if (state.auth.user?.uid !== uid) return;
-    if (payload.order) { state.ordersRevision += 1; state.orders = [payload.order, ...state.orders.filter((order) => order.id !== payload.order.id)]; renderOrders(); }
-    if (payload.paymentUrl) { continueShopierPayment(payload, paymentWindow); paymentOpened = true; return; }
-    if (['paid', 'refunded'].includes(payload.order?.paymentState)) {
-      await refreshStoreAccount().catch(() => null);
-      if (state.auth.user?.uid !== uid) return;
-      window.location.assign(`/odeme/sonuc?order=${encodeURIComponent(payload.order.id)}`); return;
-    }
-    showNotice(payload.order?.paymentState === 'failed' ? 'warning' : 'info', 'Shopier işlem durumu', payload.order?.paymentState === 'failed'
-      ? friendlyStoreError({ code: payload.order?.shopier?.lastError || 'SHOPIER_REQUEST_REJECTED' }) : 'İşleminiz kaydedildi. Tekrar ödeme yapmadan mevcut sonucu kontrol edin.');
-    openCustomer('orders');
-  } catch (error) {
-    if (state.auth.user?.uid !== uid) return;
-    if (['SHOPIER_TOPUP_AMOUNT_INVALID', 'API_BODY_INVALID', 'SHOPIER_DISABLED', 'SHOPIER_CONFIGURATION_INVALID', 'STORE_PURCHASE_BLOCKED', 'SHOPIER_PENDING_LIMIT', 'STORE_BALANCE_LIMIT_EXCEEDED', 'STORE_CATALOG_CHANGED'].includes(error.code)) shopierCheckout.forget(uid, 'wallet_topup');
-    showNotice('error', 'Bakiye yükleme tamamlanamadı', friendlyStoreError(error), { actionLabel: 'Tekrar kontrol et', onAction: () => submitShopierTopup() });
-  } finally { if (!paymentOpened) paymentWindow?.close(); state.orderBusy = false; setButtonBusy(button, false); syncPaymentChoice(); }
-}
-async function refreshPendingShopierStatus() {
-  const uid = state.auth.user?.uid;
-  if (!uid || state.orderBusy || state.shopierChecking || !shopierCheckout.pendingKinds(uid).length) return;
-  state.shopierChecking = true;
-  try {
-    for (const kind of shopierCheckout.pendingKinds(uid)) {
-    const result = await shopierCheckout.check(uid, kind);
-    if (state.auth.user?.uid !== uid) return;
-    if (!result?.order) continue;
-    if (['paid', 'refunded', 'failed', 'cancelled'].includes(result.order.paymentState)) {
-      await refreshStoreAccount().catch(() => null); if (state.auth.user?.uid !== uid) return;
-      state.ordersRevision += 1; state.orders = [result.order, ...state.orders.filter((order) => order.id !== result.order.id)];
-      renderOrders(); renderCart(); renderAccountHeader();
-    }
-    }
-  } catch (_) { /* Keep each original intent available for explicit recovery. */ }
-  finally { state.shopierChecking = false; syncPaymentChoice(); }
-}
 async function submitOrder(lines, paymentMethod, options = {}) {
   if (!lines.length || state.orderBusy) return;
   if (!requireSignedIn(options.returnLayer || 'cart')) return;
@@ -1733,7 +1543,7 @@ function renderOrders() {
   });
   const query = normalizeSearch(state.orderSearch || '');
   const selected = state.orders.filter((order) => orderMatchesFilter(order, state.orderFilter)
-    && (!query || normalizeSearch(`${order.orderNumber} ${order.orderType === 'wallet_topup' ? 'bakiye yükleme Shopier' : 'ürün satın alma'} ${(order.items || []).map((item) => `${item.productName} ${item.planLabel}`).join(' ')}`).includes(query)));
+    && (!query || normalizeSearch(`${order.orderNumber} ürün satın alma ${(order.items || []).map((item) => `${item.productName} ${item.planLabel}`).join(' ')}`).includes(query)));
   const filtered = !!query || state.orderFilter !== 'all';
   if ($('#ordersResultLabel')) $('#ordersResultLabel').textContent = known ? `${selected.length} eşleşen · ${state.orders.length} yüklendi` : 'Siparişler doğrulanıyor…';
   $$('#customerViewOrders [data-order-reset]').forEach((button) => { if (!button.closest('.screen-empty')) button.hidden = !filtered; });
@@ -1968,7 +1778,6 @@ function renderAccountHeader() {
   applyAvatar($('#accountAvatar'), avatarId);
   renderAvatarPicker();
   renderAccountSecurity();
-  syncAccountTopup();
   if (state.selectedProduct && state.selectedPlan) renderPurchaseSummary();
 }
 
@@ -2004,7 +1813,6 @@ function openCustomer(view = 'profile', trigger = null) {
   const requestedUserId = String(state.auth.user?.uid || '');
   renderAccountHeader();
   setCustomerView(requested);
-  if (['profile', 'cart'].includes(requested)) void refreshShopierAvailability();
   openLayer($('#customerApp'), trigger);
   recordNavigation(`account/${customerAppController?.view || requested}`);
   if (requested === 'profile') {
@@ -2572,7 +2380,6 @@ function installInteractions() {
   $('#addToCartButton')?.addEventListener('click', () => {
     if (!state.selectedProduct || !state.selectedPlan) return;
     if (addToCart(state.selectedProduct, state.selectedPlan) === false) return;
-    showNotice('success', 'Ürün sepetinize eklendi', 'Alışverişe devam edebilir veya sepetinizi açabilirsiniz.', { sound: true, operation: 'SEPET', actionLabel: 'Sepetimi aç', onAction: () => openCustomer('cart') });
   });
   $('#buyTelegramButton')?.addEventListener('click', () => {
     if (!state.selectedProduct || !state.selectedPlan) return;
@@ -2586,10 +2393,6 @@ function installInteractions() {
     const lines = [{ product: state.selectedProduct, plan: state.selectedPlan, quantity: 1, lineTotalKurus: state.selectedPlan.priceKurus }];
     submitOrder(lines, 'telegram', { button: $('#buyTelegramButton'), returnLayer: 'cart', resetAttemptOnSuccess: true, closeLayer: true });
   });
-  $('#purchaseTopupButton')?.addEventListener('click', () => {
-    if (productTopupOffer(state.selectedPlan, state.catalog).available) openShopierTopupFromCart(state.selectedPlan.priceKurus);
-  });
-  $('#cartTopupButton')?.addEventListener('click', () => openShopierTopupFromCart());
   $('#notifyStockButton')?.addEventListener('click', subscribeSelectedStock);
 
   $$('[data-store-open]').forEach((button) => button.addEventListener('click', () => {
@@ -2788,13 +2591,7 @@ function installInteractions() {
 
   $('#cartPromotionForm')?.addEventListener('submit', applyCartPromotion);
   $('#accountCouponApplyForm')?.addEventListener('submit', applyAccountCode);
-  for (const id of ['accountTopupRefresh', 'shopierCheckoutRefresh']) document.getElementById(id)?.addEventListener('click', () => void refreshShopierAvailability({ force: true }));
-  $('#accountTopupForm')?.addEventListener('submit', (event) => void submitShopierTopup(event));
-  $('#accountTopupAmount')?.addEventListener('input', () => { clearFieldError($('#accountTopupAmount')); syncAccountTopup(); });
-  $$('[data-topup-amount]').forEach((button) => button.addEventListener('click', () => {
-    if (button.disabled) return;
-    $('#accountTopupAmount').value = button.dataset.topupAmount; clearFieldError($('#accountTopupAmount')); syncAccountTopup();
-  }));
+
   $('#accountCodeType')?.addEventListener('change', () => {
     const balance = $('#accountCodeType').value === 'balance';
     $('#accountCodeHelp').textContent = balance ? 'Promosyon tutarı, doğrulama tamamlandığında hesabınıza eklenir.' : 'İndirim kuponu, seçtiğiniz ürünlerle birlikte sepette doğrulanır.';
@@ -2817,7 +2614,7 @@ function installInteractions() {
 
   $$('input[name="paymentMethod"]').forEach((input) => input.addEventListener('change', () => {
     if (input.disabled) return;
-    state.paymentMethod = ['wallet', 'telegram', 'shopier'].includes(input.value) ? input.value : 'wallet';
+    state.paymentMethod = ['wallet', 'telegram'].includes(input.value) ? input.value : 'wallet';
     resetCheckoutAttempt();
     syncPaymentChoice();
   }));
@@ -2830,7 +2627,7 @@ function installInteractions() {
     if (selected) selected.checked = true;
     submitOrder(cartLines(), 'wallet', { button: $('#checkoutButton'), clearCart: true, closeLayer: true, returnLayer: 'cart' });
   });
-  $('#shopierCheckoutButton')?.addEventListener('click', () => void submitShopierOrder());
+  
   $('#telegramCheckoutButton')?.addEventListener('click', () => {
     state.paymentMethod = 'telegram';
     const selected = $('input[name="paymentMethod"][value="telegram"]');
@@ -3065,11 +2862,11 @@ export async function bootStorefront() {
   window.addEventListener('pagehide', () => clearInterval(publishedTimer), { once: true });
   try { const channel = new BroadcastChannel('zentra-catalog'); channel.addEventListener('message', refreshPublishedCatalog); window.addEventListener('pagehide', () => channel.close(), { once: true }); } catch (_) {}
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') { refreshPublishedCatalog(); void refreshShopierAvailability({ force: true }); void refreshPendingShopierStatus(); return; }
+    if (document.visibilityState !== 'hidden') { refreshPublishedCatalog(); return; }
     if (!$('#deliveryAccessModal')?.hidden) closeDeliveryAccess({ restoreFocus: false });
     if (state.deliverySecrets.size) clearExposedDeliverySecrets();
   });
-  window.addEventListener('pageshow', () => { void refreshShopierAvailability({ force: true }); void refreshPendingShopierStatus(); });
+  
   renderCart();
   renderAccountHeader();
   subscribeStoreAuth((auth) => {
@@ -3097,7 +2894,7 @@ export async function bootStorefront() {
   window.addEventListener('online', renderStorefrontStatus);
   window.addEventListener('offline', renderStorefrontStatus);
   await Promise.all([initStoreAuth(), loadCatalog()]);
-  await refreshPendingShopierStatus();
+  
   installNavigation();
   renderCart();
   if (purchaseTracker.pending()) void recoverPendingPurchase();

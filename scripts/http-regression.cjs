@@ -87,7 +87,7 @@ test('malformed compressed bodies and unstringifiable query values do not crash 
 test('removed upload route and private source paths are unavailable, and image formats are served', async () => {
   assert.equal((await request('/api/admin/store/products/image', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://zentrastore.com.tr' }, body: '{}' })).status, 404);
   assert.equal((await request('/server/config/env.js')).status, 404);
-  const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v84r1');
+  const promotionModule = await request('/admin/promo-codes.js?v=zentra-ui-v90r1');
   assert.equal(promotionModule.status, 200);
   assert.ok(promotionModule.headers.get('content-type').includes('javascript'));
   for (const path of ['/public/assets/products/kingmod.jpeg', '/public/assets/products/magic.JPG', '/public/assets/products/h-kernel.PNG', '/public/assets/products/CRY4ME.JPG']) {

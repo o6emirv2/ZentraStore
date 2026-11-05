@@ -93,7 +93,7 @@ test('external abort and request timeout remain distinct and listeners are clean
 
 test('store writes bind the initial identity and do not fall back to another account cookie', async () => {
   const utils = 'data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/request-utils.js')).toString('base64');
-  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v84r1'", JSON.stringify(utils));
+  const source = fs.readFileSync(path.join(__dirname, '../public/js/store/api.js'), 'utf8').replace("'../request-utils.js?v=zentra-ui-v90r1'", JSON.stringify(utils));
   const previous = { window: global.window, document: global.document, fetch: global.fetch };
   let fetches = 0;
   global.window = { location: { href: 'https://store.test/', origin: 'https://store.test' }, __ZENTRA_RUNTIME__: { apiBase: 'https://store.test', version: 78 } };
@@ -119,7 +119,6 @@ test('store writes bind the initial identity and do not fall back to another acc
     for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete global[key]; else global[key] = value; }
   }
 });
-
 
 test('admin product filtering distinguishes archived and inactive records without changing them', async () => {
   const { matchesAdminProduct, sortRecords } = await load('ui/list-controls.js');

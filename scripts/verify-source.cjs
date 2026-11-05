@@ -136,10 +136,10 @@ const expectedChannelUrls = [
   'https://t.me/ZENTRA_STORE'
 ];
 if (CHANNEL_LINKS_REVISION !== 88 || JSON.stringify(DEFAULT_QUICK_LINKS.map((link) => link.url)) !== JSON.stringify(expectedChannelUrls)) failures.push('Resmî bağlantı paketi veya geçiş sürümü beklenen değerle uyuşmuyor');
-for (const filename of ['admin/index.html', 'admin/admin.html']) if (!fs.readFileSync(path.join(root, filename), 'utf8').includes('name="zentra-admin-release" content="89"')) failures.push(filename + ': yönetim sürümü uyuşmuyor');
+for (const filename of ['admin/index.html', 'admin/admin.html']) if (!fs.readFileSync(path.join(root, filename), 'utf8').includes('name="zentra-admin-release" content="90"')) failures.push(filename + ': yönetim sürümü uyuşmuyor');
 const entryRelease = fs.readFileSync(path.join(root, 'admin/admin-entry.js'), 'utf8');
 const serverRelease = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
-if (!entryRelease.includes('?view=v89') || !serverRelease.includes("req.query.view === 'v89'")) failures.push('Yönetim görünümü istemci/sunucu sürümü uyuşmuyor');
+if (!entryRelease.includes('?view=v90') || !serverRelease.includes("req.query.view === 'v90'")) failures.push('Yönetim görünümü istemci/sunucu sürümü uyuşmuyor');
 const homeSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 if ((homeSource.match(/data-quick-link-id=/g) || []).length !== expectedChannelUrls.length || expectedChannelUrls.some((url) => !homeSource.includes(`href="${url}"`))) failures.push('Ana sayfa bağlantı kartları sunucu bağlantı paketiyle uyuşmuyor');
 if (failures.length) {

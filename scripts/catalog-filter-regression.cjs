@@ -8,19 +8,19 @@ const { GAME_KEYS, CATEGORY_PRESETS, CATEGORY_VISIBILITY_KEYS, isSupportedProduc
 const catalog = require('../public/data/store-products.json').products;
 const modulePromise = browserModule('public/js/store/products.js');
 const read = name => fs.readFileSync(path.join(__dirname, '..', name), 'utf8');
-const categories = ['oxide-android', 'oxide-ios', 'pubg-android', 'pubg-ios'];
+const categories = ['gbox-ios', 'oxide-android', 'oxide-ios', 'pubg-android', 'pubg-ios'];
 
-test('the shared catalog permits exactly two games and four platform categories', async () => {
+test('the shared catalog permits the two games and GBOX in their supported platform categories', async () => {
   const { CATALOG_FILTERS } = await modulePromise;
-  assert.deepEqual(GAME_KEYS.slice().sort(), ['oxide', 'pubg']);
+  assert.deepEqual(GAME_KEYS.slice().sort(), ['gbox', 'oxide', 'pubg']);
   assert.deepEqual(Object.keys(CATEGORY_PRESETS).sort(), categories);
   assert.deepEqual(Object.keys(CATALOG_FILTERS).sort(), [...categories, 'all', 'android', 'ios', 'favorites'].sort());
   assert.deepEqual([...CATEGORY_VISIBILITY_KEYS].sort(), [...categories, 'android', 'ios'].sort());
 });
 
 test('all remaining products and plans belong to the permitted game scope', () => {
-  assert.equal(catalog.length, 25);
-  assert.equal(catalog.reduce((sum, product) => sum + product.plans.length, 0), 74);
+  assert.equal(catalog.length, 27);
+  assert.equal(catalog.reduce((sum, product) => sum + product.plans.length, 0), 76);
   for (const product of catalog) {
     assert.equal(isSupportedProduct(product), true, product.id);
     assert.ok(fs.existsSync(path.join(__dirname, '..', product.image)), product.id);
@@ -91,7 +91,7 @@ test('storefront cards, admin presets, filters and visibility controls use the s
   };
   assert.deepEqual(options('name="categoryPreset"'), categories);
   assert.deepEqual(options('id="adminProductCategory"'), [...categories, 'all'].sort());
-  assert.deepEqual(options('name="game"'), ['oxide', 'pubg']);
+  assert.deepEqual(options('name="game"'), ['gbox', 'oxide', 'pubg']);
   for (const key of categories) {
     assert.ok(html.includes(`data-filter="${key}"`));
     assert.ok(admin.includes(`data-category-visibility="${key}"`));
@@ -126,7 +126,7 @@ test('category navigation keeps hidden categories hidden during initial renderin
 });
 
 test('every first-party page uses the requested initial minimum and maximum viewport scale', () => {
-  for (const name of ['index.html', 'admin/index.html', 'admin/admin.html', 'admin/session/handoff/index.html', 'odeme/sonuc/index.html', 'odeme/iptal/index.html']) {
+  for (const name of ['index.html', 'admin/index.html', 'admin/admin.html', 'admin/session/handoff/index.html', ]) {
     const content = read(name).match(/<meta name="viewport" content="([^"]+)"/)[1];
     const fields = Object.fromEntries(content.split(',').map(value => value.trim().split('=')));
     for (const key of ['initial-scale', 'minimum-scale', 'maximum-scale']) assert.equal(Number(fields[key]), 0.8, name + ':' + key);
@@ -136,9 +136,9 @@ test('every first-party page uses the requested initial minimum and maximum view
 });
 
 test('changed client bundles have fresh cache versions', () => {
-  assert.match(read('index.html'), /\/script\.js\?v=zentra-ui-v89r1/);
-  assert.match(read('script.js'), /\/storefront\.js\?v=zentra-ui-v89r1/);
-  assert.match(read('public/js/store/storefront.js'), /products\.js\?v=zentra-ui-v89r1/);
-  assert.match(read('admin/admin-entry.js'), /admin-dashboard\.js\?v=zentra-ui-v89r1/);
-  assert.match(read('public/js/store/products.js'), /catalog-schema\.mjs\?v=zentra-ui-v87r1/);
+  assert.match(read('index.html'), /\/script\.js\?v=zentra-ui-v90r1/);
+  assert.match(read('script.js'), /\/storefront\.js\?v=zentra-ui-v90r1/);
+  assert.match(read('public/js/store/storefront.js'), /products\.js\?v=zentra-ui-v90r1/);
+  assert.match(read('admin/admin-entry.js'), /admin-dashboard\.js\?v=zentra-ui-v90r1/);
+  assert.match(read('public/js/store/products.js'), /catalog-schema\.mjs\?v=zentra-ui-v90r1/);
 });

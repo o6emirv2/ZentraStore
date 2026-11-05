@@ -1,4 +1,4 @@
-import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v84r1';
+import { readApiJson, waitForSignal, requestController, compatibleStoreWrites } from '../public/js/request-utils.js?v=zentra-ui-v90r1';
 
 export function escapeHtml(value = '') {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
@@ -40,18 +40,8 @@ function errorMessage(payload = {}, status = 0) {
     STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED: 'Bu eski kaydın ödeme kanalı güvenle belirlenemedi. Ödeme kaydını inceleyin; işlem uygulanmadı.',
     ADMIN_JOB_AUTHORIZATION_REVOKED: 'Yönetici oturumları iptal edildi. Toplu iş için yeniden giriş ve onay gerekli.',
     STORE_LINK_REVISION_CONFLICT: 'Bağlantılar başka bir işlemde değişti. Listeyi yenileyip güncel kayıt üzerinden tekrar deneyin.',
-    SHOPIER_TIMEOUT: 'Shopier zamanında yanıt vermedi. İşlem başarısı doğrulanmadı; aynı kaydın durumunu kontrol edin.',
-    SHOPIER_OPERATION_BUSY: 'Bu sipariş için bir sağlayıcı işlemi devam ediyor.',
     BULK_PREVIEW_EXPIRED: 'Önizlemenin süresi doldu. Yeni önizleme oluşturun.',
     BULK_CONFIRMATION_REQUIRED: 'Kalıcı silme doğrulaması için KALICI SIL yazın.',
-    SHOPIER_PROVIDER_ACTION_REQUIRED: 'Shopier ödemesi veya iadesi yerel durum seçimiyle değiştirilemez. Shopier kaydını doğrulayın; iadeyi Shopier panelinden yönetin.',
-    SHOPIER_PAYMENT_NOT_VERIFIED: 'Ödeme Shopier kaydıyla doğrulanmadan teslimat açılamaz.',
-    SHOPIER_CREATION_REVIEW_REQUIRED: 'Ödeme bağlantısının oluşturulma sonucu kesinleştirilemedi. Shopier ürün kaydını kontrol edin; yeni ürün oluşturmayın.',
-    SHOPIER_CONFIGURATION_INVALID: 'Render Shopier yapılandırması eksik veya hatalı.',
-    SHOPIER_AUTH_FAILED: 'Shopier bağlantı yetkisi doğrulanamadı. Mağaza desteğine başvurun.',
-    SHOPIER_REQUEST_REJECTED: 'Shopier ödeme bağlantısını kabul etmedi. Bu denemede ödeme bağlantısı oluşturulmadı.',
-    SHOPIER_API_ERROR: 'Shopier bağlantısı tamamlanamadı. Aynı siparişi yeniden kontrol edin.',
-    SHOPIER_CUSTOMER_MISMATCH: 'Shopier ödeme e-postası ile sipariş hesabı eşleşmiyor. Tahsilatı ve müşteriyi Shopier panelinden kontrol edin.',
     ADMIN_ACTION_REQUIRED: 'İşlem doğrulaması eksik. Sayfayı yenileyip parolanızla tekrar doğrulayın.',
     ADMIN_ACTION_INVALID: 'İşlem onayı doğrulanamadı. Parolanızla yeniden doğrulayın.',
     ADMIN_ACTION_MISMATCH: 'Onaylanan işlem bilgileri değişti. Güncel bilgileri kontrol edip yeniden onaylayın.',

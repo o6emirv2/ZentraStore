@@ -4,7 +4,7 @@ async function main() {
   const reservation = http.createServer(); await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
   const port = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
   const child = spawn(process.execPath, ['server.js'], { cwd: path.resolve(__dirname, '..'), stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, PUBLIC_BASE_URL: 'https://smoke.zentra.invalid', CANONICAL_ORIGIN: 'https://smoke.zentra.invalid', PUBLIC_API_BASE: 'https://smoke.zentra.invalid', PUBLIC_BACKEND_ORIGIN: 'https://smoke.zentra.invalid', SHOPIER_ENABLED: 'false', PORT: String(port), NODE_ENV: 'production', FIREBASE_KEY: '', PUBLIC_FIREBASE_CONFIG: '', ADMIN_GATE_SIGNING_SECRET: '',
+    env: { ...process.env, PUBLIC_BASE_URL: 'https://smoke.zentra.invalid', CANONICAL_ORIGIN: 'https://smoke.zentra.invalid', PUBLIC_API_BASE: 'https://smoke.zentra.invalid', PUBLIC_BACKEND_ORIGIN: 'https://smoke.zentra.invalid', PORT: String(port), NODE_ENV: 'production', FIREBASE_KEY: '', PUBLIC_FIREBASE_CONFIG: '', ADMIN_GATE_SIGNING_SECRET: '',
       ADMIN_EMAILS: '', ADMIN_UIDS: '', STORE_KEY_ENCRYPTION_SECRET: '', STORE_KEY_FINGERPRINT_SECRET: '' } });
   let output = '', exited = false;
   child.stdout.on('data', data => { output += data; }); child.stderr.on('data', data => { output += data; });

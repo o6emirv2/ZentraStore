@@ -5,7 +5,6 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const env = require('../config/env');
 const { adminAccessCookiePolicy } = require('./adminAccessService');
-const { shopierReadiness } = require('../config/shopier');
 function sourceDigest(root = path.resolve(__dirname, '../..')) {
   const hash = crypto.createHash('sha256');
   function visit(relative) {
@@ -50,9 +49,6 @@ function assessSecurity({ configuration = {}, gateSecurity = {}, inventory = {},
   add('headers', 'Bu yanıtta güvenli HTTP başlıkları', !!csp && String(res?.getHeader?.('X-Content-Type-Options')) === 'nosniff', 'Yanıtın gerçek CSP ve nosniff başlıkları.');
   add('https', 'HTTPS bağlantısı', req?.secure === true ? true : env.nodeEnv === 'production' ? false : 'unverified', 'Bu isteğin TLS/proxy durumu; yerel HTTP üretim kanıtı sayılmaz.', true);
   add('secrets', 'Gizli anahtarlar ve şifreli kasa', configuration.keyVaultReady === true && !!configuration.keyVaultActiveKeyId && configuration.serviceAccountReady === true, 'Ayrı anahtarlar ve sunucu tarafındaki çalışma yapılandırması.', true);
-  const provider = shopierReadiness();
-  add('shopier', 'Shopier bildirim ve ödeme doğrulaması', !provider.managementConfigured ? false : !provider.configured ? 'partial' : regression ? true : 'unverified',
-    `İmza, tutar, para birimi ve tekrar saldırısı kontrollü testleri; canlı ödeme testi değildir.${provider.blockers.length ? ' Eksik/hatalı ayarlar: ' + provider.blockers.join(', ') : ''}`, true);
   add('telegram', 'Telegram adres ve manuel ödeme sınırı', regression ? true : 'unverified', 'Resmî alan adı doğrulaması ve kayıtlı manuel ödeme referansı; bot iptal API’si kullanılmaz.');
   add('personal-data', 'Hassas veri ve teslimat kasası', configuration.keyVaultReady === true && regression, 'Şifreli teslimat, maskelenmiş kimlik ve yetkisiz erişim regresyonları.');
   add('logging', 'Log ve hata verisi koruması', regression ? true : 'unverified', 'Anahtar, parola ve sağlayıcı gövdesi sızıntısı regresyonları.');
@@ -73,7 +69,6 @@ function assessSecurity({ configuration = {}, gateSecurity = {}, inventory = {},
     headers: 'SECURITY_CSP_STRICT=1 ve HTTPS yanıt başlıklarını gerçek yayın adresinde kontrol edin.',
     https: 'Yayını HTTPS üzerinden açın; PUBLIC_BASE_URL ve güvenilen proxy yapılandırmasını doğrulayın.',
     secrets: 'Mevcut stok şifreleme anahtarlarını koruyarak eksik servis hesabı/kasa ayarlarını tamamlayın.',
-    shopier: 'Listelenen Shopier ortam ayarlarını tamamlayın; ürün okuma/güncelleme ve iade yetkilerini gerçek hesapta doğrulayın.',
     telegram: 'Telegram adresini ve manuel ödeme/iade referansı iş akışını kontrol edin.',
     'personal-data': 'Kasa anahtarlarını ve yetkisiz teslimat erişimi testlerini doğrulayın.',
     logging: 'Bu sürümün hassas veri sızıntısı regresyonlarını çalıştırın.',
@@ -86,7 +81,7 @@ function assessSecurity({ configuration = {}, gateSecurity = {}, inventory = {},
   for (const row of rows) if (!row.ok) row.remediation = remedies[row.key] || 'Kontrol ayrıntısındaki eksikliği doğrulayın.';
   const failed = rows.filter(row => row.status === 'failed'), unverified = rows.filter(row => row.status === 'unverified');
   const critical = failed.filter(row => row.critical).length;
-  const calculated = Math.round(rows.reduce((total, row) => total + row.earned, 0));
+  const calculated = Math.round(100 * rows.reduce((total, row) => total + row.earned, 0) / rows.reduce((total, row) => total + row.weight, 0));
   const score = Math.min(calculated, critical ? 60 : 100);
   return { score, target: '98–99', ready: failed.length === 0 && unverified.length === 0,
     level: critical ? 'kritik' : failed.length || unverified.length || score < 98 ? 'uyarı' : 'kontroller başarılı',

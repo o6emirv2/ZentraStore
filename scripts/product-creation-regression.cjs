@@ -224,7 +224,7 @@ test('catalog upgrades add permitted products, preserve prices and prune retired
   const previous = structuredClone(stored);
   try {
     const added = require('../public/data/store-products.json').products.filter((product) => product.categoryKey);
-    assert.equal(added.length, 5);
+    assert.equal(added.length, 7);
     for (const product of added) delete stored.catalog.products[product.id];
     stored.catalog.sourceVersion = 11;
     stored.catalog.products.kingmod.plans.daily.priceKurus = 77777;
@@ -317,7 +317,6 @@ test('deploying a built-in ID already used by a custom product preserves one edi
     service.invalidateCatalogCache();
   }
 });
-
 
 test('screenshot key and Turkish keyboard variants create a single canonical ID',async()=>{
  const canonical='oxide-android-magic-yeni',schema=require('../public/js/store/catalog-schema.mjs');

@@ -2,23 +2,23 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="zentra-admin-release" content="89" />
+  <meta name="zentra-admin-release" content="90" />
   <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <meta name="theme-color" content="#070B16" />
   <meta name="color-scheme" content="dark" />
   <meta name="zentra-api-origin" content="https://emirhan-siye.onrender.com" />
   <title>ZENTRA STORE | Yönetim Merkezi</title>
-  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v84r1" />
+  <link rel="stylesheet" href="/public/assets/fonts/fonts.css?v=zentra-ui-v90r1" />
   <link rel="stylesheet" href="/public/assets/vendor/fontawesome/css/all.min.css?v=6.7.2" />
-  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v89r1" />
-  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v85r1" />
-  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v84r1" />
-  <script src="./admin-browser-session.js?v=zentra-ui-v84r1"></script>
-  <script src="./admin-auth.js?v=zentra-ui-v84r1"></script>
-  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v84r1" />
-  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v87r1" />
-  <link rel="stylesheet" href="/admin/admin-operations.css?v=zentra-ui-v89r1"/>
+  <link rel="stylesheet" href="./admin-dashboard.css?v=zentra-ui-v90r1" />
+  <link rel="stylesheet" href="/public/css/notifications.css?v=zentra-ui-v90r1" />
+  <link rel="stylesheet" href="/public/css/interaction-guard.css?v=zentra-ui-v90r1" />
+  <script src="./admin-browser-session.js?v=zentra-ui-v90r1"></script>
+  <script src="./admin-auth.js?v=zentra-ui-v90r1"></script>
+  <link rel="stylesheet" href="/public/css/app-system.css?v=zentra-ui-v90r1" />
+  <link rel="stylesheet" href="/public/css/interface.css?v=zentra-ui-v90r1" />
+  <link rel="stylesheet" href="/admin/admin-operations.css?v=zentra-ui-v90r1"/>
 </head>
 <body>
   <canvas id="ambientCanvas" aria-hidden="true"></canvas>
@@ -64,9 +64,9 @@
 
       <section class="admin-panel" data-admin-panel="orders" hidden inert>
         <header class="panel-title"><div><span>SİPARİŞ KONTROLÜ</span><h1>Siparişler</h1><p>Otomatik satışlar şifreli stok kasasından teslim edilir; Telegram siparişleri ise otomatik stoktan bağımsız, yönetici onaylı manuel teslimat akışını kullanır.</p></div><button class="primary-action" type="button" data-refresh="orders"><i class="fa-solid fa-rotate"></i> Listeyi Yenile</button></header>
-        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><section class="shopier-operations" aria-label="Shopier bağlantı ve iş kuyruğu"><div id="shopierOperationalStatus" role="status">Shopier bağlantısı kontrol ediliyor…</div><div id="shopierFailedJobs"></div></section><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article><article><i class="fa-solid fa-link-slash"></i><span><small>BAĞLANTI KAPALI</small><strong data-summary="link_closed">—</strong></span></article><article><i class="fa-solid fa-hourglass-half"></i><span><small>İADE BEKLİYOR</small><strong data-summary="refund_pending">—</strong></span></article></div>
-        <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="WEQ / Shopier no, müşteri, ürün veya paket ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
-        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><label for="orderPaymentFilter">Ödeme yöntemi (yüklenen kayıtlar)<select id="orderPaymentFilter"><option value="all">Tüm yöntemler</option><option value="wallet">Mağaza bakiyesi</option><option value="telegram">Telegram</option><option value="shopier">Shopier</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div id="orderMaintenance"></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
+        <div class="panel-live-status" id="ordersLiveMeta" aria-live="polite"></div><div class="summary-grid" id="summaryGrid"><article><i class="fa-solid fa-layer-group"></i><span><small>YÜKLENEN KAYIT</small><strong data-summary="total">—</strong></span></article><article><i class="fa-solid fa-clock"></i><span><small>ÖDEME BEKLİYOR</small><strong data-summary="awaiting_payment">—</strong></span></article><article><i class="fa-solid fa-gears"></i><span><small>HAZIRLANIYOR</small><strong data-summary="processing">—</strong></span></article><article><i class="fa-solid fa-circle-check"></i><span><small>TESLİM EDİLDİ</small><strong data-summary="delivered">—</strong></span></article><article><i class="fa-brands fa-telegram"></i><span><small>TELEGRAM</small><strong data-summary="telegram">—</strong></span></article><article><i class="fa-solid fa-rotate-left"></i><span><small>İADE / İPTAL</small><strong data-summary="closed">—</strong></span></article></div>
+        <div class="order-toolbar"><label class="admin-search"><i class="fa-solid fa-magnifying-glass"></i><input id="orderSearch" type="search" placeholder="Sipariş no, müşteri, ürün veya paket ara" autocomplete="off" /></label><label class="admin-select"><span>Durum</span><select id="orderFilter"><option value="all">Tüm siparişler</option><option value="awaiting_payment">Telegram iletişim / ödeme bekliyor</option><option value="payment_review">Ödeme kontrol ediliyor</option><option value="paid">Ödeme onaylandı</option><option value="processing">Ürün temin ediliyor</option><option value="delivery_pending">Teslimat bekliyor</option><option value="delivered">Teslim edildi</option><option value="payment_rejected">Ödeme reddi</option><option value="refunded">İade edildi</option><option value="cancelled">İptal edildi</option></select></label></div>
+        <div class="interface-toolbar"><label for="orderSort">Yüklenen siparişleri sırala<select id="orderSort"><option value="newest">En yeni önce</option><option value="oldest">En eski önce</option><option value="amount-high">Tutar: yüksekten düşüğe</option><option value="amount-low">Tutar: düşükten yükseğe</option></select></label><label for="orderPaymentFilter">Ödeme yöntemi (yüklenen kayıtlar)<select id="orderPaymentFilter"><option value="all">Tüm yöntemler</option><option value="wallet">Mağaza bakiyesi</option><option value="telegram">Telegram</option></select></label><button class="secondary-action" id="clearOrderFilters" type="button">Filtreleri temizle</button><output id="orderFilterSummary" role="status" aria-live="polite"></output></div><div id="orderMaintenance"></div><div class="order-list" id="adminOrderList" aria-live="polite"></div>
         <button class="secondary-action admin-pagination" id="adminLoadMoreOrders" type="button" hidden><i class="fa-solid fa-clock-rotate-left"></i> Önceki Siparişleri Yükle</button>
       </section>
 
@@ -79,7 +79,7 @@
 
       <section class="admin-panel" data-admin-panel="products" hidden inert>
         <header class="panel-title"><div><span>KATALOG YÖNETİMİ</span><h1>Ürünler ve fiyatlar</h1><p>Ürünleri düzenleyin; değişen tüm kartları tek güvenli işlemle toplu kaydedin.</p></div><div class="panel-title__actions"><button class="primary-action" id="openProductCreate" type="button"><i class="fa-solid fa-circle-plus" aria-hidden="true"></i><span>Yeni Ürün Ekle</span></button><button class="secondary-action" id="productCatalogRefresh" type="button" data-refresh="products"><i class="fa-solid fa-rotate"></i><span>Kataloğu Yenile</span></button><button class="primary-action" id="productBulkSave" type="button" disabled aria-disabled="true"><i class="fa-solid fa-floppy-disk"></i><span>Toplu Kayıt</span></button></div></header>
-        <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="interface-toolbar" id="productListControls"><label for="adminProductSearch">Ürünlerde ara<input id="adminProductSearch" type="search" placeholder="Ürün adı veya kimliği" autocomplete="off" /></label><label for="adminProductCategory">Kategori<select id="adminProductCategory"><option value="all">Tüm kategoriler</option><option value="pubg-ios">PUBG MOBILE iOS</option><option value="pubg-android">PUBG MOBILE Android</option><option value="oxide-ios">OXİDE iOS</option><option value="oxide-android">OXİDE Android</option></select></label><label for="adminProductStatus">Satış durumu<select id="adminProductStatus"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="archived">Arşiv</option></select></label><button type="button" class="secondary-action" id="clearProductFilters">Filtreleri temizle</button><output id="adminProductFilterCount" role="status" aria-live="polite"></output></div><div class="admin-empty" id="adminProductFilterEmpty" hidden><strong>Bu filtrelerle ürün bulunamadı.</strong><p>Filtreleri temizleyerek tüm ürünleri görüntüleyin.</p></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
+        <div class="panel-live-status" id="productMetrics" aria-live="polite"></div><div class="interface-toolbar" id="productListControls"><label for="adminProductSearch">Ürünlerde ara<input id="adminProductSearch" type="search" placeholder="Ürün adı veya kimliği" autocomplete="off" /></label><label for="adminProductCategory">Kategori<select id="adminProductCategory"><option value="all">Tüm kategoriler</option><option value="pubg-ios">PUBG MOBILE iOS</option><option value="pubg-android">PUBG MOBILE Android</option><option value="oxide-ios">OXİDE iOS</option><option value="gbox-ios">GBOX iOS</option><option value="oxide-android">OXİDE Android</option></select></label><label for="adminProductStatus">Satış durumu<select id="adminProductStatus"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="inactive">Pasif</option><option value="archived">Arşiv</option></select></label><button type="button" class="secondary-action" id="clearProductFilters">Filtreleri temizle</button><output id="adminProductFilterCount" role="status" aria-live="polite"></output></div><div class="admin-empty" id="adminProductFilterEmpty" hidden><strong>Bu filtrelerle ürün bulunamadı.</strong><p>Filtreleri temizleyerek tüm ürünleri görüntüleyin.</p></div><div class="product-admin-grid" id="adminProductGrid" aria-live="polite"></div>
       </section>
 
       <section class="admin-panel" data-admin-panel="users" hidden inert>
@@ -110,6 +110,7 @@
             <label class="toggle-row"><input data-category-visibility="pubg-ios" type="checkbox" /><span><strong>PUBG MOBILE iOS</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
             <label class="toggle-row"><input data-category-visibility="pubg-android" type="checkbox" /><span><strong>PUBG MOBILE Android</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
             <label class="toggle-row"><input data-category-visibility="oxide-ios" type="checkbox" /><span><strong>OXİDE iOS</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
+            <label class="toggle-row"><input data-category-visibility="gbox-ios" type="checkbox" /><span><strong>GBOX iOS</strong><small>iPhone ve iPad ürünlerini kategori kısayolunda göster.</small></span></label>
             <label class="toggle-row"><input data-category-visibility="oxide-android" type="checkbox" /><span><strong>OXİDE Android</strong><small>Anasayfa kategori kısayolunda göster.</small></span></label>
             
             
@@ -223,10 +224,10 @@
         <label><span>Ürün kimliği</span><input id="newProductId" name="id" required minlength="3" maxlength="64" pattern="[a-z][a-z0-9\-]{2,63}" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="yeni-urun-ios" /><button type="button" class="secondary-action" id="suggestProductId">Addan kimlik oluştur</button><small>3–64 karakter: ilk karakter harf; küçük harf, sayı ve tire. Türkçe harfler standartlaştırılır. Kayıttan sonra değiştirilemez.</small></label>
         <label><span>Ürün adı</span><input name="name" required minlength="3" maxlength="80" placeholder="Ürün adı" /></label>
         <label><span>Platform</span><select name="platform"><option value="android">Android</option><option value="ios">iOS</option></select></label>
-        <label><span>Oyun</span><select name="game"><option value="pubg">PUBG MOBILE</option><option value="oxide">OXİDE</option></select></label>
+        <label><span>Oyun</span><select name="game"><option value="pubg">PUBG MOBILE</option><option value="oxide">OXİDE</option><option value="gbox">GBOX</option></select></label>
         <label><span>Stok biçimi</span><select name="inventoryType"><option value="license">Lisans / kod</option><option value="account">Hesap</option></select></label>
         <label><span>Teslimat yöntemi</span><select name="fulfillmentMode"><option value="automatic">Otomatik stok + Telegram</option><option value="telegram_only">Yalnızca Telegram (manuel)</option></select></label>
-        <label><span>Hazır kategori</span><select id="newProductCategoryPreset" name="categoryPreset"><option value="pubg-android">PUBG MOBILE Android</option><option value="pubg-ios">PUBG MOBILE iOS</option><option value="oxide-android">OXİDE Android</option><option value="oxide-ios">OXİDE iOS</option></select></label><label><span>Kategori adı</span><input name="category" maxlength="50" placeholder="PUBG MOBILE Android" required /></label>
+        <label><span>Hazır kategori</span><select id="newProductCategoryPreset" name="categoryPreset"><option value="pubg-android">PUBG MOBILE Android</option><option value="pubg-ios">PUBG MOBILE iOS</option><option value="oxide-android">OXİDE Android</option><option value="oxide-ios">OXİDE iOS</option><option value="gbox-ios">GBOX iOS</option></select></label><label><span>Kategori adı</span><input name="category" maxlength="50" placeholder="PUBG MOBILE Android" required /></label>
         <label><span>Satış etiketi</span><select name="badgeKey" id="newProductBadge"></select></label>
       </div>
       <label><span>Ürün açıklaması</span><textarea name="description" rows="3" required minlength="8" maxlength="240" placeholder="Ürün özelliklerini kısaca açıklayın."></textarea></label>
@@ -242,6 +243,6 @@
     </form>
   </div>
   <div class="notification-center" id="adminToasts" aria-live="polite" aria-atomic="false"></div>
-  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v84r1"></script>
+  <script type="module" src="./admin-legacy-entry.js?v=zentra-ui-v90r1"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ test('public catalog HTTP responses expose only permitted products, categories a
   assert.equal(result.status, 200);
   const products = result.body.catalog.products;
   const additions = require('../public/data/store-products.json').products;
-  assert.equal(additions.length, 25);
+  assert.equal(additions.length, 27);
   for (const source of additions) {
     const product = products.find((entry) => entry.id === source.id);
     assert.ok(product, source.id);

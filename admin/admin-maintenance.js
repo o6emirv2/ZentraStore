@@ -1,35 +1,24 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
-import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v89r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v90r1';
+import { openAdminDialog } from './admin-dialogs.js?v=zentra-ui-v90r1';
 
 export const ORDER_BULK_ACTIONS = Object.freeze([
   ['cancel_telegram', 'Tüm Telegram Siparişlerini İptal Et'],
-  ['cancel_shopier', 'Tüm Shopier Siparişlerini İptal Et'],
-  ['cancel_delete_all', 'Tüm Telegram Ve Shopier Siparişlerini İptal Et Ve Kalıcı Olarak Tamamen Sil'],
-  ['cancel_all', 'Tüm Telegram Ve Shopier Siparişlerini İptal Et'],
-  ['delete_refunded', 'Tüm İade Edilen Siparişlerini Kalıcı Olarak Tamamen Sil (Her Yerden Sil)'],
-  ['delete_cancelled', 'Tüm İptal Edilen Siparişlerini Kalıcı Olarak Tamamen Sil (Her Yerden Sil)']
+  ['cancel_delete_telegram', 'Tüm Telegram Siparişlerini İptal Et ve İzin Verilen Kayıtları Kalıcı Sil'],
+  ['delete_refunded', 'İadesi Tamamlanan Siparişlerin İzin Verilen Kayıtlarını Kalıcı Sil'],
+  ['delete_cancelled', 'İptali Kesinleşen Siparişlerin İzin Verilen Kayıtlarını Kalıcı Sil']
 ]);
 const REASONS = Object.freeze({
-  ALREADY_FINAL: 'Zaten sonuçlanmış', DELIVERED_OR_PROTECTED: 'Teslim edilmiş veya korunan kayıt',
+  BULK_JOB_VERSION_REVIEW_REQUIRED: 'Eski işlem kapsamı değişti. Güncel bir önizleme oluşturun.', ALREADY_FINAL: 'Zaten sonuçlanmış', DELIVERED_OR_PROTECTED: 'Teslim edilmiş veya korunan kayıt',
   EXTERNAL_PAYMENT_REVIEW_REQUIRED: 'Harici ödeme / iade doğrulaması gerekli', REFUND_NOT_VERIFIED: 'İade henüz doğrulanmadı',
   EXTERNAL_REFUND_NOT_VERIFIED: 'Harici iade referansı doğrulanmadı', PROTECTED_SECURITY_OR_FINANCIAL_RECORD: 'Korunan güvenlik / finans kaydı',
   UNKNOWN_RECORD_RETENTION_REQUIRED: 'Kayıt türünün saklama gereksinimi doğrulanmadı; korundu',
   RETENTION_PERIOD_ACTIVE: 'Saklama süresi devam ediyor', RETENTION_HOLD: 'Kayıt saklama altında', RESERVATION_ACTIVE: 'Aktif rezervasyon var',
-  PROVIDER_REVIEW_PENDING: 'Sağlayıcı doğrulaması bekleniyor', STATE_CHANGED_AFTER_PREVIEW: 'Önizlemeden sonra değişti',
-  PROVIDER_VERIFICATION_REQUIRED: 'Sağlayıcı sonucu bekleniyor; işlem tekrarlanmıyor', LINK_CLOSED_GRACE_PERIOD: 'Bağlantı kapatıldı; son kontrol bekleniyor',
-  PROVIDER_MANUAL_REVIEW_REQUIRED: 'Sağlayıcı sonucu kesinleşmedi; otomatik deneme durduruldu, yönetici kontrolü gerekli',
-  REFUND_PENDING: 'İade sağlayıcıda işleniyor', SHOPIER_TIMEOUT: 'Sağlayıcı zaman aşımı; yeniden sorgulanacak',
+  STATE_CHANGED_AFTER_PREVIEW: 'Önizlemeden sonra değişti',
   CANCELLED: 'İptal edildi', REFUNDED: 'İade tamamlandı', DELETED: 'Silindi',
   DELETED_FINANCIAL_EVIDENCE_RETAINED: 'Sipariş kaldırıldı; zorunlu finans kayıtları korundu', ALREADY_REMOVED: 'Daha önce kaldırılmış',
-  SHOPIER_REFUND_FAILED_REVIEW_REQUIRED: 'Sağlayıcı iadesi başarısız; otomatik yeni iade gönderilmez, yönetici incelemesi gerekli',
-  SHOPIER_DELIVERED_REFUND_REVIEW_REQUIRED: 'Teslim edilen ürün için tekil iade incelemesi gerekli',
-  WALLET_REFUND_NOT_VERIFIED: 'Bakiye iadesi doğrulanmadı', PROVIDER_CANCELLATION_NOT_VERIFIED: 'Sağlayıcı iptali kesinleşmedi',
+  WALLET_REFUND_NOT_VERIFIED: 'Bakiye iadesi doğrulanmadı',
   RECORD_NO_LONGER_EXISTS: 'Kayıt artık bulunamıyor; bu işlemde iptal veya silme doğrulanmadı.',
   ADMIN_JOB_AUTHORIZATION_REVOKED: 'Yönetici oturumları iptal edildi. Yeniden doğrulayarak devam edin.',
-  SHOPIER_CONFIGURATION_INVALID: 'Shopier erişim anahtarı veya API adresi yapılandırması eksik.',
-  SHOPIER_AUTH_FAILED: 'Shopier erişim yetkisi reddedildi; PAT yetkisini kontrol edin.',
-  SHOPIER_CONNECTION_FAILED: 'Shopier bağlantısı kurulamadı; yeniden kontrol edilecek.',
-  SHOPIER_API_ERROR: 'Shopier API isteği başarısız; sağlayıcı durumunu kontrol edin.',
   STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED: 'Eski kaydın ödeme kanalı doğrulanamadı; işlem yapılmadı.',
   STORE_ORDER_CONFLICT: 'Sipariş başka bir işlemde değişti; güncel kayıt üzerinden tekrar deneyin.'
 });
@@ -50,9 +39,9 @@ export function createMaintenanceController({ host, scope = 'orders', request, a
     progress.hidden = false;
     const wasOpen = progress.querySelector('details')?.open === true;
     const job = current;
-    const channelNames = { telegram: 'Telegram', shopier: 'Shopier', wallet: 'Bakiye', audit: 'Mağaza denetimi', adminAudit: 'Yönetim denetimi' };
+    const channelNames = { telegram: 'Telegram', wallet: 'Bakiye', audit: 'Mağaza denetimi', adminAudit: 'Yönetim denetimi' };
     const channels = Object.entries(job.channels || {}).map(([name, row]) => `<div><strong>${escapeHtml(channelNames[name] || name)}</strong><span>${row.succeeded || 0} başarılı · ${row.failed || 0} başarısız · ${row.skipped || 0} kapsam dışı</span></div>`).join('');
-    progress.innerHTML = `<header><h3>${escapeHtml(PHASE[job.state] || job.state)}</h3><small>İşlem: …${escapeHtml(job.id.slice(-12))}</small></header><progress max="${Math.max(1, job.total)}" value="${job.completed || 0}">${job.completed || 0}/${job.total}</progress><p role="status" aria-live="polite">${job.total} hedef · ${job.completed || 0} sonuçlandı · ${job.succeeded || 0} başarılı · ${job.failed || 0} başarısız · ${job.skipped || 0} kapsam dışı</p><div class="maintenance-channels">${channels}</div>${job.state === 'running' ? '<p>Bekleyen sağlayıcı işlemleri kesinleşmeden başarılı sayılmaz. İlerleme sunucuda saklanır; sunucu yeniden başlatıldığında tamamlanmamış kayıtlar sürdürülür.</p>' : ''}${job.error ? `<p role="alert">${escapeHtml(REASONS[job.error] || job.error)}</p>` : ''}${['ready', 'paused'].includes(job.state) ? '<button type="button" class="primary-action" data-review-job>Önizlemeyi Aç ve İncele</button>' : ''}<details><summary>Sipariş / kayıt sonuçları (${results.length} gösteriliyor)</summary><ul class="maintenance-results">${results.map(row => `<li><strong>${escapeHtml(row.reference)}</strong><span>${escapeHtml(REASONS[row.code || row.result] || row.code || row.result || ({ queued: 'Sırada', waiting: 'Doğrulama bekleniyor', skipped: 'Kapsam dışı', failed: 'Başarısız', succeeded: 'Doğrulandı' }[row.state]) || row.state)}</span>${row.nextCheckAt ? `<small>Sonraki kontrol: ${escapeHtml(new Date(row.nextCheckAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</small>` : ''}</li>`).join('')}</ul><button type="button" class="secondary-action" data-refresh-results>Sonuçları Yenile</button>${cursor || results.length === 0 && job.total > 0 ? '<button type="button" class="secondary-action" data-more-results>Diğer sonuçları yükle</button>' : ''}</details>`;
+    progress.innerHTML = `<header><h3>${escapeHtml(PHASE[job.state] || job.state)}</h3><small>İşlem: …${escapeHtml(job.id.slice(-12))}</small></header><progress max="${Math.max(1, job.total)}" value="${job.completed || 0}">${job.completed || 0}/${job.total}</progress><p role="status" aria-live="polite">${job.total} hedef · ${job.completed || 0} sonuçlandı · ${job.succeeded || 0} başarılı · ${job.failed || 0} başarısız · ${job.skipped || 0} kapsam dışı</p><div class="maintenance-channels">${channels}</div>${job.state === 'running' ? '<p>Her kayıt sunucuda yeniden doğrulanır. İlerleme saklanır; kesilen işlem tamamlanan kayıtlara tekrar uygulanmaz.</p>' : ''}${job.error ? `<p role="alert">${escapeHtml(REASONS[job.error] || job.error)}</p>` : ''}${['ready', 'paused'].includes(job.state) ? '<button type="button" class="primary-action" data-review-job>Önizlemeyi Aç ve İncele</button>' : ''}<details><summary>Sipariş / kayıt sonuçları (${results.length} gösteriliyor)</summary><ul class="maintenance-results">${results.map(row => `<li><strong>${escapeHtml(row.reference)}</strong><span>${escapeHtml(REASONS[row.code || row.result] || row.code || row.result || ({ queued: 'Sırada', waiting: 'Doğrulama bekleniyor', skipped: 'Kapsam dışı', failed: 'Başarısız', succeeded: 'Doğrulandı' }[row.state]) || row.state)}</span>${row.nextCheckAt ? `<small>Sonraki kontrol: ${escapeHtml(new Date(row.nextCheckAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</small>` : ''}</li>`).join('')}</ul><button type="button" class="secondary-action" data-refresh-results>Sonuçları Yenile</button>${cursor || results.length === 0 && job.total > 0 ? '<button type="button" class="secondary-action" data-more-results>Diğer sonuçları yükle</button>' : ''}</details>`;
     if (wasOpen) progress.querySelector('details')?.setAttribute('open', '');
     progress.querySelector('[data-review-job]')?.addEventListener('click', () => void confirm());
     progress.querySelector('[data-refresh-results]')?.addEventListener('click', async event => {
@@ -89,9 +78,9 @@ export function createMaintenanceController({ host, scope = 'orders', request, a
     const job = current;
     try {
       const confirmed = await openAdminDialog({ title: 'Toplu Sipariş İşlemi',
-        description: scope === 'audit' ? 'Yalnızca saklama süresi bitmiş ve korunmayan operasyon denetimleri silinir. Finans ve güvenlik kayıtları korunur.' : 'Seçilen işlem Telegram ve/veya Shopier siparişlerinizi etkileyecektir. Ücret alınmış uygun Shopier işlemleri iade sürecine girer.',
+        description: scope === 'audit' ? 'Yalnızca saklama süresi bitmiş ve korunmayan operasyon denetimleri silinir. Finans ve güvenlik kayıtları korunur.' : 'İptal işlemleri yalnızca ödemesi onaylanmamış Telegram siparişlerini kapsar. Silme işlemleri yalnızca sonucu ve saklama koşulları doğrulanmış Telegram ve bakiye siparişlerini kapsar.',
         confirmLabel: 'İşlemi Onayla', destructive: job.permanent,
-        content: `<dl class="operation-summary"><div><dt>Toplam hedeflenen kayıt</dt><dd>${job.total}</dd></div><div><dt>İptal edilebilir</dt><dd>${job.cancellable}</dd></div><div><dt>İşlem dışında</dt><dd>${job.excluded}</dd></div><div><dt>Silme kapsamına alınabilecek</dt><dd>${job.deletable}</dd></div><div><dt>İade gerektiren Shopier kaydı</dt><dd>${job.refunds}</dd></div><div><dt>Geri alınabilirlik</dt><dd>${job.permanent ? 'Kalıcı silme geri alınamaz' : 'İptal / iade geri alınamaz'}</dd></div></dl><p class="operation-note">Kapsam, önizleme oluşturulduğu andaki kayıtlardır. Değişen ve doğrulanamayan kayıtlar işlenmez. Harici platform kayıtlarının silindiği iddia edilmez. Finansal kanıtlar ve tek kullanımlık işlem kayıtları korunur.</p>${job.permanent ? '<label class="operation-field"><span>İkinci doğrulama: KALICI SIL yazın</span><input name="confirmation" required autocomplete="off" pattern="KALICI SIL"/></label>' : ''}`,
+        content: `<dl class="operation-summary"><div><dt>Toplam hedeflenen kayıt</dt><dd>${job.total}</dd></div><div><dt>İptal edilebilir</dt><dd>${job.cancellable}</dd></div><div><dt>İşlem dışında</dt><dd>${job.excluded}</dd></div><div><dt>Silme kapsamına alınabilecek</dt><dd>${job.deletable}</dd></div><div><dt>Geri alınabilirlik</dt><dd>${job.permanent ? 'Kalıcı silme geri alınamaz' : 'İptal geri alınamaz'}</dd></div></dl><p class="operation-note">Kapsam, önizleme oluşturulduğu andaki kayıtlardır. Değişen ve doğrulanamayan kayıtlar işlenmez. Harici platform kayıtlarının silindiği iddia edilmez. Finansal kanıtlar ve tek kullanımlık işlem kayıtları korunur.</p>${job.permanent ? '<label class="operation-field"><span>İkinci doğrulama: KALICI SIL yazın</span><input name="confirmation" required autocomplete="off" pattern="KALICI SIL"/></label>' : ''}`,
         collect: form => ({ confirmation: job.permanent ? form.elements.confirmation.value.trim() : '' }) });
       if (!confirmed || !(await authorize())) return;
       const result = await request(`/api/admin/store/maintenance/${job.id}/${scope}/confirm`, { method: 'POST', body: confirmed, timeoutMs: 30_000 });

@@ -1,4 +1,4 @@
-import { escapeHtml } from './admin-core.js?v=zentra-ui-v89r1';
+import { escapeHtml } from './admin-core.js?v=zentra-ui-v90r1';
 
 export function renderSecurityAssessment(security, { scoreHost, chip, levelHost, ring, checksHost, metricsHost, formatDate }) {
   const score = Math.max(0, Math.min(100, Number(security.score) || 0));

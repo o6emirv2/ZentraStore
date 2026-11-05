@@ -61,7 +61,7 @@ async function main(){
    await panel(page,'products');await page.locator('#adminProductCategory').selectOption('oxide-ios');
    await page.waitForFunction(count=>[...document.querySelectorAll('[data-product-form]')].filter(el=>el.getClientRects().length).length===count,expected.length);
    const ids=await page.locator('[data-product-form]:visible').evaluateAll(forms=>forms.map(form=>form.dataset.productForm).sort());assert.deepEqual(ids,expected);
-   const options=await page.locator('#adminProductCategory option').evaluateAll(nodes=>nodes.map(n=>n.value).sort());assert.deepEqual(options,['all','oxide-android','oxide-ios','pubg-android','pubg-ios']);
+   const options=await page.locator('#adminProductCategory option').evaluateAll(nodes=>nodes.map(n=>n.value).sort());assert.deepEqual(options,['all','gbox-ios','oxide-android','oxide-ios','pubg-android','pubg-ios']);
    await page.locator('#clearProductFilters').click();cases.push({name:name+'-category',exactProducts:true,onlyPermittedCategories:true,clearFilterRestoresCatalog:true});
   }
   async function mobileLayouts(page){
