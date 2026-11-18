@@ -1,0 +1,1169 @@
+"use strict";
+const crypto = require("node:crypto");
+const { uploadProductImage, readImageUpload } = require("./storeProductImages");
+const { logError } = require("./errorLogger");
+
+const { productCategory, normalizeFeatures } = require("./storeProductSchema");
+const {
+  GAME_KEYS,
+  normalizeCategoryVisibility,
+  expandCategoryVisibility,
+} = require("../../public/js/store/catalog-schema.mjs");
+const { initFirebaseAdmin } = require("../config/firebaseAdmin");
+const { recordMutationAudit } = require("./storeMutationAudit");
+const {
+  STORE_CATALOG,
+  findProduct: findBaseProduct,
+} = require("./storeCatalog");
+const {
+  normalizeBadgeKey,
+  badgeKeyFromLegacyLabel,
+  resolveBadge,
+  badgeOptions,
+} = require("./storeBadgeCatalog");
+const {
+  CHANNEL_LINKS_REVISION,
+  DEFAULT_QUICK_LINKS,
+  channelLinksMigration,
+  normalizeQuickLinks,
+} = require("./storeLinks");
+const {
+  MAX_CUSTOM_PRODUCTS,
+  normalizeCreatedProduct,
+  readCustomProducts,
+  productImage,
+  isValidProductImage,
+} = require("./storeProductCreation");
+
+const CACHE_TTL_MS = 60_000;
+const CATALOG_SCHEMA_VERSION = 1;
+const CATALOG_SCOPE_VERSION = 1;
+function catalogRevision(settings = {}) {
+  const canonical = (value) => {
+    if (value instanceof Date) return value.toISOString();
+    if (Array.isArray(value)) return value.map(canonical);
+    if (value && typeof value === "object")
+      return Object.fromEntries(
+        Object.keys(value)
+          .sort()
+          .map((key) => [key, canonical(value[key])]),
+      );
+    return value;
+  };
+  const pricing = {
+    catalog: settings.catalog || null,
+    maintenance: settings.maintenance === true,
+    services: settings.services || null,
+    categoryVisibility: settings.categoryVisibility || null,
+    support: settings.support || null,
+  };
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify(canonical(pricing)))
+    .digest("hex");
+}
+const PRODUCT_TAGS = Object.freeze(["new", "popular", "discounted"]);
+const ANNOUNCEMENT_TONES = Object.freeze(["info", "success", "warning"]);
+let cache = null;
+let catalogLoad = null;
+let cacheGeneration = 0;
+
+const DEFAULT_STOREFRONT = Object.freeze({
+  channelLinksRevision: CHANNEL_LINKS_REVISION,
+  maintenance: false,
+  announcement: Object.freeze({
+    enabled: false,
+    title: "",
+    message: "",
+    tone: "info",
+    ctaLabel: "",
+    ctaTarget: "catalog",
+  }),
+  services: Object.freeze({
+    automaticDelivery: true,
+    telegramSupport: true,
+    balancePayment: true,
+  }),
+  support: Object.freeze({ telegramUsername: STORE_CATALOG.telegramUsername }),
+  home: Object.freeze({ title: "", message: "" }),
+  categoryVisibility: Object.freeze(normalizeCategoryVisibility()),
+  quickLinks: DEFAULT_QUICK_LINKS,
+});
+
+function serviceError(code, statusCode = 400) {
+  return Object.assign(new Error(code), { code, statusCode });
+}
+
+function safeText(value = "", max = 240) {
+  return String(value ?? "")
+    .replace(/[\u0000-\u001f\u007f<>]/g, "")
+    .trim()
+    .slice(0, max);
+}
+
+function integer(value, fallback, min, max) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? Math.max(min, Math.min(max, Math.trunc(number)))
+    : fallback;
+}
+
+function safeImage(value = "", fallback = "") {
+  const image = safeText(value, 500);
+  return productImage(image, fallback);
+}
+
+function normalizeTags(value = []) {
+  return [
+    ...new Set(
+      (Array.isArray(value) ? value : [])
+        .map((tag) => safeText(tag, 20).toLowerCase())
+        .filter((tag) => PRODUCT_TAGS.includes(tag)),
+    ),
+  ];
+}
+
+function normalizePlan(basePlan = {}, override = {}) {
+  const source =
+    override && typeof override === "object" && !Array.isArray(override)
+      ? override
+      : {};
+  const storedPrice = Number(source.priceKurus);
+  const persistedPrice =
+    Number.isSafeInteger(storedPrice) &&
+    storedPrice >= 1 &&
+    storedPrice <= 100_000_000;
+  return {
+    ...basePlan,
+    active: source.active !== false,
+    label: safeText(source.label, 50) || basePlan.label,
+    duration: safeText(source.duration, 50) || basePlan.duration,
+    priceKurus: persistedPrice ? storedPrice : basePlan.priceKurus,
+  };
+}
+
+const { validateAppearance } = require("./storeProductCreation");
+const { cardStyle } = require("../../public/js/store/card-appearance.mjs");
+function mergeProduct(
+  baseProduct = {},
+  override = {},
+  includeInactive = false,
+) {
+  const source =
+    override && typeof override === "object" && !Array.isArray(override)
+      ? override
+      : {};
+  const planOverrides =
+    source.plans &&
+    typeof source.plans === "object" &&
+    !Array.isArray(source.plans)
+      ? source.plans
+      : {};
+  const plans = baseProduct.plans
+    .map((plan) => normalizePlan(plan, planOverrides[plan.key]))
+    .filter((plan) => includeInactive || plan.active !== false);
+  const immutableTelegramOnly = baseProduct.fulfillmentMode === "telegram_only";
+  const automaticEnabled = immutableTelegramOnly
+    ? false
+    : source.automaticEnabled !== false;
+  const telegramEnabled = immutableTelegramOnly
+    ? true
+    : source.telegramEnabled !== false;
+  const badge = resolveBadge(
+    { badgeKey: source.badgeKey, badge: source.badge },
+    baseProduct,
+  );
+  const tags =
+    source.tags !== undefined
+      ? normalizeTags(source.tags)
+      : normalizeTags(baseProduct.tags);
+  const duplicateTag =
+    badge.key === "new"
+      ? "new"
+      : badge.key === "popular"
+        ? "popular"
+        : badge.key === "discounted"
+          ? "discounted"
+          : "";
+  let category;
+  try {
+    category = productCategory(source, baseProduct);
+  } catch (error) {
+    if (error.code !== "STORE_PRODUCT_CATEGORY_INVALID") throw error;
+    category = productCategory({}, baseProduct);
+  }
+  return {
+    ...baseProduct,
+    ...category,
+    cardStyle: cardStyle(source.cardStyle ?? baseProduct.cardStyle),
+    ...(Array.isArray(source.galleryPaths ?? baseProduct.galleryPaths) ? {galleryPaths: source.galleryPaths ?? baseProduct.galleryPaths} : {}),
+    immutablePlatform: immutableTelegramOnly,
+    name: safeText(source.name, 80) || baseProduct.name,
+    active: source.active !== false,
+    archived: source.archived === true,
+    automaticEnabled,
+    telegramEnabled,
+    fulfillmentMode: automaticEnabled ? "automatic" : "telegram_only",
+    immutableFulfillment: immutableTelegramOnly,
+    featured:
+      source.featured !== undefined
+        ? source.featured === true
+        : baseProduct.featured === true,
+    sortOrder: integer(
+      source.sortOrder,
+      integer(baseProduct.sortOrder, 500, 0, 10_000),
+      0,
+      10_000,
+    ),
+    badgeKey: badge.key,
+    badge: badge.label,
+    badgeIcon: badge.icon,
+    badgeTone: badge.tone,
+    description: safeText(source.description, 240) || baseProduct.description,
+    features: normalizeFeatures(
+      source.features === undefined
+        ? baseProduct.features || []
+        : source.features,
+    ),
+    image: safeImage(source.image, baseProduct.image),
+    tags: duplicateTag ? tags.filter((tag) => tag !== duplicateTag) : tags,
+    plans,
+  };
+}
+
+function normalizeStorefront(source = {}) {
+  const current =
+    source && typeof source === "object" && !Array.isArray(source)
+      ? source
+      : {};
+  source = { ...current, ...(channelLinksMigration(current) || {}) };
+  const announcement =
+    source.announcement && typeof source.announcement === "object"
+      ? source.announcement
+      : {};
+  const services =
+    source.services && typeof source.services === "object"
+      ? source.services
+      : {};
+  const support =
+    source.support && typeof source.support === "object" ? source.support : {};
+  const home =
+    source.home && typeof source.home === "object" ? source.home : {};
+  const categoryVisibility =
+    source.categoryVisibility && typeof source.categoryVisibility === "object"
+      ? source.categoryVisibility
+      : {};
+  const tone = ANNOUNCEMENT_TONES.includes(
+    String(announcement.tone || "").toLowerCase(),
+  )
+    ? String(announcement.tone).toLowerCase()
+    : "info";
+  const ctaTarget = ["catalog", "android", "ios", "orders"].includes(
+    String(announcement.ctaTarget || ""),
+  )
+    ? String(announcement.ctaTarget)
+    : "catalog";
+  return {
+    channelLinksRevision:
+      Number(source.channelLinksRevision) || CHANNEL_LINKS_REVISION,
+    quickLinksRevision: Number(source.quickLinksRevision) || 0,
+    maintenance: source.maintenance === true,
+    announcement: {
+      enabled: announcement.enabled === true,
+      title: safeText(announcement.title, 80),
+      message: safeText(announcement.message, 240),
+      tone,
+      ctaLabel: safeText(announcement.ctaLabel, 40),
+      ctaTarget,
+    },
+    services: {
+      automaticDelivery: services.automaticDelivery !== false,
+      telegramSupport: services.telegramSupport !== false,
+      balancePayment: services.balancePayment !== false,
+    },
+    support: {
+      telegramUsername:
+        safeText(support.telegramUsername, 40)
+          .replace(/^@+/, "")
+          .replace(/[^a-zA-Z0-9_]/g, "") || STORE_CATALOG.telegramUsername,
+    },
+    home: {
+      title: safeText(home.title, 80),
+      message: safeText(home.message, 240),
+    },
+    categoryVisibility: normalizeCategoryVisibility(categoryVisibility),
+    quickLinks: normalizeQuickLinks(source.quickLinks),
+  };
+}
+
+function catalogState(source = {}) {
+  const state = source.catalog;
+  if (!state || typeof state !== "object" || Array.isArray(state)) return null;
+  if (Number(state.schemaVersion) !== CATALOG_SCHEMA_VERSION) return null;
+  if (
+    !state.products ||
+    typeof state.products !== "object" ||
+    Array.isArray(state.products)
+  )
+    return null;
+  return state;
+}
+
+function catalogDefinitions(customProducts = []) {
+  return [
+    ...new Map(
+      [...STORE_CATALOG.products, ...customProducts].map((product) => [
+        product.id,
+        product,
+      ]),
+    ).values(),
+  ];
+}
+
+function findProductDefinition(id, customProducts = {}) {
+  const custom =
+    customProducts instanceof Map
+      ? customProducts.get(id)
+      : readCustomProducts(customProducts).find((product) => product.id === id);
+  return custom || findBaseProduct(id);
+}
+
+function initializeProductSettings(
+  legacy = new Map(),
+  now = Date.now(),
+  customProducts = {},
+) {
+  const custom = readCustomProducts(customProducts);
+  const customMap = new Map(custom.map((product) => [product.id, product]));
+  return Object.fromEntries(
+    catalogDefinitions(custom).map((base) => {
+      const existing = legacy.get(base.id) || {};
+      const effective = mergeProduct(base, existing, true);
+      const settings = {
+        ...effective,
+        plans: Object.fromEntries(
+          effective.plans.map((plan) => [
+            plan.key,
+            {
+              active: plan.active !== false,
+              label: plan.label,
+              duration: plan.duration,
+              priceKurus: plan.priceKurus,
+            },
+          ]),
+        ),
+      };
+      const savedAt = Math.max(0, Number(existing.updatedAt || 0)) || now;
+      const prepared = productSettingsPatch(
+        base.id,
+        settings,
+        existing.updatedBy || {},
+        savedAt,
+        customMap,
+      );
+      return [base.id, prepared.patch];
+    }),
+  );
+}
+
+function assertCatalogCapacity(settings, catalog) {
+  const size = Buffer.byteLength(
+    JSON.stringify({ ...settings, catalog }),
+    "utf8",
+  );
+  const previous = Buffer.byteLength(JSON.stringify(settings), "utf8");
+  if (size > 850_000 && size >= previous)
+    throw serviceError("STORE_CATALOG_SIZE_LIMIT", 409);
+}
+
+async function readOverrides() {
+  const { db } = initFirebaseAdmin();
+  if (!db)
+    return {
+      products: new Map(),
+      customProducts: [],
+      storefront: DEFAULT_STOREFRONT,
+    };
+  const reference = db.collection("storefrontSettings").doc("main");
+  const settingsSnapshot = await reference.get();
+  let settings = settingsSnapshot.exists ? settingsSnapshot.data() || {} : {};
+  let stored = catalogState(settings);
+  if (!stored) {
+    const legacySnapshot = await db
+      .collection("storeProductSettings")
+      .limit(100)
+      .get();
+    const legacy = new Map(
+      legacySnapshot.docs.map((document) => [
+        document.id,
+        document.data() || {},
+      ]),
+    );
+    const now = Date.now();
+    const products = initializeProductSettings(legacy, now);
+    await db.runTransaction(async (transaction) => {
+      const currentSnapshot = await transaction.get(reference);
+      const current = currentSnapshot.exists
+        ? currentSnapshot.data() || {}
+        : {};
+      const currentState = catalogState(current);
+      if (currentState) {
+        settings = current;
+        stored = currentState;
+        return;
+      }
+      stored = {
+        schemaVersion: CATALOG_SCHEMA_VERSION,
+        scopeVersion: CATALOG_SCOPE_VERSION,
+        sourceVersion: STORE_CATALOG.version,
+        initializedAt: now,
+        updatedAt: now,
+        products,
+      };
+      settings = {
+        ...current,
+        catalog: stored,
+        categoryVisibility: normalizeCategoryVisibility(
+          current.categoryVisibility,
+        ),
+      };
+      transaction.set(reference, settings);
+    });
+  }
+  const storedProducts = stored?.products || {};
+  const catalogChanged =
+    Number(stored?.scopeVersion) !== CATALOG_SCOPE_VERSION ||
+    Number(stored?.sourceVersion) < Number(STORE_CATALOG.version) ||
+    STORE_CATALOG.products.some(
+      (product) => !stored.deletedProductIds?.[product.id] && !Object.hasOwn(storedProducts, product.id),
+    );
+  if (catalogChanged) {
+    const now = Date.now();
+    await db.runTransaction(async (transaction) => {
+      const currentSnapshot = await transaction.get(reference);
+      const current = currentSnapshot.exists
+        ? currentSnapshot.data() || {}
+        : {};
+      const currentState = catalogState(current);
+      if (!currentState) return;
+      const currentProducts = currentState.products || {};
+      const defaults = initializeProductSettings(
+        new Map(Object.entries(currentProducts)),
+        now,
+        currentState.customProducts,
+      );
+      const nextState = {
+        ...currentState,
+        scopeVersion: CATALOG_SCOPE_VERSION,
+        sourceVersion: Math.max(
+          Number(currentState.sourceVersion) || 0,
+          STORE_CATALOG.version,
+        ),
+        updatedAt: now,
+        products: Object.fromEntries(Object.entries(defaults).filter(([id]) => !currentState.deletedProductIds?.[id])),
+        customProducts: Object.fromEntries(
+          readCustomProducts(currentState.customProducts).map((product) => [
+            product.id,
+            product,
+          ]),
+        ),
+      };
+      settings = {
+        ...current,
+        catalog: nextState,
+        categoryVisibility: normalizeCategoryVisibility(
+          current.categoryVisibility,
+        ),
+      };
+      transaction.set(reference, settings);
+      stored = nextState;
+    });
+  }
+  if (channelLinksMigration(settings)) {
+    await db.runTransaction(async (transaction) => {
+      const currentSnapshot = await transaction.get(reference);
+      const current = currentSnapshot.exists
+        ? currentSnapshot.data() || {}
+        : {};
+      const patch = channelLinksMigration(current);
+      if (patch) transaction.set(reference, patch, { merge: true });
+      settings = { ...current, ...(patch || {}) };
+      stored = catalogState(settings);
+    });
+  }
+  return {
+    deleted: stored?.deletedProductIds || {},
+    products: new Map(Object.entries(stored?.products || {})),
+    customProducts: readCustomProducts(stored?.customProducts),
+    storefront: normalizeStorefront(settings),
+    revision: catalogRevision(settings),
+  };
+}
+
+let catalogFailureUntil = 0;
+async function getEffectiveCatalog({
+  includeInactive = false,
+  fresh = false,
+} = {}) {
+  if (catalogFailureUntil > Date.now())
+    throw serviceError("STORE_STORAGE_TEMPORARILY_UNAVAILABLE", 503);
+  const now = Date.now();
+  if (!fresh && cache && now - cache.at < CACHE_TTL_MS) {
+    return includeInactive ? cache.admin : cache.public;
+  }
+  if (!catalogLoad) {
+    const generation = cacheGeneration;
+    const pending = (async () => {
+      const overrides = await readOverrides();
+      const products = catalogDefinitions(overrides.customProducts).filter(product => !overrides.deleted?.[product.id])
+        .map((product) =>
+          mergeProduct(product, overrides.products.get(product.id), true),
+        )
+        .sort(
+          (left, right) =>
+            left.sortOrder - right.sortOrder ||
+            left.name.localeCompare(right.name, "tr"),
+        );
+      const common = {
+        version: STORE_CATALOG.version + 100,
+        revision: overrides.revision,
+        currency: STORE_CATALOG.currency,
+        telegramUsername:
+          overrides.storefront.support?.telegramUsername ||
+          STORE_CATALOG.telegramUsername,
+        storefront: overrides.storefront,
+        badgeOptions: badgeOptions(),
+      };
+      if (generation !== cacheGeneration) return;
+      cache = {
+        at: Date.now(),
+        public: {
+          ...common,
+          products: products
+            .filter(
+              (product) =>
+                product.active !== false &&
+                product.archived !== true &&
+                overrides.storefront.categoryVisibility?.[product.platform] !==
+                  false &&
+                overrides.storefront.categoryVisibility?.[
+                  product.categoryKey
+                ] !== false,
+            )
+            .map((product) => ({
+              ...product,
+              plans: product.plans.filter((plan) => plan.active !== false),
+            }))
+            .filter((product) => product.plans.length > 0),
+        },
+        admin: { ...common, products },
+      };
+    })();
+    catalogLoad = pending
+      .catch((error) => {
+        if (require("./workerScheduler").quotaError(error)) {
+          catalogFailureUntil = Date.now() + 60_000;
+          throw serviceError("STORE_STORAGE_TEMPORARILY_UNAVAILABLE", 503);
+        }
+        throw error;
+      })
+      .finally(() => {
+        catalogLoad = null;
+      });
+  }
+  await catalogLoad;
+  if (!cache) return getEffectiveCatalog({ includeInactive, fresh: true });
+  return includeInactive ? cache.admin : cache.public;
+}
+
+function invalidateCatalogCache() {
+  cacheGeneration += 1;
+  cache = null;
+}
+
+function productSettingsPatch(
+  productId = "",
+  input = {},
+  actor = {},
+  updatedAt = Date.now(),
+  customProducts = {},
+) {
+  const id = safeText(productId, 80).toLowerCase();
+  const base = findProductDefinition(id, customProducts);
+  if (!base) throw serviceError("STORE_PRODUCT_NOT_FOUND", 404);
+  const body =
+    input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const plansInput =
+    body.plans && typeof body.plans === "object" && !Array.isArray(body.plans)
+      ? body.plans
+      : {};
+  for (const key of [
+    "active",
+    "archived",
+    "automaticEnabled",
+    "telegramEnabled",
+    "featured",
+  ]) {
+    if (body[key] !== undefined && typeof body[key] !== "boolean")
+      throw serviceError("STORE_PRODUCT_SETTINGS_INVALID", 400);
+  }
+  if (
+    Object.keys(plansInput).some(
+      (key) => !base.plans.some((plan) => plan.key === key),
+    )
+  )
+    throw serviceError("STORE_SKU_INVALID", 400);
+  if (
+    body.platform !== undefined &&
+    !["android", "ios"].includes(String(body.platform))
+  )
+    throw serviceError("STORE_PRODUCT_PLATFORM_INVALID", 400);
+  if (body.game !== undefined && !GAME_KEYS.includes(body.game))
+    throw serviceError("STORE_PRODUCT_GAME_INVALID", 400);
+  if (
+    body.sortOrder !== undefined &&
+    (!Number.isSafeInteger(Number(body.sortOrder)) ||
+      Number(body.sortOrder) < 0 ||
+      Number(body.sortOrder) > 10_000)
+  )
+    throw serviceError("STORE_PRODUCT_SORT_INVALID", 400);
+  if (
+    body.image !== undefined &&
+    String(body.image || "").trim() &&
+    !isValidProductImage(String(body.image).trim())
+  )
+    throw serviceError("STORE_PRODUCT_IMAGE_INVALID", 400);
+  const incomingBadgeKey =
+    body.badgeKey !== undefined
+      ? normalizeBadgeKey(body.badgeKey)
+      : badgeKeyFromLegacyLabel(body.badge);
+  if (
+    (body.badgeKey !== undefined || body.badge !== undefined) &&
+    !incomingBadgeKey
+  )
+    throw serviceError("STORE_PRODUCT_BADGE_INVALID", 400);
+  const requestedBadge = resolveBadge({ badgeKey: incomingBadgeKey }, base);
+  const requestedActive = body.active !== false;
+  const requestedArchived = body.archived === true;
+  const requestedAutomatic =
+    base.fulfillmentMode === "telegram_only"
+      ? false
+      : body.automaticEnabled !== false;
+  const requestedTelegram =
+    base.fulfillmentMode === "telegram_only"
+      ? true
+      : body.telegramEnabled !== false;
+  if (
+    requestedActive &&
+    !requestedArchived &&
+    !requestedAutomatic &&
+    !requestedTelegram
+  )
+    throw serviceError("STORE_PRODUCT_FULFILLMENT_REQUIRED", 409);
+  const plans = {};
+  for (const plan of base.plans) {
+    const source = plansInput[plan.key];
+    if (!source || typeof source !== "object" || Array.isArray(source))
+      continue;
+    if (source.active !== undefined && typeof source.active !== "boolean")
+      throw serviceError("STORE_PRODUCT_SETTINGS_INVALID", 400);
+    if (
+      typeof source.priceKurus !== "number" &&
+      typeof source.priceKurus !== "string"
+    )
+      throw serviceError("STORE_PRODUCT_PRICE_INVALID", 400);
+    const priceKurus = Number(source.priceKurus);
+    if (
+      !Number.isSafeInteger(priceKurus) ||
+      priceKurus < 1 ||
+      priceKurus > 100_000_000
+    )
+      throw serviceError("STORE_PRODUCT_PRICE_INVALID", 400);
+    plans[plan.key] = {
+      active: source.active !== false,
+      label: safeText(source.label, 50) || plan.label,
+      duration: safeText(source.duration, 50) || plan.duration,
+      priceKurus,
+    };
+  }
+  return {
+    id,
+    patch: {
+      ...validateAppearance({ ...base, ...body }),
+      name: safeText(body.name, 80) || base.name,
+      ...productCategory(body, base),
+      features: normalizeFeatures(
+        body.features === undefined ? base.features || [] : body.features,
+        { strict: true },
+      ),
+      active: requestedActive,
+      archived: requestedArchived,
+      automaticEnabled: requestedAutomatic,
+      telegramEnabled: requestedTelegram,
+      featured:
+        body.featured === undefined
+          ? base.featured === true
+          : body.featured === true,
+      sortOrder: integer(
+        body.sortOrder,
+        integer(base.sortOrder, 500, 0, 10_000),
+        0,
+        10_000,
+      ),
+      badgeKey: requestedBadge.key,
+      description: safeText(body.description, 240) || base.description,
+      image: safeImage(body.image, base.image),
+      tags: normalizeTags(body.tags),
+      plans,
+      updatedAt,
+      updatedBy: {
+        uid: safeText(actor.uid, 160),
+        email: safeText(actor.email, 254).toLowerCase(),
+      },
+    },
+  };
+}
+
+function mergeProductInput(previous = {}, input = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw serviceError("STORE_PRODUCT_SETTINGS_INVALID", 400);
+  if (
+    input.plans !== undefined &&
+    (!input.plans ||
+      typeof input.plans !== "object" ||
+      Array.isArray(input.plans))
+  )
+    throw serviceError("STORE_PRODUCT_SETTINGS_INVALID", 400);
+  const plans = { ...(previous.plans || {}) };
+  for (const [key, plan] of Object.entries(input.plans || {})) {
+    if (!plan || typeof plan !== "object" || Array.isArray(plan))
+      throw serviceError("STORE_PRODUCT_SETTINGS_INVALID", 400);
+    plans[key] = { ...(plans[key] || {}), ...plan };
+  }
+  return { ...previous, ...input, plans };
+}
+
+async function updateProductSettings(productId = "", input = {}, actor = {}) {
+  const id = safeText(productId, 80).toLowerCase();
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError("STORE_STORAGE_UNAVAILABLE", 503);
+  await readOverrides();
+  const reference = db.collection("storefrontSettings").doc("main");
+  const uploaded =
+    input.imageUpload === undefined
+      ? null
+      : await uploadProductImage(input.imageUpload);
+  const effectiveInput = {
+    ...input,
+    ...(uploaded ? { image: uploaded.url } : {}),
+  };
+  delete effectiveInput.imageUpload;
+  try {
+    const saved = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      const current = catalogState(snapshot.exists ? snapshot.data() : {});
+      if (!current)
+        throw serviceError("STORE_CATALOG_PERSISTENCE_UNAVAILABLE", 503);
+      if (current.deletedProductIds?.[id]) throw serviceError("STORE_PRODUCT_NOT_FOUND",404);
+      const prepared = productSettingsPatch(
+        id,
+        mergeProductInput(current.products[id], effectiveInput),
+        actor,
+        Date.now(),
+        current.customProducts,
+      );
+      const nextCatalog = {
+        ...current,
+        updatedAt: prepared.patch.updatedAt,
+        products: { ...current.products, [prepared.id]: prepared.patch },
+      };
+      assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+      const baseProduct = findProductDefinition(id, current.customProducts);
+      require("../commerce/catalog").recordPrices(
+        transaction,
+        db,
+        mergeProduct(baseProduct, current.products[id] || {}, true),
+        mergeProduct(baseProduct, prepared.patch, true),
+      );
+      transaction.set(reference, { catalog: nextCatalog }, { merge: true });
+      recordMutationAudit(transaction, db, "store.product.update", actor, {
+        productId: id,
+        before: current.products[id] || null,
+        after: prepared.patch,
+      });
+      const base = findProductDefinition(id, current.customProducts);
+      return mergeProduct(base, prepared.patch, true);
+    });
+    invalidateCatalogCache();
+    return saved;
+  } catch (error) {
+    if (uploaded) await uploaded.discard().catch(() => {});
+    throw error;
+  }
+}
+
+async function updateProductsBulk(updates = [], actor = {}, context = {}) {
+  if (!Array.isArray(updates) || !updates.length || updates.length > 100)
+    throw serviceError("STORE_PRODUCT_BULK_INVALID", 400);
+  const now = Date.now();
+  const prepared = updates.map((entry) => {
+    const id = safeText(entry?.productId, 80).toLowerCase();
+    if (!/^[a-z][a-z0-9-]{1,79}$/.test(id))
+      throw serviceError("STORE_PRODUCT_NOT_FOUND", 404);
+    return { id };
+  });
+  if (new Set(prepared.map((entry) => entry.id)).size !== prepared.length)
+    throw serviceError("STORE_PRODUCT_BULK_DUPLICATE", 409);
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError("STORE_STORAGE_UNAVAILABLE", 503);
+  await readOverrides();
+  const settingsRef = db.collection("storefrontSettings").doc("main");
+  const auditRef = db.collection("audit").doc();
+  const audit = {
+    id: auditRef.id,
+    type: "store-product-bulk-update",
+    action: "store.product.bulk-update",
+    productIds: prepared.map((entry) => entry.id),
+    count: prepared.length,
+    actor: {
+      uid: safeText(actor.uid, 160),
+      email: safeText(actor.email, 254).toLowerCase(),
+      source: "admin",
+    },
+    requestId: safeText(context.requestId, 180),
+    at: now,
+    createdAt: now,
+  };
+  const savedProducts = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(settingsRef);
+    const current = catalogState(snapshot.exists ? snapshot.data() : {});
+    if (!current)
+      throw serviceError("STORE_CATALOG_PERSISTENCE_UNAVAILABLE", 503);
+    const commerceSettings = await transaction.get(
+      db.collection("storeCommerceSettings").doc("main"),
+    );
+    let jobRef = null,
+      job = null;
+    if (context.commerceJob) {
+      jobRef = db
+        .collection("storeBulkCatalogJobs")
+        .doc(context.commerceJob.id);
+      const jobSnap = await transaction.get(jobRef);
+      job = jobSnap.data();
+      if (
+        !job ||
+        job.uid !== actor.uid ||
+        JSON.stringify(job.updates) !== JSON.stringify(updates)
+      )
+        throw serviceError("COMMERCE_BULK_NOT_READY", 409);
+      if (
+        job.state !== "completed" &&
+        (job.state !== "preview" || job.expiresAt < Date.now())
+      )
+        throw serviceError("COMMERCE_BULK_EXPIRED", 409);
+      if (
+        (job.approvalRequired || commerceSettings.data()?.secondApproval) &&
+        (!job.approvedBy || job.approvedBy === actor.uid)
+      )
+        throw serviceError("COMMERCE_SECOND_APPROVER_REQUIRED", 403);
+    } else if (commerceSettings.data()?.secondApproval)
+      throw serviceError("COMMERCE_SECOND_APPROVER_REQUIRED", 403);
+    const customProducts = readCustomProducts(current.customProducts);
+    const customProductMap = new Map(
+      customProducts.map((entry) => [entry.id, entry]),
+    );
+    for (const entry of prepared) {
+      if (current.deletedProductIds?.[entry.id] || (!findBaseProduct(entry.id) && !customProductMap.has(entry.id)))
+        throw serviceError("STORE_PRODUCT_NOT_FOUND", 404);
+    }
+    if (job?.state === "completed")
+      return prepared.map(({ id }) =>
+        mergeProduct(
+          findProductDefinition(id, customProductMap),
+          current.products[id] || {},
+          true,
+        ),
+      );
+    if (job) {
+      const beforeCatalog = {
+        products: prepared.map(({ id }) =>
+          mergeProduct(
+            findProductDefinition(id, customProductMap),
+            current.products[id] || {},
+            true,
+          ),
+        ),
+      };
+      if (
+        require("../commerce/common").hash(
+          JSON.stringify(
+            require("../commerce/operations").snapshot(beforeCatalog, updates),
+          ),
+        ) !== job.beforeHash
+      )
+        throw serviceError("COMMERCE_BULK_STALE", 409);
+    }
+    const products = { ...current.products };
+    updates.forEach((entry) => {
+      const id = safeText(entry.productId, 80).toLowerCase();
+      products[id] = productSettingsPatch(
+        id,
+        mergeProductInput(current.products[id], entry.settings),
+        actor,
+        now,
+        customProductMap,
+      ).patch;
+    });
+    const nextCatalog = { ...current, updatedAt: now, products };
+    assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+    for (const { id } of prepared) {
+      const definition = findProductDefinition(id, customProductMap);
+      require("../commerce/catalog").recordPrices(
+        transaction,
+        db,
+        mergeProduct(definition, current.products[id] || {}, true),
+        mergeProduct(definition, products[id], true),
+        now,
+      );
+    }
+    if (jobRef)
+      transaction.update(jobRef, {
+        state: "completed",
+        completedAt: now,
+        updatedAt: now,
+      });
+    transaction.set(settingsRef, { catalog: nextCatalog }, { merge: true });
+    transaction.create(auditRef, audit);
+    return prepared.map(({ id }) =>
+      mergeProduct(
+        findProductDefinition(id, customProductMap),
+        products[id],
+        true,
+      ),
+    );
+  });
+  invalidateCatalogCache();
+  const ids = new Set(prepared.map((entry) => entry.id));
+  return {
+    updated: prepared.length,
+    productIds: [...ids],
+    products: savedProducts,
+    updatedAt: now,
+  };
+}
+
+async function createProduct(input = {}, actor = {}) {
+  const product = normalizeCreatedProduct(input);
+  if (input.imageUpload !== undefined) readImageUpload(input.imageUpload);
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError("STORE_STORAGE_UNAVAILABLE", 503);
+  await readOverrides();
+  const settingsRef = db.collection("storefrontSettings").doc("main");
+  const uploaded =
+    input.imageUpload === undefined
+      ? null
+      : await uploadProductImage(input.imageUpload);
+  if (uploaded) product.image = uploaded.url;
+  let saved;
+  try {
+    saved = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(settingsRef);
+      const current = catalogState(snapshot.exists ? snapshot.data() : {});
+      if (!current)
+        throw serviceError("STORE_CATALOG_PERSISTENCE_UNAVAILABLE", 503);
+      const slug = await transaction.get(
+        db.collection("storeProductSlugs").doc(product.id),
+      );
+      if (slug.exists && slug.data().productId !== product.id)
+        throw serviceError("COMMERCE_SLUG_IN_USE", 409);
+      const existing = readCustomProducts(current.customProducts);
+      if (
+        current.deletedProductIds?.[product.id] || findBaseProduct(product.id) ||
+        Object.hasOwn(current.products, product.id) ||
+        Object.hasOwn(current.customProducts || {}, product.id) ||
+        existing.some((row) => row.id === product.id)
+      ) {
+        throw serviceError("STORE_PRODUCT_ID_EXISTS", 409);
+      }
+      if (existing.length >= MAX_CUSTOM_PRODUCTS)
+        throw serviceError("STORE_PRODUCT_LIMIT_REACHED", 409);
+      const updatedAt = Date.now();
+      const patch = productSettingsPatch(
+        product.id,
+        {
+          ...product,
+          active: true,
+          archived: false,
+          automaticEnabled: product.fulfillmentMode !== "telegram_only",
+          telegramEnabled: true,
+          plans: Object.fromEntries(
+            product.plans.map((plan) => [plan.key, { ...plan, active: true }]),
+          ),
+        },
+        actor,
+        updatedAt,
+        { ...(current.customProducts || {}), [product.id]: product },
+      ).patch;
+      const nextCatalog = {
+        ...current,
+        updatedAt,
+        customProducts: {
+          ...(current.customProducts || {}),
+          [product.id]: product,
+        },
+        products: { ...current.products, [product.id]: patch },
+      };
+      assertCatalogCapacity(snapshot.data() || {}, nextCatalog);
+      transaction.set(settingsRef, { catalog: nextCatalog }, { merge: true });
+      require("../commerce/catalog").recordPrices(
+        transaction,
+        db,
+        {},
+        mergeProduct(product, patch, true),
+        updatedAt,
+      );
+      recordMutationAudit(transaction, db, "store.product.create", actor, {
+        productId: product.id,
+        name: product.name,
+        platform: product.platform,
+        fulfillmentMode: product.fulfillmentMode,
+        plans: product.plans.map((plan) => ({
+          key: plan.key,
+          priceKurus: plan.priceKurus,
+        })),
+      });
+      return mergeProduct(product, patch, true);
+    });
+  } catch (error) {
+    if (
+      uploaded &&
+      /^STORE_PRODUCT_|^STORE_CATALOG_/.test(String(error.code || ""))
+    ) {
+      await uploaded.discard().catch((cause) =>
+        logError(cause, {
+          event: "catalog.image.cleanup",
+          code: "STORE_PRODUCT_IMAGE_CLEANUP_FAILED",
+        }),
+      );
+    }
+    throw error;
+  }
+  invalidateCatalogCache();
+  return saved;
+}
+
+async function updateStorefrontSettings(input = {}, actor = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw serviceError("STORE_CONTENT_INVALID", 400);
+  for (const key of [
+    "services",
+    "announcement",
+    "home",
+    "categoryVisibility",
+    "support",
+  ]) {
+    if (
+      input[key] !== undefined &&
+      (!input[key] ||
+        typeof input[key] !== "object" ||
+        Array.isArray(input[key]))
+    )
+      throw serviceError("STORE_CONTENT_INVALID", 400);
+  }
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError("STORE_STORAGE_UNAVAILABLE", 503);
+  const reference = db.collection("storefrontSettings").doc("main");
+  let normalized = null;
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.exists ? snapshot.data() || {} : {};
+    const effective = { ...current, ...(channelLinksMigration(current) || {}) };
+    normalized = normalizeStorefront({
+      ...effective,
+      ...input,
+      services: { ...(effective.services || {}), ...(input.services || {}) },
+      announcement: {
+        ...(effective.announcement || {}),
+        ...(input.announcement || {}),
+      },
+      home: { ...(effective.home || {}), ...(input.home || {}) },
+      categoryVisibility: {
+        ...(effective.categoryVisibility || {}),
+        ...expandCategoryVisibility(input.categoryVisibility || {}),
+      },
+      channelLinksRevision: CHANNEL_LINKS_REVISION,
+      support: input.support === undefined ? effective.support : input.support,
+      quickLinks:
+        input.quickLinks === undefined
+          ? effective.quickLinks
+          : input.quickLinks,
+    });
+    transaction.set(reference, {
+      ...current,
+      ...normalized,
+      updatedAt: Date.now(),
+      updatedBy: {
+        uid: safeText(actor.uid, 160),
+        email: safeText(actor.email, 254).toLowerCase(),
+      },
+    });
+    recordMutationAudit(transaction, db, "store.content.update", actor, {
+      before: normalizeStorefront(effective),
+      after: normalized,
+    });
+  });
+  invalidateCatalogCache();
+  return normalized;
+}
+
+async function updateStorefrontQuickLinks(input, actor = {}, expectedRevision) {
+  const quickLinks = normalizeQuickLinks(input, { defaultsWhenMissing: false });
+  const { db } = initFirebaseAdmin();
+  if (!db) throw serviceError("STORE_STORAGE_UNAVAILABLE", 503);
+  await readOverrides();
+  const reference = db.collection("storefrontSettings").doc("main");
+  await db.runTransaction(async (transaction) => {
+    const current = (await transaction.get(reference)).data() || {};
+    const revision = Number(current.quickLinksRevision) || 0;
+    if (expectedRevision !== undefined && expectedRevision !== revision)
+      throw serviceError("STORE_LINK_REVISION_CONFLICT", 409);
+    transaction.set(
+      reference,
+      {
+        channelLinksRevision: CHANNEL_LINKS_REVISION,
+        quickLinksRevision: revision + 1,
+        quickLinks,
+        updatedAt: Date.now(),
+        updatedBy: {
+          uid: safeText(actor.uid, 160),
+          email: safeText(actor.email, 254).toLowerCase(),
+        },
+      },
+      { merge: true },
+    );
+    recordMutationAudit(transaction, db, "store.links.update", actor, {
+      before: { links: current.quickLinks || [] },
+      after: { links: quickLinks },
+    });
+  });
+  invalidateCatalogCache();
+  const persisted = (await reference.get()).data();
+  return normalizeQuickLinks(persisted.quickLinks, {
+    defaultsWhenMissing: false,
+  });
+}
+
+module.exports = {
+  PRODUCT_TAGS,
+  DEFAULT_STOREFRONT,
+  getEffectiveCatalog,
+  updateProductSettings,
+  updateProductsBulk,
+  createProduct,
+  updateStorefrontSettings,
+  updateStorefrontQuickLinks,
+  invalidateCatalogCache,
+  normalizeStorefront,
+  catalogRevision,
+  serviceError,
+};

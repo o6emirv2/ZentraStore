@@ -1,0 +1,41 @@
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-block: calc(var(--store-header-height, 160px) + 16px) 100px;
+}
+body {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+a,
+button,
+input,
+textarea,
+select,
+summary {
+  touch-action: manipulation;
+}
+img,
+svg {
+  -webkit-user-drag: none;
+}
+html[data-touch-input="true"]
+  :is(a, button, summary, [role="button"], .delivery-secret) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html[data-touch-input="true"] :is(input, textarea, select) {
+  font-size: 1rem !important;
+  min-height: 44px;
+}
+@media (pointer: coarse), (hover: none) {
+  :is(input, textarea, select) {
+    font-size: max(16px, 1rem) !important;
+  }
+  :is(a, button, summary, [role="button"], .delivery-secret) {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}

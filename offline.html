@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.85, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0d151f" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; connect-src 'none'"
+    />
+    <title>Bağlantını kontrol et · Zentra Store</title>
+    <link rel="icon" href="/public/assets/images/favicon.ico" />
+    <link rel="stylesheet" href="/public/css/recovery.css?v=109" />
+    <link rel="stylesheet" href="/public/css/device.css?v=109" />
+    <link rel="stylesheet" href="/public/css/ambient.css?v=109" />
+    <script type="module" src="/public/js/app/recovery.mjs?v=109"></script>
+  </head>
+  <body data-recovery="offline">
+    <header class="recovery-header">
+      <a class="recovery-brand" href="/" aria-label="Zentra Store ana sayfa"
+        ><img
+          src="/public/assets/images/logo.png"
+          width="48"
+          height="48"
+          alt=""
+        /><span>ZENTRA STORE</span></a
+      >
+    </header>
+    <main class="recovery-main" id="main">
+      <section
+        class="recovery-card recovery-layout"
+        aria-labelledby="recovery-title"
+      >
+        <div class="recovery-visual" aria-hidden="true">
+          <span class="recovery-status"
+            ><svg viewBox="0 0 48 48">
+              <path
+                d="M8 19a24 24 0 0 1 32 0M14 26a15 15 0 0 1 20 0M20 33a6 6 0 0 1 8 0M24 39h.01M6 6l36 36"
+              /></svg
+          ></span>
+        </div>
+        <div class="recovery-copy">
+          <p class="recovery-kicker">BAĞLANTIN YENİLENSİN, KEŞFİN SÜRSÜN</p>
+          <h1 id="recovery-title">Şu anda çevrimdışısın.</h1>
+          <p>
+            Hesabın, siparişlerin ve teslimat bilgilerin için internet
+            bağlantısı gerekiyor. Sonucu belirsiz bir ödemeyi yeniden gönderme;
+            bağlantı geldiğinde siparişlerinden kontrol et.
+          </p>
+          <div class="recovery-actions">
+            <a class="recovery-button primary" href="/" data-retry
+              >Yeniden bağlan </a
+            ><a class="recovery-button" href="/">Ana sayfaya dön</a>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="recovery-footer">ZENTRA STORE · Resmî mağaza</footer>
+  </body>
+</html>

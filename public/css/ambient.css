@@ -1,0 +1,78 @@
+body {
+  isolation: isolate;
+}
+.ambient-snow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.ambient-snow::before,
+.ambient-snow::after {
+  content: "";
+  position: absolute;
+  width: min(75vw, 900px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(112 66 158 / 10%), transparent 68%);
+  animation: ambient-glide 24s ease-in-out infinite alternate;
+}
+.ambient-snow::before {
+  left: -25%;
+  top: -15%;
+}
+.ambient-snow::after {
+  right: -30%;
+  bottom: -15%;
+  animation-delay: -12s;
+}
+.ambient-snow span {
+  position: absolute;
+  left: var(--snow-x);
+  top: -32px;
+  width: var(--snow-size);
+  height: var(--snow-size);
+  color: #ffffff;
+  filter: drop-shadow(0 0 3px #dfeeff80);
+  opacity: var(--snow-opacity);
+  animation: ambient-fall var(--snow-speed) var(--snow-delay) linear infinite;
+}
+.ambient-snow span svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes ambient-fall {
+  from {
+    transform: translate3d(0, -32px, 0) rotate(var(--snow-angle));
+  }
+  to {
+    transform: translate3d(var(--snow-drift), calc(100dvh + 64px), 0)
+      rotate(calc(var(--snow-angle) + var(--snow-spin)));
+  }
+}
+@keyframes ambient-glide {
+  to {
+    transform: translate3d(12%, 9%, 0) scale(1.1);
+  }
+}
+.ambient-snow[data-paused="true"] *,
+.ambient-snow[data-paused="true"]::before,
+.ambient-snow[data-paused="true"]::after {
+  animation-play-state: paused;
+}
+:root[data-motion="reduce"] .ambient-snow {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-snow {
+    display: none;
+  }
+}

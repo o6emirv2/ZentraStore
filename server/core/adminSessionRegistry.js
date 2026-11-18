@@ -1,0 +1,117 @@
+'use strict';
+
+const crypto = require('crypto');
+const { currentSessionPolicy, sessionPolicyMatches } = require('./adminSessionPolicy');
+const { initFirebaseAdmin } = require('../config/firebaseAdmin');
+
+const transient = require('./adminTransientStore');
+const cache = new Map();
+const CACHE_TTL_MS = 3_000;
+const CACHE_LIMIT = 3000;
+function cacheSession(id, row) {
+  const now = Date.now();
+  if (cache.size >= CACHE_LIMIT) {
+    for (const [key, entry] of cache) if (entry.until <= now) cache.delete(key);
+    if (!cache.has(id) && cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
+  }
+  cache.set(id, { value: row, until: now + CACHE_TTL_MS });
+}
+
+function sessionError(code = 'ADMIN_SESSION_UNAVAILABLE', statusCode = 503) {
+  return Object.assign(new Error(code), { code, statusCode });
+}
+
+function sessionId(value = '') {
+  const raw = String(value || '').trim();
+  if (raw.length < 16 || raw.length > 120) throw sessionError('ADMIN_GATE_ACCESS_INVALID', 401);
+  return crypto.createHash('sha256').update(`zentra-admin-session\u0000${raw}`).digest('hex');
+}
+
+function sessionReference(value) {
+  const { db } = initFirebaseAdmin();
+  if (!db) throw sessionError();
+  return db.collection('storeAdminSessions').doc(sessionId(value));
+}
+
+async function registerAdminSession({ uid = '', email = '', session = '', expiresAt = 0, browserKey = null, expectedPolicyVersion, expectedCredentialRevision } = {}) {
+  const now = Date.now();
+  const expiry = Math.max(0, Number(expiresAt || 0));
+  if (!Number.isSafeInteger(expiry) || expiry <= now) throw sessionError('ADMIN_GATE_ACCESS_INVALID', 401);
+  const id = sessionId(session);
+  const policy = await currentSessionPolicy(uid, email);
+  if (!policy) throw sessionError('ADMIN_REQUIRED', 403);
+  if ((expectedPolicyVersion !== undefined && expectedPolicyVersion !== policy.policyVersion)
+    || (expectedCredentialRevision !== undefined && expectedCredentialRevision !== policy.credentialRevision)) throw sessionError('ADMIN_STEP_SESSION_INVALID', 401);
+  const row = {
+    ...policy,
+    uid: String(uid || '').trim().slice(0, 160),
+    email: String(email || '').trim().toLowerCase().slice(0, 254),
+    expiresAt: expiry,
+    purgeAfter: new Date(expiry + 86_400_000),
+    revokedAt: 0,
+    createdAt: now,
+    ...(browserKey ? { browserKey } : {})
+  };
+  if (transient.memory) transient.sessions.set(id, row, expiry);
+  else {
+    await sessionReference(session).set(row, { merge: false });
+    cacheSession(id, row);
+  }
+  return row;
+}
+
+async function readAdminSession(session) {
+  if (transient.memory) return transient.sessions.get(sessionId(session));
+  const snapshot = await sessionReference(session).get();
+  return snapshot.exists ? snapshot.data() : null;
+}
+
+async function isAdminSessionActive({ uid = '', email = '', session = '' } = {}) {
+  try {
+    const id = sessionId(session);
+    const cached = cache.get(id);
+    const row = cached && cached.until > Date.now()
+      ? cached.value
+      : await readAdminSession(session);
+    if (!row || row.revokedAt || Number(row.expiresAt || 0) <= Date.now() || !(await sessionPolicyMatches(row))) return false;
+    const matches = row.uid === String(uid || '').trim()
+      && row.email === String(email || '').trim().toLowerCase();
+    if (matches && !transient.memory && !(cached && cached.until > Date.now())) cacheSession(id, row);
+    return matches;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function revokeAdminSession(session = '') {
+  const id = sessionId(session);
+  cache.delete(id);
+  if (transient.memory) { transient.sessions.delete(id); return; }
+  const reference = sessionReference(session);
+  await reference.set({ revokedAt: Date.now(), purgeAfter: new Date(Date.now() + 86_400_000) }, { merge: true });
+}
+
+async function revokeAdminSessionsForUser(uid = '') {
+  const safeUid = String(uid || '').trim().slice(0, 160);
+  if (!safeUid) return 0;
+  if (transient.memory) {
+    let count = 0;
+    for (const [id, entry] of transient.sessions.rows) {
+      if (entry.value.uid === safeUid) { transient.sessions.delete(id); count++; }
+    }
+    return count;
+  }
+  const { db } = initFirebaseAdmin();
+  if (!db) return 0;
+  const snapshot = await db.collection('storeAdminSessions').where('uid', '==', safeUid).limit(300).get();
+  if (snapshot.empty) return 0;
+  const batch = db.batch();
+  snapshot.docs.forEach((document) => {
+    cache.delete(document.id);
+    batch.set(document.ref, { revokedAt: Date.now(), purgeAfter: new Date(Date.now() + 86_400_000) }, { merge: true });
+  });
+  await batch.commit();
+  return snapshot.size;
+}
+
+module.exports = { registerAdminSession, readAdminSession, isAdminSessionActive, revokeAdminSession, revokeAdminSessionsForUser };

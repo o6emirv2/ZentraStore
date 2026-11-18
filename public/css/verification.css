@@ -1,0 +1,109 @@
+.verification-panel {
+  max-width: 540px;
+  width: 100%;
+  margin-inline: auto;
+}
+.verification-symbol {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 20px;
+  border: 1px solid #765289;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.verification-symbol svg {
+  width: 26px;
+  height: 26px;
+}
+.verification-panel .eyebrow {
+  display: block;
+  margin-bottom: 12px;
+}
+.verification-panel h1 {
+  font-size: 1.75rem;
+  letter-spacing: -1px;
+}
+.auth-form-panel.verification-panel > p {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-top: 12px;
+}
+.verification-panel strong {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.verification-notice {
+  padding: 14px 16px;
+  border: 1px solid #317359;
+  border-radius: 16px;
+  background: #133227;
+  color: #b3dfc5;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  margin-block: 18px;
+}
+.verification-notice.warning {
+  background: #362d19;
+  border-color: #8e743c;
+  color: #f8d892;
+}
+.verification-panel .field input.verification-code {
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(1.25rem, 7vw, 2rem) !important;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  min-height: 76px;
+  padding-inline: 20px 10px;
+  border-radius: 999px;
+}
+.verification-code::placeholder {
+  color: var(--muted);
+}
+.verification-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -8px 0 22px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.verification-security {
+  font-size: 0.75rem !important;
+  line-height: 1.7;
+  margin-block: 22px 10px !important;
+  color: var(--muted);
+}
+.verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.verification-actions button {
+  min-height: 44px;
+}
+.verification-actions button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.verification-panel > .button {
+  width: 100%;
+}
+@media (max-width: 390px) {
+  .verification-panel .field input.verification-code {
+    letter-spacing: 0.2em;
+  }
+  .verification-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .verification-actions button {
+    text-align: left;
+  }
+}

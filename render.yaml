@@ -1,0 +1,88 @@
+services:
+  - type: web
+    name: playmatrix
+    runtime: node
+    repo: https://github.com/o6emirv2/ZentraStorePro
+    branch: main
+    region: oregon
+    plan: free
+    autoDeployTrigger: checksPass
+    numInstances: 1
+    buildCommand: npm ci --omit=dev --ignore-scripts --no-fund && npm run build
+    startCommand: node server.js
+    healthCheckPath: /readyz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUBLIC_BASE_URL
+        value: https://zentrastore.com.tr
+      - key: CANONICAL_ORIGIN
+        value: https://zentrastore.com.tr
+      - key: PUBLIC_API_BASE
+        value: https://emirhan-siye.onrender.com
+      - key: PUBLIC_BACKEND_ORIGIN
+        value: https://emirhan-siye.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://www.zentrastore.com.tr
+      - key: PUBLIC_FIREBASE_CONFIG
+        sync: false
+      - key: APP_CHECK_MODE
+        sync: false
+      - key: PUBLIC_FIREBASE_APP_CHECK_SITE_KEY
+        sync: false
+      - key: SECURITY_CSP_STRICT
+        value: "1"
+      - key: MAINTENANCE_IDLE_POLL_MS
+        value: "60000"
+      - key: RESTOCK_IDLE_POLL_MS
+        value: "60000"
+      - key: FIRESTORE_AUTO_CREATE_INDEXES
+        value: "false"
+      - key: EMAIL_NOTIFICATIONS_ENABLED
+        value: "true"
+      - key: RESEND_FROM
+        value: ZENTRA STORE <bildirim@zentrastore.com.tr>
+      - key: RESEND_SENDING_DOMAIN
+        value: zentrastore.com.tr
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
+      - key: HILEHANEM_API_BASE_URL
+        sync: false
+      - key: HILEHANEM_API_KEY
+        sync: false
+      - key: TELEGRAM_NOTIFICATIONS_ENABLED
+        value: "false"
+      - key: ADMIN_TRANSIENT_STORE
+        value: firestore
+      - key: RATE_LIMIT_STORE
+        value: firestore
+      - key: FIREBASE_KEY
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_UIDS
+        sync: false
+      - key: ADMIN_GATE_FOUR_SALT_HEX
+        sync: false
+      - key: ADMIN_GATE_FOUR_HASH_HEX
+        sync: false
+      - key: ADMIN_GATE_FIVE_SALT_HEX
+        sync: false
+      - key: ADMIN_GATE_FIVE_HASH_HEX
+        sync: false
+      - key: ADMIN_GATE_SIGNING_SECRET
+        sync: false
+      - key: ADMIN_TOTP_MODE
+        value: required
+      - key: ADMIN_TOTP_SECRET_BASE32
+        sync: false
+      - key: STORE_KEY_ACTIVE_KEY_ID
+        sync: false
+      - key: STORE_KEY_ENCRYPTION_SECRET
+        sync: false
+      - key: STORE_KEY_FINGERPRINT_SECRET
+        sync: false
+      - key: STORE_KEY_DECRYPTION_KEYS_JSON
+        sync: false

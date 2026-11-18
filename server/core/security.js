@@ -1,0 +1,326 @@
+"use strict";
+
+const rateLimit = require("express-rate-limit");
+const crypto = require("crypto");
+const env = require("../config/env");
+const { initFirebaseAdmin } = require("../config/firebaseAdmin");
+const { FirestoreRateLimitStore } = require("./distributedRateLimitStore");
+const { verifyUserSession, trustedOrigin } = require("./userSessionService");
+const {
+  resolveStaffPolicy,
+  staffHasPermission,
+} = require("./adminStoreService");
+
+function limitedResponse(_req, res) {
+  return res.status(429).json({
+    ok: false,
+    error: "TOO_MANY_REQUESTS",
+    message: "Çok fazla deneme yapıldı. Lütfen kısa süre sonra tekrar deneyin.",
+  });
+}
+
+const RATE_LIMIT_POLICY = Object.freeze({
+  public: Object.freeze({ windowMs: 60_000, max: 600 }),
+  api: Object.freeze({ windowMs: 60_000, max: 180 }),
+  strict: Object.freeze({ windowMs: 10 * 60_000, max: 40 }),
+  adminAction: Object.freeze({ windowMs: 10 * 60_000, max: 60 }),
+  authLogin: Object.freeze({ windowMs: 15 * 60_000, max: 12 }),
+  authAccount: Object.freeze({ windowMs: 15 * 60_000, max: 30 }),
+  resetAccount: Object.freeze({ windowMs: 30 * 60_000, max: 3 }),
+  passwordReset: Object.freeze({ windowMs: 30 * 60_000, max: 6 }),
+  delivery: Object.freeze({ windowMs: 10 * 60_000, max: 18 }),
+  adminAuth: Object.freeze({ windowMs: 15 * 60_000, max: 14 }),
+  adminBootstrap: Object.freeze({ windowMs: 5 * 60_000, max: 30 }),
+  communityIdentity: Object.freeze({ windowMs: 30 * 60_000, max: 12 }),
+  communityRead: Object.freeze({ windowMs: 60_000, max: 120 }),
+  emailVerificationSend: Object.freeze({ windowMs: 30 * 60_000, max: 12 }),
+});
+const publicLimiter = rateLimit({
+  ...RATE_LIMIT_POLICY.public,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) =>
+    String(req.path || "").startsWith("/api") ||
+    ["/healthz", "/readyz"].includes(String(req.path || "")),
+  handler: limitedResponse,
+});
+const apiLimiter = rateLimit({
+  ...RATE_LIMIT_POLICY.api,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: limitedResponse,
+});
+function protectedLimiter(name, options = {}) {
+  return rateLimit({
+    ...RATE_LIMIT_POLICY[name],
+    standardHeaders: true,
+    legacyHeaders: false,
+    ...(env.security.rateLimitStore === "firestore"
+      ? { store: new FirestoreRateLimitStore(name) }
+      : {}),
+    ...options,
+    handler: limitedResponse,
+  });
+}
+
+const strictLimiter = protectedLimiter("strict");
+const adminActionLimiter = protectedLimiter("adminAction");
+const authLoginLimiter = protectedLimiter("authLogin", {
+  skipSuccessfulRequests: true,
+});
+function loginAccountKey(req) {
+  const identifier =
+    typeof req.body?.identifier === "string"
+      ? req.body.identifier.trim().normalize("NFC").toLocaleLowerCase("tr-TR")
+      : "[invalid]";
+  return crypto
+    .createHash("sha256")
+    .update(`login-account\0${identifier}`)
+    .digest("hex");
+}
+const authAccountLimiter = protectedLimiter("authAccount", {
+  keyGenerator: loginAccountKey,
+  skipSuccessfulRequests: true,
+});
+const resetAccountLimiter = protectedLimiter("resetAccount", {
+  keyGenerator: loginAccountKey,
+});
+const passwordResetLimiter = protectedLimiter("passwordReset");
+const deliveryLimiter = protectedLimiter("delivery");
+const adminAuthLimiter = protectedLimiter("adminAuth", {
+  skipSuccessfulRequests: true,
+});
+const adminBootstrapLimiter = protectedLimiter("adminBootstrap");
+const communityIdentityLimiter = protectedLimiter("communityIdentity");
+const communityReadLimiter = protectedLimiter("communityRead");
+const emailVerificationSendLimiter = protectedLimiter("emailVerificationSend");
+
+async function appCheckGuard(req, res, next) {
+  const path = String(req.path || "");
+  const safePublicRead =
+    ["GET", "HEAD"].includes(String(req.method || "").toUpperCase()) &&
+    ([
+      "/store/catalog",
+      "/store/experience",
+      "/store/links",
+      "/store/commerce/knowledge",
+    ].includes(path) ||
+      /^\/store\/commerce\/products\/[a-zA-Z0-9_-]+$/.test(path));
+  if (
+    env.firebase.appCheckMode === "off" ||
+    path === "/public/runtime-config" ||
+    path === "/client-errors" ||
+    path === "/healthz" ||
+    safePublicRead
+  )
+    return next();
+  const token = String(req.headers["x-firebase-appcheck"] || "").trim();
+  const { appCheck } = initFirebaseAdmin();
+  if (!token || !appCheck) {
+    req.appCheck = {
+      verified: false,
+      reason: !token ? "missing" : "unavailable",
+    };
+    if (env.firebase.appCheckMode === "enforce") {
+      return res.status(401).json({
+        ok: false,
+        error: "APP_CHECK_REQUIRED",
+        message: "Güvenli uygulama doğrulaması gerekli.",
+      });
+    }
+    return next();
+  }
+  try {
+    const decoded = await appCheck.verifyToken(token);
+    req.appCheck = {
+      verified: true,
+      appId: String(decoded?.app_id || decoded?.appId || "").slice(0, 160),
+    };
+    return next();
+  } catch (_) {
+    req.appCheck = { verified: false, reason: "invalid" };
+    if (env.firebase.appCheckMode === "enforce") {
+      return res.status(401).json({
+        ok: false,
+        error: "APP_CHECK_INVALID",
+        message: "Uygulama doğrulaması geçersiz veya süresi dolmuş.",
+      });
+    }
+    return next();
+  }
+}
+
+async function resolveAuthenticatedUser(req) {
+  const validUid = (uid) =>
+    typeof uid === "string" &&
+    uid.length > 0 &&
+    uid.length <= 128 &&
+    uid === uid.trim() &&
+    !/[/\\<>\u0000-\u001f\u007f]/.test(uid) &&
+    ![".", ".."].includes(uid);
+  const { auth } = initFirebaseAdmin();
+  const authorization = req.headers.authorization;
+  if (authorization !== undefined) {
+    const match =
+      typeof authorization === "string" && authorization.length <= 16384
+        ? authorization.match(/^Bearer ([A-Za-z0-9._-]+)$/i)
+        : null;
+    if (!auth || !match) return null;
+    const bearer = match[1];
+    try {
+      const decoded = await auth.verifyIdToken(bearer, true);
+      const uid = decoded.uid || decoded.sub;
+      if (!validUid(uid)) return null;
+      req.authSource = "firebase-bearer";
+      req.firebaseIdToken = bearer;
+      return { ...decoded, uid };
+    } catch (error) {
+      if (
+        [
+          "auth/internal-error",
+          "auth/insufficient-permission",
+          "app/network-error",
+          "app/network-timeout",
+        ].includes(error?.code)
+      )
+        throw Object.assign(new Error("AUTH_UNAVAILABLE"), {
+          code: "AUTH_UNAVAILABLE",
+          statusCode: 503,
+        });
+      return null;
+    }
+  }
+  const session = await verifyUserSession(req, { checkRevoked: true });
+  if (!validUid(session?.uid)) return null;
+  if (
+    !["GET", "HEAD", "OPTIONS"].includes(
+      String(req.method || "").toUpperCase(),
+    ) &&
+    !trustedOrigin(req)
+  )
+    return { originBlocked: true };
+  req.authSource = "secure-cookie";
+  return session;
+}
+
+async function requireIdentity(req, res, next) {
+  try {
+    const user = await resolveAuthenticatedUser(req);
+    if (user?.originBlocked)
+      return res.status(403).json({ ok: false, error: "ORIGIN_NOT_ALLOWED" });
+    if (!user?.uid)
+      return res.status(401).json({ ok: false, error: "AUTH_REQUIRED" });
+    req.user = user;
+    return next();
+  } catch (error) {
+    if (error?.statusCode === 503)
+      return res.status(503).json({ ok: false, error: "AUTH_UNAVAILABLE" });
+    return res.status(401).json({ ok: false, error: "AUTH_INVALID" });
+  }
+}
+
+async function requireAuth(req, res, next) {
+  return requireIdentity(req, res, async () => {
+    try {
+      const user = await require("./accountActivation").requireAccountAccess(
+        req.user,
+      );
+      req.liveUser = user;
+      req.user = {
+        ...req.user,
+        email: user.email,
+        email_verified: user.emailVerified === true,
+      };
+      return next();
+    } catch (error) {
+      if (
+        ["EMAIL_VERIFICATION_REQUIRED", "REGISTRATION_REQUIRED"].includes(
+          error.code,
+        )
+      )
+        return res.status(403).json({ ok: false, error: error.code });
+      return res.status(error.statusCode === 503 ? 503 : 401).json({
+        ok: false,
+        error: error.statusCode === 503 ? "AUTH_UNAVAILABLE" : "AUTH_INVALID",
+      });
+    }
+  });
+}
+
+function requireRecentUserAuth(req, res, next) {
+  const authTime = Number(req.user?.auth_time || 0);
+  const now = Math.floor(Date.now() / 1000);
+  const provider = String(req.user?.firebase?.sign_in_provider || "")
+    .trim()
+    .toLowerCase();
+  if (
+    req.authSource !== "firebase-bearer" ||
+    !authTime ||
+    authTime > now + 30 ||
+    now - authTime > env.security.sensitiveActionRecentAuthSeconds ||
+    (provider && !["password", "custom"].includes(provider))
+  ) {
+    return res
+      .status(401)
+      .json({ ok: false, error: "AUTH_FRESH_TOKEN_REQUIRED" });
+  }
+  return next();
+}
+
+async function isAdminPrincipal(uid = "", email = "") {
+  return !!(await resolveStaffPolicy(uid, email));
+}
+
+async function requireAdmin(req, res, next) {
+  try {
+    if (req.user?.email_verified !== true) {
+      return res
+        .status(403)
+        .json({ ok: false, error: "ADMIN_VERIFIED_EMAIL_REQUIRED" });
+    }
+    const policy = await resolveStaffPolicy(req.user?.uid, req.user?.email);
+    if (policy) {
+      req.adminPolicy = policy;
+      return next();
+    }
+    return res.status(403).json({ ok: false, error: "ADMIN_REQUIRED" });
+  } catch (error) {
+    if (error?.statusCode === 503)
+      return res.status(503).json({ ok: false, error: "AUTH_UNAVAILABLE" });
+    return res.status(403).json({ ok: false, error: "ADMIN_REQUIRED" });
+  }
+}
+
+function requireStorePermission(permission = "") {
+  return (req, res, next) => {
+    if (staffHasPermission(req.adminPolicy, permission)) return next();
+    return res
+      .status(403)
+      .json({ ok: false, error: "ADMIN_PERMISSION_REQUIRED" });
+  };
+}
+
+module.exports = {
+  RATE_LIMIT_POLICY,
+  publicLimiter,
+  apiLimiter,
+  strictLimiter,
+  adminActionLimiter,
+  authLoginLimiter,
+  authAccountLimiter,
+  resetAccountLimiter,
+  passwordResetLimiter,
+  deliveryLimiter,
+  adminAuthLimiter,
+  adminBootstrapLimiter,
+  emailVerificationSendLimiter,
+  communityIdentityLimiter,
+  communityReadLimiter,
+  appCheckGuard,
+  requireAuth,
+  requireIdentity,
+  requireRecentUserAuth,
+  requireAdmin,
+  requireStorePermission,
+  isAdminPrincipal,
+};

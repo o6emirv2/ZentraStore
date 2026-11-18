@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=0.85, viewport-fit=cover" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0d151f" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self'; connect-src 'none'"
+    />
+    <title>Bağlantı bekleniyor · Zentra Store</title>
+    <link rel="icon" href="/public/assets/images/favicon.ico" />
+    <link rel="stylesheet" href="/public/css/recovery.css?v=109" />
+    <link rel="stylesheet" href="/public/css/device.css?v=109" />
+    <link rel="stylesheet" href="/public/css/ambient.css?v=109" />
+    <script type="module" src="/public/js/app/recovery.mjs?v=109"></script>
+  </head>
+  <body data-recovery="unavailable">
+    <header class="recovery-header">
+      <a class="recovery-brand" href="/" aria-label="Zentra Store ana sayfa"
+        ><img
+          src="/public/assets/images/logo.png"
+          width="48"
+          height="48"
+          alt=""
+        /><span>ZENTRA STORE</span></a
+      ><a href="/?devam=%2Fdestek">Yardım merkezi →</a>
+    </header>
+    <main class="recovery-main" id="main">
+      <section
+        class="recovery-card recovery-layout"
+        aria-labelledby="recovery-title"
+      >
+        <div class="recovery-visual" aria-hidden="true">
+          <span class="recovery-status"
+            ><svg viewBox="0 0 48 48">
+              <path
+                d="M10 15a17 17 0 0 1 28-3l3 4M41 7v9h-9M38 33a17 17 0 0 1-28 3l-3-4M7 41v-9h9"
+              /></svg
+          ></span>
+        </div>
+        <div class="recovery-copy">
+          <p class="recovery-kicker">KISA BİR BAĞLANTI MOLASI</p>
+          <h1 id="recovery-title">Mağazaya şu anda ulaşılamıyor.</h1>
+          <p>
+            Bir süre sonra yeniden deneyebilirsin. Sonucu belirsiz kalan bir
+            işlemin varsa yeniden ödeme yapmadan önce siparişlerini kontrol et.
+          </p>
+          <div class="recovery-actions">
+            <a class="recovery-button primary" href="/" data-retry
+              >Yeniden dene </a
+            ><a class="recovery-button" href="/">Ana sayfaya dön</a>
+          </div>
+        </div>
+      </section>
+      <nav class="recovery-links" aria-label="Yardımcı sayfalar">
+        <a href="/?devam=%2Fsiparisler"
+          >Siparişlerim <span aria-hidden="true">→</span></a
+        ><a href="/?devam=%2Fhesabim"
+          >Hesabım <span aria-hidden="true">→</span></a
+        ><a href="/?devam=%2Fdestek"
+          >Destek merkezi <span aria-hidden="true">→</span></a
+        >
+      </nav>
+    </main>
+    <footer class="recovery-footer">ZENTRA STORE · Resmî mağaza</footer>
+  </body>
+</html>

@@ -1,0 +1,675 @@
+import { isProductSettingsUpdate } from "./product-policy.mjs?v=109";
+import {
+  readApiJson,
+  waitForSignal,
+  requestController,
+  compatibleStoreWrites,
+} from "../public/js/request-utils.js?v=109";
+
+export function escapeHtml(value = "") {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        character
+      ],
+  );
+}
+
+export function lockAdminInteractions() {
+  document.documentElement.dataset.adminProtected = "true";
+}
+
+export function startAmbientCanvas(canvas) {
+  if (!canvas) return;
+  const context = canvas.getContext("2d", { alpha: true });
+  if (!context) return;
+  let stopped = false,
+    frame = 0;
+  const draw = () => {
+    frame = 0;
+    if (stopped || document.hidden) return;
+    const ratio = Math.min(devicePixelRatio || 1, 1.25);
+    const width = (canvas.width = Math.round(innerWidth * ratio));
+    const height = (canvas.height = Math.round(innerHeight * ratio));
+    canvas.style.width = `${innerWidth}px`;
+    canvas.style.height = `${innerHeight}px`;
+    context.clearRect(0, 0, width, height);
+    const count = Math.min(26, Math.max(12, Math.round(innerWidth / 48)));
+    for (let i = 0; i < count; i += 1) {
+      context.beginPath();
+      context.arc(
+        (i * 97.13) % width,
+        (i * 131.77) % height,
+        1.4,
+        0,
+        Math.PI * 2,
+      );
+      context.fillStyle = "rgba(76,151,255,.24)";
+      context.fill();
+    }
+  };
+  const schedule = () => {
+    if (!frame && !stopped && !document.hidden)
+      frame = requestAnimationFrame(draw);
+  };
+  draw();
+  window.addEventListener("resize", schedule, { passive: true });
+  document.addEventListener("visibilitychange", schedule);
+  return () => {
+    stopped = true;
+    cancelAnimationFrame(frame);
+    window.removeEventListener("resize", schedule);
+    document.removeEventListener("visibilitychange", schedule);
+  };
+}
+
+function errorMessage(payload = {}, status = 0) {
+  const code = String(
+    (typeof payload.error === "object" ? payload.error?.code : payload.error) ||
+      payload.code ||
+      "",
+  );
+  const messages = {
+    TEMPLATE_CHANGED: "Şablon başka bir yönetici tarafından değiştirildi. Bölümü yenileyin.",
+    TEMPLATE_INVALID: "Şablon uzunluğunu ve değişken adlarını kontrol edin. HTML kullanılamaz.",
+    STORE_DELETE_ACTIVE_ORDERS: "Bu ürüne ait açık sipariş var. Sipariş işlemini tamamladıktan sonra yeniden deneyin.",
+    STORE_DELETE_ACTIVE_RESERVATIONS: "Bu ürün için etkin stok rezervasyonu var. Rezervasyon kapandığında yeniden deneyin.",
+    STORE_DELETE_CONFIRMATION: "Silme onayı ürün kimliğiyle eşleşmedi.",
+    STORE_GALLERY_PATH_INVALID: "Galeri dosyası bulunamadı. public/assets/products altındaki dosya adını ve uzantısını kontrol edin.",
+    STORE_GALLERY_LIMIT: "Ürün galerisine en fazla 20 görsel eklenebilir.",
+    STORE_GALLERY_DUPLICATE: "Aynı görsel galeride iki kez kullanılamaz.",
+    STORE_CARD_STYLE_INVALID: "Mevcut beş kart görünümünden birini seçin.",
+    STORE_CODE_REACTIVATION_BLOCKED: "Kullanılmış kod yeniden etkinleştirilemez.",
+    STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED:
+      "Ödeme veya iade için doğrulanmış harici işlem referansı gerekli.",
+    STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED:
+      "Bu eski kaydın ödeme kanalı güvenle belirlenemedi. Ödeme kaydını inceleyin; işlem uygulanmadı.",
+    ADMIN_JOB_AUTHORIZATION_REVOKED:
+      "Yönetici oturumları iptal edildi. Toplu iş için yeniden giriş ve onay gerekli.",
+    STORE_LINK_REVISION_CONFLICT:
+      "Bağlantılar başka bir işlemde değişti. Listeyi yenileyip güncel kayıt üzerinden tekrar deneyin.",
+    BULK_PREVIEW_EXPIRED: "Önizlemenin süresi doldu. Yeni önizleme oluşturun.",
+    BULK_CONFIRMATION_REQUIRED:
+      "Kalıcı silme doğrulaması için KALICI SIL yazın.",
+    ADMIN_ACTION_REQUIRED:
+      "İşlem doğrulaması eksik. Sayfayı yenileyip parolanızla tekrar doğrulayın.",
+    ADMIN_ACTION_INVALID:
+      "İşlem onayı doğrulanamadı. Parolanızla yeniden doğrulayın.",
+    ADMIN_ACTION_MISMATCH:
+      "Onaylanan işlem bilgileri değişti. Güncel bilgileri kontrol edip yeniden onaylayın.",
+    ADMIN_ACTION_EXPIRED: "İşlem onayının süresi doldu. Yeniden doğrulayın.",
+    ADMIN_ACTION_ALREADY_USED:
+      "Bu işlem onayı kullanıldı. Güncel kaydı kontrol ederek yeniden onaylayın.",
+    ADMIN_ACTION_UNAVAILABLE:
+      "Güvenli işlem doğrulaması şu anda kullanılamıyor.",
+    STORE_BALANCE_RECORD_INVALID:
+      "Kayıtlı bakiye doğrulanamadı. Mali kaydı kontrol edin; tutar değiştirilmedi.",
+    ADMIN_REQUIRED: "Bu hesap yönetici izin listesinde bulunmuyor.",
+    ADMIN_VERIFIED_EMAIL_REQUIRED:
+      "Yönetici hesabının e-posta adresi Firebase üzerinden doğrulanmalıdır.",
+    ADMIN_PERMISSION_REQUIRED:
+      "Bu işlem mevcut personel rolünün yetki kapsamı dışında.",
+    ADMIN_OWNER_IMMUTABLE:
+      "Korunan mağaza sahibi kaydı personel yetkileriyle değiştirilemez.",
+    ADMIN_GATE_REQUIRED:
+      "Lütfen güvenli yönetici giriş adımlarını yeniden tamamlayın.",
+    ADMIN_GATE_FACTOR_REQUIRED:
+      "Güvenli yönetici doğrulamasının süresi dolmuş. Hesap şifresi adımından yeniden başlayın.",
+    ADMIN_GATE_ACCESS_INVALID:
+      "Yönetici erişim oturumu geçersiz veya süresi dolmuş. Güvenli kapıyı yeniden tamamlayın.",
+    ADMIN_STEP_SESSION_INVALID:
+      "Güvenlik adımı zaman aşımına uğradı. Lütfen baştan deneyin.",
+    ADMIN_EMAIL_CONFIGURATION_INVALID:
+      "Yönetici e-posta yetkisi tamamlanmamış. Mağaza sahibiyle iletişime geçin.",
+    ADMIN_UID_CONFIGURATION_INVALID:
+      "Yönetici hesap yetkisi tamamlanmamış. Mağaza sahibiyle iletişime geçin.",
+    ADMIN_IDENTITY_NOT_FOUND: "Tanımlı yönetici hesabı bulunamadı.",
+    ADMIN_IDENTITY_MISMATCH: "Yönetici e-postası ile hesap kimliği eşleşmiyor.",
+    ADMIN_ACTIVE_SESSION_REQUIRED:
+      "Yönetici oturumu doğrulanamadı. Güvenli yönetici girişini yeniden tamamlayın.",
+    ADMIN_ACTIVE_SESSION_MISMATCH:
+      "Aktif mağaza hesabı yönetici yetkileriyle eşleşmiyor. Doğru hesapla giriş yapıp Oturumu doğrula düğmesini kullanın.",
+    EMAIL_VERIFICATION_REQUIRED:
+      "Yönetici girişine devam etmeden önce mağaza hesabınızın e-posta adresini doğrulayın.",
+    REGISTRATION_REQUIRED:
+      "Önce mağazadaki hesap kaydınızı ve e-posta doğrulamasını tamamlayın.",
+    ADMIN_ACCOUNT_DISABLED: "Yönetici hesabı devre dışı.",
+    ADMIN_FIREBASE_PASSWORD_INVALID: "Yönetici hesap şifresi doğrulanamadı.",
+    ADMIN_GATE_FOUR_INVALID: "Dördüncü güvenlik şifresi hatalı.",
+    ADMIN_GATE_FIVE_INVALID: "Beşinci güvenlik şifresi hatalı.",
+    ADMIN_TOTP_INVALID:
+      "Google Authenticator’daki mağaza yönetici kodu hatalı veya süresi dolmuş. Yeni 6 haneli kodu girin.",
+    ADMIN_TOTP_REPLAY:
+      "Bu tek kullanımlık kod daha önce kullanılmış. Yeni kodu bekleyin.",
+    ADMIN_TOTP_NOT_CONFIGURED:
+      "Google Authenticator anahtarı henüz yapılandırılmamış. Render’daki ADMIN_TOTP_SECRET_BASE32 ayarını kontrol edin.",
+    ADMIN_TOTP_UNAVAILABLE:
+      "Tek kullanımlık yönetici doğrulaması şu anda kullanılamıyor.",
+    ADMIN_STAFF_IDENTITY_INVALID:
+      "Personel e-posta adresi veya hesap kimliği geçerli değil.",
+    ADMIN_STAFF_IDENTITY_MISMATCH:
+      "Personelin e-posta adresi Firebase hesabındaki adresle eşleşmiyor.",
+    ADMIN_STAFF_SELF_CHANGE_FORBIDDEN:
+      "Kendi yönetici rolünüzü bu formdan değiştiremezsiniz. Başka bir tam yetkili yönetici güncelleyebilir.",
+    ADMIN_STAFF_ACCOUNT_NOT_READY:
+      "Aktif yetki için hesap açık ve e-posta adresi doğrulanmış olmalıdır.",
+    ADMIN_STAFF_ROLE_INVALID: "Seçilen personel rolü geçersiz veya atanamaz.",
+    ADMIN_AUDIT_FAILED: "İşlem için zorunlu güvenlik kaydı oluşturulamadı.",
+    ADMIN_AUDIT_UNAVAILABLE: "Güvenlik kayıt alanı şu anda kullanılamıyor.",
+    STORE_ACCOUNT_MODERATION_FAILED:
+      "Hesap durumu güvenli biçimde güncellenemedi.",
+    STORE_ACCOUNT_STATUS_INVALID: "Seçilen hesap durumu geçerli değil.",
+    BALANCE_CODE_INPUT_INVALID:
+      "Promosyon adı, tutarı, kullanım limiti ve aktiflik bilgilerini kontrol edin.",
+    BALANCE_CODE_CONFIGURATION_INVALID:
+      "Promosyon kodu için pozitif toplam limit ve kişi başına 1 kullanım belirleyin; sepet/ürün koşulu eklemeyin.",
+    BALANCE_CODE_VALUE_LOCKED:
+      "Kullanılmış promosyon kodunun tutarı değiştirilemez. Yeni kod oluşturun.",
+    STORE_PROMOTION_TYPE_LOCKED:
+      "Promosyon kodu ile indirim kuponu arasında tür dönüşümü yapılamaz. Yeni kod oluşturun.",
+    STORE_PROMOTION_CODE_INVALID:
+      "Kampanya kodu 3-32 karakter olmalı; yalnızca harf, sayı, tire ve alt çizgi kullanılabilir.",
+    STORE_PROMOTION_CODE_EXISTS:
+      "Bu kupon kodu zaten kayıtlı. Mevcut kaydı düzenleyin veya farklı bir kod kullanın.",
+    STORE_PROMOTION_NOT_FOUND:
+      "Düzenlenen kupon bulunamadı. Listeyi yenileyip tekrar seçin.",
+    STORE_PROMOTION_VALUE_INVALID: "Kampanya tutarı veya yüzde oranı geçersiz.",
+    STORE_PROMOTION_DATE_INVALID:
+      "Kampanyanın başlangıç ve bitiş tarihlerini kontrol edin.",
+    STORE_PROMOTION_SCOPE_INVALID:
+      "Kupon kapsamındaki platform veya ürün mağaza kataloğunda bulunmuyor.",
+    STORE_PROMOTION_LIMIT_INVALID:
+      "Toplam kullanım limiti, kuponun mevcut kullanım sayısından düşük olamaz.",
+    STORE_PROMOTION_REDEMPTION_INVALID:
+      "Kampanya kullanım kaydı doğrulanamadığı için sipariş işlemi durduruldu.",
+    STORE_LINK_LIST_INVALID:
+      "Bağlantı listesi geçersiz veya izin verilen 16 bağlantı sınırını aşıyor.",
+    STORE_LINK_INVALID: "Bağlantı kaydının bilgileri geçersiz.",
+    STORE_LINK_ID_INVALID: "Bağlantı kaydının güvenli kimliği doğrulanamadı.",
+    STORE_LINK_PLATFORM_INVALID:
+      "Telegram, TikTok veya WhatsApp platformlarından birini seçin.",
+    STORE_LINK_LABEL_REQUIRED:
+      "Bağlantı başlığı ve alt açıklaması boş bırakılamaz.",
+    STORE_LINK_URL_INVALID:
+      "Adres, seçilen platformun resmi HTTPS alan adı ve geçerli hesap biçimiyle eşleşmelidir.",
+    STORE_LINK_DUPLICATE:
+      "Aynı bağlantı adresi veya kimliği birden fazla kez eklenemez.",
+    ADMIN_GATE_FOUR_NOT_CONFIGURED:
+      "Dördüncü doğrulama adımı kullanıma hazır değil.",
+    ADMIN_GATE_FIVE_NOT_CONFIGURED:
+      "Beşinci doğrulama adımı kullanıma hazır değil.",
+    ADMIN_SIGNING_SECRET_NOT_CONFIGURED:
+      "Güvenli yönetici oturumu kullanıma hazır değil.",
+    ADMIN_HANDOFF_INVALID:
+      "Güvenli yönetici geçişi doğrulanamadı. Lütfen son adımı yeniden deneyin.",
+    ADMIN_HANDOFF_EXPIRED:
+      "Yönetici geçişinin kısa süresi doldu. Son adımı yeniden doğrulayın.",
+    ADMIN_HANDOFF_REPLAY:
+      "Bu yönetici geçişi daha önce kullanıldı. Yeni bir geçiş başlatın.",
+    ADMIN_HANDOFF_ORIGIN_INVALID:
+      "Yönetici geçişi izin verilen mağaza alan adıyla eşleşmedi.",
+    ADMIN_HANDOFF_UNAVAILABLE: "Güvenli yönetici geçişi şu anda hazırlanamadı.",
+    ADMIN_HANDOFF_REQUIRED:
+      "Yönetim merkezi güvenli sunucu alanında açılmalıdır. Yönetici girişinden devam edin.",
+    ADMIN_SECURITY_CONFIGURATION_INCOMPLETE:
+      payload.message || "Yönetim güvenliği gerekli koruma düzeyinin altında.",
+    ADMIN_REAUTH_REQUIRED: "Kritik işlem için yönetici hesap şifresi gerekli.",
+    ADMIN_REAUTH_INVALID: "Yönetici hesap şifresi doğrulanamadı.",
+    ADMIN_REAUTH_STALE:
+      "Kritik işlem doğrulamasının süresi doldu. Hesap şifrenizi yeniden doğrulayın.",
+    ADMIN_REAUTH_PROVIDER_INVALID:
+      "Bu kritik işlem parola tabanlı yeniden doğrulama gerektirir.",
+    ADMIN_REAUTH_CONFIG_MISSING:
+      "Kritik işlem doğrulaması kullanıma hazır değil.",
+    ADMIN_REAUTH_UNAVAILABLE:
+      "Hesap şifresi şu anda doğrulanamıyor. Lütfen kısa bir süre sonra yeniden deneyin.",
+    STORE_PRODUCT_IMAGE_UPLOAD_INVALID:
+      "Görsel doğrulanamadı. Uygun bir JPEG, PNG veya WebP dosyası seçin.",
+    STORE_PRODUCT_IMAGE_STORAGE_UNAVAILABLE:
+      "Görsel kaydedilemedi. Storage bucket ve servis hesabı izinlerini kontrol edin veya görsel seçmeden kategori görseliyle kaydedin.",
+    ADMIN_TRANSIENT_CAPACITY:
+      "Yönetim hizmeti geçici olarak yoğun. Kısa süre sonra yeniden deneyin.",
+    AUTH_PROVIDER_CONFIGURATION_INVALID:
+      "Hesap sağlayıcısı ayarları doğrulanamadı. Firebase giriş yöntemini ve sunucu API anahtarı kısıtlarını kontrol edin.",
+    STORE_STORAGE_UNAVAILABLE:
+      "Güvenli mağaza kayıtlarına şu anda ulaşılamıyor.",
+    STORE_CATALOG_PERSISTENCE_UNAVAILABLE:
+      "Ürün ayarlarının kalıcı kaydı doğrulanamadı. Değişiklikler uygulanmadı.",
+    STORE_INDEX_REQUIRED:
+      "Firestore sorgu indeksi hazırlanmadı. Firebase indekslerini yayımladıktan sonra yeniden deneyin.",
+    STORE_PAGE_CURSOR_INVALID:
+      "Sayfalama kaydı geçersiz. Listeyi yenileyip yeniden deneyin.",
+    STORE_OUT_OF_STOCK:
+      "Siparişteki paket için yeterli stok yok. Önce stok kasasına key ekleyin.",
+    STORE_INVENTORY_DUPLICATE_KEY:
+      "Bu key veya hesap daha önce sisteme eklenmiş. Aynı stok kaydı farklı bir üründe de tekrar kullanılamaz.",
+    STORE_INVENTORY_DUPLICATE_RESERVED:
+      "Bu key veya hesap aktif bir sipariş için rezerve edilmiş. Sipariş bütünlüğü nedeniyle yeniden eklenemez.",
+    STORE_INVENTORY_DUPLICATE_MANUAL_DELIVERY:
+      "Bu key veya hesap daha önce Telegram manuel teslimatında kullanılmış. Aynı teslimat bilgisinin yeniden satılmasına izin verilmez.",
+    STORE_INVENTORY_KEY_INVALID:
+      "Key alanında boş, çok kısa veya geçersiz bir kayıt var.",
+    STORE_INVENTORY_ACCOUNT_FORMAT_INVALID:
+      "Hesapları her satıra “kullanıcı/e-posta | şifre” biçiminde yazın.",
+    STORE_INVENTORY_IMPORT_INVALID:
+      "Stok listesi boş veya 200 kayıt sınırını aşıyor.",
+    STORE_INVENTORY_IMPORT_CONFLICT:
+      "Önceki güvenli kayıt isteği farklı bir stok listesiyle eşleşiyor. Lütfen listeyi yenileyip yeniden deneyin.",
+    STORE_INVENTORY_ITEM_NOT_FOUND:
+      "Seçilen stok kaydı bulunamadı veya başka bir havuza taşınmış.",
+    STORE_INVENTORY_ITEM_REQUIRED: "İşlem yapılacak stok kaydını seçin.",
+    STORE_INVENTORY_REASON_REQUIRED:
+      "Bu stok işlemi için açıklayıcı bir gerekçe yazmanız gerekiyor.",
+    STORE_INVENTORY_REVOKE_NOT_ALLOWED:
+      "Teslim edilmiş veya kullanılamayan stok kaydı iptal edilemez.",
+    STORE_INVENTORY_STATUS_INVALID: "Seçilen stok durumu geçerli değil.",
+    IDEMPOTENCY_KEY_REQUIRED:
+      "Güvenli işlem anahtarı oluşturulamadı. Sayfayı yenileyip yeniden deneyin.",
+    STORE_KEY_VAULT_UNAVAILABLE:
+      "Şifreli stok kasası kullanıma hazır değil. Mağaza güvenlik ayarlarını kontrol edin.",
+    STORE_KEY_DECRYPTION_KEY_MISSING:
+      "Bu eski stok kaydı açılamadı. Mağaza sahibiyle iletişime geçin.",
+    STORE_KEY_DECRYPTION_FAILED:
+      "Şifreli stok kaydı güvenli biçimde açılamadı.",
+    STORE_INVENTORY_MIGRATION_CONFLICT:
+      "Ortak stok düzenlemesinde bir kayıt çakışması bulundu. Bilgilerinizin korunması için işlem güvenle durduruldu.",
+    STORE_INVENTORY_INTEGRITY_ERROR:
+      "Stok bütünlüğü çakışması algılandı; işlem güvenli şekilde durduruldu.",
+    STORE_MANUAL_DELIVERY_INVALID: "Manuel teslimat bilgileri doğrulanamadı.",
+    STORE_MANUAL_DELIVERY_COUNT_MISMATCH:
+      "Teslimat satırı sayısı siparişteki toplam adetle aynı olmalıdır.",
+    STORE_MANUAL_DELIVERY_PAYMENT_REQUIRED:
+      "Teslimat bilgisi yalnızca ödeme onaylandıktan sonra bağlanabilir.",
+    STORE_MANUAL_DELIVERY_ALREADY_ATTACHED:
+      "Bu Telegram siparişine teslimat bilgisi daha önce bağlanmış.",
+    STORE_MANUAL_DELIVERY_REQUIRED:
+      "Siparişi teslim edildi yapmadan önce tüm ürün/adetler için manuel teslimat bilgisi ekleyin.",
+    STORE_DELIVERY_INTEGRITY_ERROR:
+      "Teslimat bilgileri stok kaydıyla eşleşmediği için işlem durduruldu.",
+    STORE_ORDER_ID_REQUIRED:
+      "İşlem yapılacak sipariş bulunamadı. Listeyi yenileyin.",
+    STORE_ORDER_CREATE_FAILED:
+      "Sipariş güvenli biçimde oluşturulamadı; bakiye ve stok korunmuştur.",
+    STORE_ORDER_UPDATE_FAILED:
+      "Sipariş durumu güncellenemedi. Lütfen kaydı yenileyip yeniden deneyin.",
+    STORE_ORDER_TRANSITION_INVALID:
+      "Siparişin mevcut durumu seçilen geçişe izin vermiyor.",
+    STORE_ACCOUNT_NOT_FOUND: "Tam eşleşen kullanıcı bulunamadı.",
+    STORE_ACCOUNT_LOOKUP_UNAVAILABLE:
+      "Hesap hizmetine ulaşılamadı. Bu durum hesap bulunamadı anlamına gelmez; kısa süre sonra yeniden dene.",
+    STORE_USER_IDENTIFIER_INVALID:
+      "Geçerli bir kullanıcı adı, e-posta veya UID yaz.",
+    STORE_USER_IDENTIFIER_AMBIGUOUS:
+      "Birden fazla hesap eşleşti. Tam e-posta adresiyle yeniden ara.",
+    STORE_WALLET_PREVIEW_INVALID:
+      "Hesap önizlemesi doğrulanamadı. Hesabı yeniden bul.",
+    STORE_WALLET_PREVIEW_EXPIRED:
+      "Önizlemenin süresi doldu. Bilgileri düzenle üzerinden yeniden önizle.",
+    STORE_WALLET_RECIPIENT_CHANGED:
+      "Aradığın kullanıcı adı veya e-postanın hesabı değişti. Yeniden önizleme yap.",
+    STORE_WALLET_BALANCE_CHANGED:
+      "Müşterinin bakiyesi önizlemeden sonra değişti. Yeni bakiye ile tekrar önizleme yap.",
+    STORE_WALLET_RECEIPT_INVALID:
+      "Bakiye işlem kaydı doğrulanamadı. Yeniden bakiye eklemeden işlem geçmişini kontrol et.",
+
+    STORE_USER_IDENTIFIER_AMBIGUOUS:
+      "Bu kullanıcı adı birden fazla kayıtla eşleşti. E-posta veya UID kullanın.",
+    STORE_BALANCE_WOULD_BE_NEGATIVE:
+      "Bu işlem kullanıcı bakiyesini sıfırın altına düşürür.",
+    STORE_BALANCE_TYPE_AMOUNT_MISMATCH:
+      "Hareket türü ile tutarın yönü eşleşmiyor.",
+    STORE_BALANCE_ADJUSTMENT_INVALID:
+      "Bakiye tutarı geçersiz veya işlem limitini aşıyor.",
+    STORE_BALANCE_TYPE_INVALID: "Bakiye hareket türü desteklenmiyor.",
+    STORE_BALANCE_REASON_REQUIRED:
+      "Bakiye işlemi için en az 3 karakterlik gerekçe zorunludur.",
+    STORE_BALANCE_LIMIT_EXCEEDED: "Bu işlem hesap bakiye üst sınırını aşar.",
+    STORE_BALANCE_ADJUSTMENT_CONFLICT:
+      "Aynı güvenli işlem anahtarı farklı bakiye bilgileriyle tekrar kullanılamaz.",
+    STORE_BALANCE_ADJUSTMENT_FAILED:
+      "Bakiye hareketi tamamlanamadı. İşlem güvenli şekilde geri alındı.",
+    STORE_ACCOUNT_DISABLED:
+      "Hedef kullanıcı hesabı devre dışı olduğu için bakiye işlemi yapılamaz.",
+    STORE_TARGET_UID_REQUIRED: "Hedef kullanıcı UID bilgisi bulunamadı.",
+    STORE_USER_IDENTIFIER_REQUIRED:
+      "Kullanıcı aramak için e-posta, UID veya kullanıcı adı yazın.",
+    APP_CHECK_REQUIRED: "Güvenli istek doğrulaması gerekli. Sayfayı yenileyin.",
+    APP_CHECK_INVALID: "Güvenli istek doğrulaması geçersiz veya süresi dolmuş.",
+    STORE_TELEGRAM_ONLY_PRODUCT:
+      "Bu ürün yalnızca Telegram üzerinden sipariş edilebilir; otomatik teslimat ve bakiye ile otomatik satın alma kullanılamaz.",
+    STORE_PRODUCT_FULFILLMENT_REQUIRED:
+      "Satışta olan bir üründe otomatik teslimat veya Telegram satış kanallarından en az biri açık olmalıdır.",
+    STORE_PRODUCT_PRICE_INVALID:
+      "Paket fiyatı geçersiz. Fiyat sıfırdan büyük ve desteklenen sınırlar içinde olmalıdır.",
+    STORE_PRODUCT_SETTINGS_INVALID:
+      "Ürün alanlarının türü veya paket biçimi geçersiz. Formu yenileyip tekrar deneyin.",
+    STORE_CONTENT_INVALID:
+      "Mağaza içerik alanları doğrulanamadı. Formu yenileyip tekrar deneyin.",
+    STORE_PRODUCT_NOT_FOUND:
+      "Ürün bulunamadı. Güncel ürün listesini yeniden yükleyin.",
+    STORE_SKU_INVALID: "Ürün veya paket kimliği geçersiz.",
+    STORE_PRODUCT_SORT_INVALID:
+      "Ürün sıralaması 0-10000 arasında tam sayı olmalıdır.",
+    STORE_PRODUCT_PLATFORM_INVALID:
+      "Ürün platformu yalnızca Android veya iOS olabilir.",
+    STORE_PRODUCT_IMAGE_INVALID:
+      "Görsel dosyası bulunamadı veya yolu geçersiz. public/assets/products/ altında mevcut bir JPEG, PNG, SVG, WebP, GIF, AVIF, BMP veya ICO dosyası yazın.",
+    STORE_PRODUCT_FEATURES_INVALID:
+      "Özellikleri metin olarak, her satıra bir özellik yazın.",
+    STORE_CATALOG_SIZE_LIMIT:
+      "Katalog kayıt kapasitesine ulaştı. Çok uzun özellik listelerini ve açıklamaları kısaltıp yeniden kaydedin.",
+    STORE_PRODUCT_FEATURES_LIMIT:
+      "En fazla 40 özellik ekleyebilirsiniz. Her satır 160 karakteri aşmamalıdır.",
+    STORE_PRODUCT_CATEGORY_INVALID:
+      "PUBG MOBILE veya OXİDE için geçerli bir platform kategorisi seçin.",
+    STORE_PRODUCT_CATEGORY_CONFLICT:
+      "Seçilen kategori, oyun ve platform birbiriyle eşleşmelidir.",
+    STORE_PRODUCT_CATEGORY_PLATFORM_CONFLICT:
+      "Bu ürünün sabit iOS platformuyla uyumlu bir kategori seçin.",
+    STORE_PRODUCT_ID_EXISTS:
+      "Bu ürün kimliği zaten kullanılıyor. Benzersiz bir kimlik yazın.",
+    STORE_PRODUCT_ID_INVALID:
+      "Ürün kimliği küçük harfle başlamalı; 3-64 karakter, sayı ve kısa çizgi içermelidir.",
+    STORE_PRODUCT_DETAILS_REQUIRED:
+      "Ürün adı en az 3, açıklama en az 8 karakter olmalıdır.",
+    STORE_PRODUCT_PLAN_INVALID:
+      "Paket kodları benzersiz, fiyatlar geçerli ve sıfırdan büyük olmalıdır.",
+    STORE_PRODUCT_PLANS_INVALID: "En az 1, en fazla 12 paket ekleyin.",
+    STORE_PRODUCT_PLAN_DETAILS_REQUIRED:
+      "Her paketin adını ve süresini doldurun.",
+    STORE_PRODUCT_LIMIT_REACHED:
+      "Yeni ürün sınırına ulaşıldı. Mevcut ürünleri düzenleyebilirsiniz.",
+    STORE_PRODUCT_BULK_INVALID:
+      "Toplu kayıt listesi boş veya izin verilen ürün sınırını aşıyor.",
+    STORE_PRODUCT_BULK_DUPLICATE:
+      "Aynı ürün toplu kayıt isteğinde birden fazla kez gönderilemez.",
+    STORE_AUTOMATIC_INVENTORY_DISABLED:
+      "Bu ürün için otomatik stok kasası kapalıdır; teslimat yalnızca Telegram üzerinden yönetilir.",
+    ADMIN_OWNER_REQUIRED:
+      "Bu bölüm yalnızca korunan mağaza sahibi hesabı tarafından yönetilebilir.",
+    AUTH_REQUIRED: "Lütfen yönetici oturumunuzu yeniden doğrulayın.",
+    AUTH_UNAVAILABLE: "Hesap doğrulaması şu anda kullanıma hazır değil.",
+    ORIGIN_NOT_ALLOWED:
+      "Bu alan adından yönetim isteğine güvenlik nedeniyle izin verilmedi.",
+    TOO_MANY_REQUESTS:
+      "Çok fazla deneme yapıldı. Lütfen kısa bir süre sonra yeniden deneyin.",
+    RATE_LIMIT_STORE_UNAVAILABLE:
+      "Dağıtık güvenlik kontrolü şu anda kullanılamıyor. İşlem uygulanmadı.",
+    ID_TOKEN_REQUIRED:
+      "Yönetici hesap oturumu doğrulanamadı. Lütfen yeniden giriş yapın.",
+    SESSION_REVOCATION_FAILED:
+      "Yönetici oturumu güvenli biçimde sonlandırılamadı.",
+    ADMIN_SESSION_REVOCATION_FAILED:
+      "Yönetici erişim oturumu güvenli biçimde iptal edilemedi.",
+    INVALID_JSON:
+      "Gönderilen bilgiler okunamadı. Lütfen alanları kontrol edip yeniden deneyin.",
+    REQUEST_BODY_TOO_LARGE:
+      "Gönderilen bilgi boyutu izin verilen sınırı aşıyor.",
+    API_BODY_INVALID:
+      "Alanların biçimini ve desteklenen değerleri kontrol edin. Bilgileriniz korunmuştur.",
+    SERVICE_NOT_READY:
+      "Mağazanın güvenli işlem bağlantısı hazır değil. İşlem uygulanmadı.",
+    ADMIN_BROWSER_SERVER_UPDATE_REQUIRED:
+      "Mağaza ve yönetim sunucusu birlikte güncellenmelidir.",
+    ADMIN_BROWSER_UNAVAILABLE:
+      "Güvenli yönetici oturumu hazırlanamadı. HTTPS bağlantısını ve tarayıcı ayarlarınızı kontrol edin.",
+    ADMIN_SESSION_UNAVAILABLE:
+      "Güvenli yönetim bağlantısı geçici olarak kullanılamıyor. Bilgileriniz korunmuştur; yeniden deneyin.",
+  };
+  return (
+    messages[code] ||
+    (status >= 500
+      ? "İşlem şu anda tamamlanamadı. Lütfen yeniden deneyin."
+      : "İşlem doğrulanamadı.")
+  );
+}
+
+function apiFailure(payload, response) {
+  const code =
+    typeof payload.error === "object" ? payload.error?.code : payload.error;
+  const error = Object.assign(
+    new Error(errorMessage(payload, response.status)),
+    {
+      code: code || payload.code || `HTTP_${response.status}`,
+      status: response.status,
+      payload,
+      requestId: String(
+        payload.requestId || response.headers.get("x-request-id") || "",
+      ),
+    },
+  );
+  if (
+    [401, 403].includes(response.status) &&
+    [
+      "AUTH_REQUIRED",
+      "AUTH_INVALID",
+      "ADMIN_REQUIRED",
+      "ADMIN_GATE_REQUIRED",
+      "ADMIN_GATE_ACCESS_INVALID",
+      "ADMIN_ACTIVE_SESSION_MISMATCH",
+    ].includes(String(error.code))
+  ) {
+    window.dispatchEvent(
+      new CustomEvent("zentra:admin-session-invalid", {
+        detail: { code: error.code },
+      }),
+    );
+  }
+  return error;
+}
+
+async function browserHeaders(headers, url, method, body) {
+  const result = new Headers(headers);
+  result.delete("X-Zentra-Admin-Proof");
+  const proof = await window.ZENTRA_ADMIN_AUTH?.browserProof?.(
+    url,
+    method,
+    body,
+  );
+  if (proof) result.set("X-Zentra-Admin-Proof", proof);
+  return result;
+}
+
+export async function adminFetch(path, options = {}) {
+  let mutationSent = false;
+  const initialUid = String(
+    window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid ||
+      window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid ||
+      "",
+  );
+  const request = requestController(
+    Math.min(60_000, Math.max(1500, Number(options.timeoutMs) || 20_000)),
+    options.signal,
+  );
+  const { controller } = request;
+  try {
+    const headers = new Headers(options.headers || {});
+    headers.set("Accept", "application/json");
+    headers.set("X-Zentra-Store-Client", "secure-admin-v78");
+    const url = window.ZENTRA_ADMIN_AUTH?.apiUrl?.(path) || path;
+    const method = String(
+      options.method || (options.body === undefined ? "GET" : "POST"),
+    ).toUpperCase();
+    const destination = new URL(url, window.location.href),
+      base = new URL(
+        window.ZENTRA_ADMIN_AUTH?.apiUrl?.("/") || window.location.origin,
+        window.location.href,
+      );
+    if (
+      destination.origin !== base.origin ||
+      destination.username ||
+      destination.password ||
+      !["https:", "http:"].includes(destination.protocol)
+    )
+      throw Object.assign(
+        new Error("Yönetim isteğinin adresi doğrulanamadı."),
+        { code: "API_ORIGIN_INVALID", mutationNotSent: true },
+      );
+    if (
+      window.__ZENTRA_RUNTIME__ &&
+      !["GET", "HEAD", "OPTIONS"].includes(method) &&
+      destination.pathname.startsWith("/api/admin/store/") &&
+      !compatibleStoreWrites(window.__ZENTRA_RUNTIME__)
+    )
+      throw Object.assign(
+        new Error("Güncel mağaza ve sunucu birlikte yayınlanmalıdır."),
+        { code: "CLIENT_UPDATE_REQUIRED", mutationNotSent: true },
+      );
+    let sameOrigin = false;
+    try {
+      sameOrigin =
+        new URL(url, window.location.href).origin === window.location.origin;
+    } catch (_) {}
+    if (
+      !sameOrigin ||
+      method !== "GET" ||
+      window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid
+    ) {
+      const token = await waitForSignal(
+        Promise.resolve().then(() => window.ZENTRA_ADMIN_AUTH?.token?.()),
+        controller.signal,
+      );
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+    const appCheckToken = await waitForSignal(
+      Promise.resolve()
+        .then(() => window.ZENTRA_ADMIN_AUTH?.appCheckToken?.())
+        .catch(() => ""),
+      controller.signal,
+    );
+    if (appCheckToken) headers.set("X-Firebase-AppCheck", appCheckToken);
+    let body = options.body;
+    if (body && typeof body !== "string") {
+      headers.set("Content-Type", "application/json");
+      body = JSON.stringify(body);
+    } else if (typeof body === "string") {
+      headers.set("Content-Type", "application/json");
+      body = JSON.stringify(JSON.parse(body));
+    }
+    const target = new URL(url, window.location.href).pathname;
+    if (
+      !["GET", "HEAD", "OPTIONS"].includes(method) &&
+      target.startsWith("/api/admin/store/") &&
+      target !== "/api/admin/store/inventory/import-check" &&
+      target !== "/api/admin/store/maintenance/preview"
+    ) {
+      if (!crypto?.subtle)
+        throw Object.assign(
+          new Error(
+            "Güvenli işlem doğrulaması kullanılamıyor. HTTPS bağlantısını kontrol edin.",
+          ),
+          { code: "ADMIN_ACTION_UNAVAILABLE" },
+        );
+      const hash = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(body || "{}"),
+      );
+      const bodyHash = [...new Uint8Array(hash)]
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("");
+      const productEdit = isProductSettingsUpdate(method, target);
+      const password = productEdit ? "" : window.ZENTRA_ADMIN_AUTH?.consumeActionPassword?.() || "";
+      if (!productEdit && !password)
+        throw Object.assign(
+          new Error("Bu işlem için hesap şifrenizi yeniden doğrulayın."),
+          { code: "ADMIN_REAUTH_REQUIRED" },
+        );
+      const proofBody = JSON.stringify({ method, path: target, bodyHash, ...(productEdit ? {} : { password }) });
+      const proofResponse = await fetch(
+        window.ZENTRA_ADMIN_AUTH?.apiUrl?.("/api/admin/action-proof") ||
+          "/api/admin/action-proof",
+        {
+          method: "POST",
+          headers: await browserHeaders(
+            headers,
+            window.ZENTRA_ADMIN_AUTH?.apiUrl?.("/api/admin/action-proof") ||
+              "/api/admin/action-proof",
+            "POST",
+            proofBody,
+          ),
+          body: proofBody,
+          credentials: "include",
+          cache: "no-store",
+          redirect: "error",
+          signal: controller.signal,
+        },
+      );
+      const proofPayload = await readApiJson(proofResponse);
+      if (
+        !proofResponse.ok ||
+        proofPayload.ok !== true ||
+        typeof proofPayload.proof?.token !== "string"
+      ) {
+        throw apiFailure(proofPayload, proofResponse);
+      }
+      headers.set("X-Admin-Action", proofPayload.proof.token);
+    }
+    const currentUid = () =>
+      String(
+        window.ZENTRA_ADMIN_AUTH?.currentUser?.()?.uid ||
+          window.ZENTRA_ADMIN_AUTH?.activeSession?.()?.uid ||
+          "",
+      );
+    if (initialUid && currentUid() !== initialUid)
+      throw Object.assign(
+        new Error("Yönetici oturumu değişti. İşlem durduruldu."),
+        { code: "ADMIN_ACTIVE_SESSION_MISMATCH" },
+      );
+    const signedHeaders = await waitForSignal(
+      browserHeaders(headers, url, method, body),
+      controller.signal,
+    );
+    if (initialUid && currentUid() !== initialUid)
+      throw Object.assign(new Error("Yönetici oturumu değişti."), {
+        code: "ADMIN_ACTIVE_SESSION_MISMATCH",
+      });
+    mutationSent =
+      !["GET", "HEAD", "OPTIONS"].includes(method) &&
+      target !== "/api/admin/store/inventory/import-check" &&
+      target !== "/api/admin/store/maintenance/preview";
+    const response = await fetch(url, {
+      ...options,
+      method,
+      headers: signedHeaders,
+      body,
+      credentials: "include",
+      cache: "no-store",
+      redirect: "error",
+      signal: controller.signal,
+    });
+    const payload = await readApiJson(response);
+    if (initialUid && currentUid() !== initialUid)
+      throw Object.assign(
+        new Error("Yönetici oturumu değişti. Yanıt işlenmedi."),
+        { code: "ADMIN_ACTIVE_SESSION_MISMATCH" },
+      );
+    if (!response.ok || payload.ok === false) {
+      throw apiFailure(payload, response);
+    }
+    return payload;
+  } catch (error) {
+    if (controller.signal.aborted || error?.name === "AbortError") {
+      if (!request.timedOut)
+        throw new DOMException("Request cancelled", "AbortError");
+      const timeout = new Error(
+        "Yanıt zamanında alınamadı. Tekrar işlem yapmadan önce güncel kaydı kontrol edin.",
+      );
+      timeout.code = "REQUEST_TIMEOUT";
+      timeout.mutationNotSent = !mutationSent;
+      throw timeout;
+    }
+    if (error instanceof TypeError) {
+      const network = new Error(
+        "Yönetim ekranına ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.",
+      );
+      network.code = "NETWORK_ERROR";
+      network.mutationNotSent = !mutationSent;
+      throw network;
+    }
+    if (!mutationSent) error.mutationNotSent = true;
+    throw error;
+  } finally {
+    request.cleanup();
+  }
+}

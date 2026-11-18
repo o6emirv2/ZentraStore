@@ -1,0 +1,39 @@
+{
+  "id": "/",
+  "name": "Zentra Store",
+  "short_name": "Zentra",
+  "lang": "tr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#04121b",
+  "theme_color": "#0d151f",
+  "icons": [
+    {
+      "src": "/public/assets/images/apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/public/assets/images/zentra-mark.webp",
+      "sizes": "1254x1254",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ürünleri keşfet",
+      "url": "/?devam=%2Fmagaza"
+    },
+    {
+      "name": "Siparişlerim",
+      "url": "/?devam=%2Fsiparisler"
+    },
+    {
+      "name": "Sepetim",
+      "url": "/?devam=%2Fsepet"
+    }
+  ]
+}
