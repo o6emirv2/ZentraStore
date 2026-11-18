@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>ZENTRA STORE | Premium Oyun ve Dijital Ürün Mağazası</title>
   <meta name="description" content="ZENTRA STORE: iOS ve Android koleksiyonları; güvenli bakiye, şifreli stok, gerçek sipariş takibi ve kontrollü dijital teslimat." />
   <meta name="keywords" content="ZENTRA STORE, Android, iOS, KingMod, OXİDE, Zolo, Aspect, Obsidian, Star, Dolphin, PUBG MOBILE" />
@@ -51,6 +51,7 @@
   <link rel="stylesheet" href="/public/css/product-detail.css?v=109" />
   <link rel="stylesheet" href="/public/css/storefront-design.css?v=109" />
 <link rel="stylesheet" href="/public/css/product-appearance.css?v=109"/>
+  <link rel="stylesheet" href="/public/css/zentra-home.css?v=110" />
 </head>
 <body data-zentra-page="store" data-authenticated="false" data-auth-ready="false">
   <a class="skip-link" href="#catalog">Ürünlere geç</a>
@@ -85,10 +86,21 @@
   <main class="page-shell" id="mainContent">
     <section class="storefront-intro" id="storefront" aria-labelledby="storeGreeting"><span aria-hidden="true"></span><p id="storeGreeting">Hoş geldiniz, <strong id="storeGreetingName">Oyuncu</strong></p></section>
 
+    <section class="zentra-home-hero" aria-labelledby="zentraHomeHeroTitle">
+      <div class="zentra-home-hero__content">
+        <span class="zentra-home-hero__kicker"><span aria-hidden="true"></span> ZENTRA STORE / DİJİTAL MAĞAZA</span>
+        <h1 id="zentraHomeHeroTitle">Dijital alışverişte <span>kontrol sende.</span></h1>
+        <p>Android ve iOS koleksiyonlarını keşfet. Paketlerini karşılaştır, siparişlerini tek yerden takip et ve mağaza bakiyeni güvenle yönet.</p>
+        <div class="zentra-home-hero__actions"><button type="button" class="zentra-home-hero__primary" data-store-scroll="catalog"><i class="fa-solid fa-bag-shopping" aria-hidden="true"></i> Ürünleri keşfet <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button><button type="button" class="zentra-home-hero__secondary" data-store-open="orders"><i class="fa-solid fa-receipt" aria-hidden="true"></i> Siparişlerim</button></div>
+        <div class="zentra-home-hero__signals" aria-label="Mağaza özellikleri"><span><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Doğrulanan ödemeler</span><span><i class="fa-solid fa-box-open" aria-hidden="true"></i> Sipariş takibi</span><span><i class="fa-solid fa-headset" aria-hidden="true"></i> Destek kanalları</span></div>
+      </div>
+      <div class="zentra-home-hero__visual" aria-hidden="true"><div class="zentra-home-hero__orbit"></div><div class="zentra-home-hero__feature"><span>ÖNE ÇIKAN KOLEKSİYON</span><img src="/public/assets/products/kingmod.jpeg?v=storefront-v76" alt="" width="220" height="220" loading="lazy" decoding="async" /><strong>OYUN DENEYİMİNİ GELİŞTİR</strong><small>Android / iOS · Dijital ürünler</small></div><div class="zentra-home-hero__floating"><i class="fa-solid fa-shield-halved"></i><span>Güvenli hesap yönetimi</span></div></div>
+    </section>
+
     <section class="store-announcement" id="storeAnnouncement" aria-live="polite" hidden></section>
 
     <section class="showcase-slider" data-showcase-slider aria-label="ZENTRA STORE ürün ve oyun görselleri" aria-roledescription="carousel">
-      <h1 class="showcase-slider__accessible-title">ZENTRA STORE premium oyun mağazası</h1>
+      <h2 class="showcase-slider__accessible-title">ZENTRA STORE premium oyun mağazası</h2>
       <div class="showcase-slider__viewport" data-showcase-viewport tabindex="0" aria-label="Görseller arasında sağa veya sola kaydır">
         <div class="showcase-slider__track" data-showcase-track aria-live="off"><figure class="showcase-slide showcase-slide--logo is-active" data-showcase-slide data-showcase-group="kingmod" aria-label="1 / 52: KİNGMOD" aria-hidden="false"><img src="/public/assets/products/kingmod.jpeg?v=storefront-v76" loading="eager" fetchpriority="high" alt="KİNGMOD yazılı ürün görseli" width="640" height="640" decoding="async" draggable="false" /></figure></div>
         <div class="showcase-slider__copy"><small data-showcase-group-position>Logo · 1/10</small><strong data-showcase-group-label>KİNGMOD</strong><span>Ürün görsellerini inceleyin, paketinizi seçin.</span><button type="button" data-showcase-details disabled>Detayları gör <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button></div>

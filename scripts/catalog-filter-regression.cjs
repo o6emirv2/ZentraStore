@@ -39,7 +39,7 @@ test("store and admin pages keep their original scale and allow zoom with safe a
     const content =
       /<meta\b(?=[^>]*\bname="viewport")[^>]*\bcontent="([^"]+)"/.exec(html)[1];
     assert(content.includes("width=device-width"));
-    assert.match(content, /^width=device-width, initial-scale=0\.8, viewport-fit=cover$/);
+    assert.match(content, /^width=device-width, initial-scale=1, viewport-fit=cover$/);
     assert(content.includes("viewport-fit=cover"));
     assert(!content.includes("maximum-scale=1"));
     assert(!content.includes("user-scalable=no"));

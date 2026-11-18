@@ -8,12 +8,12 @@ import {
 } from "./activity.mjs?v=109";
 import { createAccountRecovery } from "./account-recovery.mjs?v=109";
 import { initPasswordFields } from "./ui.js?v=109";
-import { createAccountPages } from "./account-pages.mjs?v=109";
+import { createAccountPages } from "./account-pages.mjs?v=110";
 import { createStorePages, pageHeading } from "./store-pages.mjs?v=109";
 import { authPanel } from "./auth-panel.mjs?v=109";
 import { createCommunity } from "./community.mjs?v=109";
 import { initPwa, installStore } from "./pwa.js?v=109";
-import { createCommerceClient } from "./commerce-client.js?v=109";
+import { createCommerceClient } from "./commerce-client.js?v=110";
 import { translate, tr } from "./preferences.mjs?v=109";
 import {
   authMode,
@@ -22,7 +22,7 @@ import {
   syncNavigation,
   measureHeader,
 } from "./navigation.mjs?v=109";
-import { restoreStoreEntry, storeRoute } from "./routes.mjs?v=109";
+import { restoreStoreEntry, storeRoute, safeStorePath } from "./routes.mjs?v=109";
 import {
   mountVerificationClock,
 } from "./verification.mjs?v=109";
@@ -342,11 +342,7 @@ function socialLinks() {
 function support() {
   const links = socialLinks();
   return (
-    heading(
-      "Bir mesaj kadar yakınız",
-      "YARDIM & DESTEK",
-      "Siparişin veya ürünlerin hakkında bize ulaş.",
-    ) +
+    `<div class="help-hero"><span class="eyebrow">ZENTRA STORE / DESTEK MERKEZİ</span><div><span>${icon("support")}</span><div>${heading("Yanınızdayız", "YARDIM & DESTEK", "Siparişleriniz, cihaz uyumluluğu ve ürünleriniz için doğru kanala ulaşın.")}</div></div><div class="help-hero__links"><a href="/siparisler" data-nav>${icon("receipt")} Siparişlerim ${icon("arrow")}</a><a href="/hesabim?bolum=support" data-nav>${icon("support")} Destek taleplerim ${icon("arrow")}</a></div></div>` +
     `<section class="support-grid">${links.map((l) => `<article class="support-card">${icon(l.platform === "telegram" ? "telegram" : "support")}<h2>${e(l.title)}</h2><p>${e(l.description)}</p><a class="button secondary" href="${e(l.url)}" target="_blank" rel="noopener noreferrer">İletişime geç ${icon("arrow")}</a></article>`).join("")}</section><section class="faq"><div class="section-heading"><h2>Aklına takılanlar.</h2></div>${[
       [
         "Siparişim ne zaman teslim edilir?",
@@ -427,6 +423,7 @@ async function render() {
     promotions: "Bakiye promosyonu",
     notFound: "Sayfa bulunamadı",
   };
+  document.body.dataset.zentraRoute = r.name;
   document.title = `${titles[r.name]} | Zentra Store`;
   const finishLoading = activity.begin(
     `${titles[r.name] || "Sayfa"} yükleniyor…`,
@@ -583,13 +580,16 @@ async function render() {
       const result = await storeApi("/api/store/notifications");
       if (version !== state.render) return;
       state.notifications = result.notifications || [];
-      await paint(
-        accountShell(
-          heading("Bildirimler", "GÜNCEL KAL") +
-            `<div class="panel"><h2>${icon("bell")} Hesap bildirimlerin</h2>${state.notifications.length ? state.notifications.map((n) => `<article class="notification-item ${n.readAt ? "read" : "unread"}"><div class="notification-heading">${icon(n.type === "security" ? "shield" : n.type === "order" ? "box" : "bell")}<b>${e(n.title)}</b><span class="status-pill ${n.readAt ? "" : "amber"}">${n.readAt ? "Okundu" : "Yeni"}</span></div><p>${e(n.message)}</p><small>${date(n.createdAt)}</small><div class="button-row"><a class="button secondary small" href="${e(n.href)}" data-nav>${e(n.actionLabel || "İlgili kaydı aç")} ${icon("arrow")}</a>${!n.readAt ? `<button class="button outline small" data-action="notification-read" data-id="${e(n.id)}">${icon("check")} Okundu olarak işaretle</button>` : ""}</div></article>`).join("") : empty("Her şey güncel", "Gerçek hesap, sipariş ve stok bildirimlerin burada görünür.", "", "")}</div><section class="panel email-delivery"><h2>${icon("mail")} E-posta gönderim durumu</h2><p class="fine-print">Sağlayıcının iletiyi kabul etmesi teslim edildiği anlamına gelmez.${result.webhookConfigured ? "" : " Teslimat webhook’u yapılandırılmadığından son teslimat doğrulanamayabilir."}</p>${(result.emailDelivery || []).map((n) => `<article class="notification-item"><b>${e(n.label)}</b><p>${e(n.stateLabel)}</p><small>${date(n.createdAt)}${n.deliveredAt ? " · Teslim: " + date(n.deliveredAt) : ""}</small></article>`).join("") || "<p>Hesabına ait bir gönderim kaydı henüz yok.</p>"}</section>`,
-          "notifications",
-        ),
-      );
+      const unread = state.notifications.filter(item => !item.readAt).length;
+      const notifications = state.notifications.map((n) => {
+        // A notification is stored content, not a trusted navigation instruction.
+        const href = safeStorePath(n.href || "") || "/bildirimler";
+        return `<article class="notification-item ${n.readAt ? "read" : "unread"}"><div class="notification-heading">${icon(n.type === "security" ? "shield" : n.type === "order" ? "box" : "bell")}<b>${e(n.title)}</b><span class="status-pill ${n.readAt ? "" : "amber"}">${n.readAt ? "Okundu" : "Yeni"}</span></div><p>${e(n.message)}</p><small>${date(n.createdAt)}</small><div class="button-row"><a class="button secondary small" href="${e(href)}" data-nav>${e(n.actionLabel || "İlgili kaydı aç")} ${icon("arrow")}</a>${!n.readAt ? `<button class="button outline small" data-action="notification-read" data-id="${e(n.id)}">${icon("check")} Okundu olarak işaretle</button>` : ""}</div></article>`;
+      }).join("");
+      await paint(accountShell(
+        `${heading("Bildirimlerim", "HESABINIZDAKİ GELİŞMELER", "Sipariş, hesap güvenliği ve mağaza duyurularını tek merkezde takip edin.")}<div class="notification-summary" aria-label="Bildirim özeti"><div><small>TOPLAM BİLDİRİM</small><strong>${state.notifications.length}</strong></div><div><small>OKUNMAMIŞ</small><strong>${unread}</strong></div><a href="/hesabim?bolum=preferences" data-nav>${icon("settings")} Bildirim tercihleri ${icon("arrow")}</a></div><section class="panel notification-feed"><header class="notification-feed__header"><h2>${icon("bell")} Hesap bildirimleriniz</h2><span>${unread ? `${unread} yeni bildirim` : "Tümü güncel"}</span></header>${notifications || empty("Her şey güncel", "Gerçek hesap, sipariş ve stok bildirimlerin burada görünür.", "", "")}</section><section class="panel email-delivery"><h2>${icon("mail")} E-posta gönderim durumu</h2><p class="fine-print">Sağlayıcının iletiyi kabul etmesi teslim edildiği anlamına gelmez.${result.webhookConfigured ? "" : " Teslimat webhook’u yapılandırılmadığından son teslimat doğrulanamayabilir."}</p>${(result.emailDelivery || []).map((n) => `<article class="notification-item"><b>${e(n.label)}</b><p>${e(n.stateLabel)}</p><small>${date(n.createdAt)}${n.deliveredAt ? " · Teslim: " + date(n.deliveredAt) : ""}</small></article>`).join("") || "<p>Hesabınıza ait gönderim kaydı henüz yok.</p>"}</section>`,
+        "notifications",
+      ));
     } else if (r.name === "promotions") {
       await paint(accountPages.coupons());
     } else if (r.name === "coupons") {

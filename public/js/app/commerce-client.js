@@ -219,8 +219,8 @@ export function createCommerceClient({
       ["requests", "Taleplerim", "My requests"],
       ["gifts", "Hediyelerim", "My gifts"],
       ["loyalty", "Zentra puanlarım", "My Zentra points"],
-      ["sessions", "Oturumlarım", "My sessions"],
-      ["preferences", "Görünüm ve bildirimler", "Display and notifications"],
+      ["sessions", "Cihazlarım", "My devices"],
+      ["preferences", "Bildirim Tercihleri", "Notification preferences"],
       ["privacy", "Verilerim ve gizlilik", "My data and privacy"],
     ]
       .map(
@@ -256,8 +256,8 @@ export function createCommerceClient({
       requests: tr("Taleplerim", "My requests"),
       gifts: tr("Hediyelerim", "My gifts"),
       loyalty: tr("Zentra puanlarım", "My Zentra points"),
-      sessions: tr("Aktif oturumlar", "Active sessions"),
-      preferences: tr("Görünüm ve bildirimler", "Display and notifications"),
+      sessions: tr("Cihazlarım", "My devices"),
+      preferences: tr("Bildirim Tercihleri ve Görünüm", "Notification preferences and display"),
       privacy: tr("Verilerim ve gizlilik", "My data and privacy"),
     }[section];
     if (!title) return "";

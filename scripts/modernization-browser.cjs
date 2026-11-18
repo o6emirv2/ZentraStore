@@ -133,7 +133,7 @@ async function main() {
           return { viewport: innerWidth, width: document.documentElement.scrollWidth, meta: document.querySelector('meta[name=viewport]').content,
             overflow: elements.map(node => ({ name: node.className, left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right })).filter(row => row.left < -1 || row.right > innerWidth + 1) };
         }, name);
-        assert(layout.width <= layout.viewport + 1, JSON.stringify(layout)); assert.deepEqual(layout.overflow, [], JSON.stringify(layout)); assert.match(layout.meta, /initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8/);
+        assert(layout.width <= layout.viewport + 1, JSON.stringify(layout)); assert.deepEqual(layout.overflow, [], JSON.stringify(layout)); assert.match(layout.meta, /initial-scale=1/);
         cases.push({ name: `${name}-responsive-${width}`, layout });
         if (width === 390) await page.screenshot({ path: path.join(output, name + '-mobile.png'), fullPage: false });
       }

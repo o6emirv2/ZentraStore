@@ -231,7 +231,7 @@ test("direct storefront pages respond successfully with canonical and private in
     assert(html.includes('name="viewport"'));
     assert(
       html.includes(
-        "initial-scale=0.85, viewport-fit=cover",
+        "initial-scale=1, viewport-fit=cover",
       ),
     );
     if (["/sepet", "/hesabim", "/siparisler"].includes(path))

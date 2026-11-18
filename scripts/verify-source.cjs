@@ -55,7 +55,7 @@ for (const file of files) {
     ];
     if (
       viewports.length !== 1 ||
-      !/content="width=device-width, initial-scale=0\.8(?:5)?, viewport-fit=cover"/.test(viewports[0][0])
+      !/content="width=device-width, initial-scale=1, viewport-fit=cover"/.test(viewports[0][0])
     )
       failures.push(
         name + ": viewport differs from the requested device policy",

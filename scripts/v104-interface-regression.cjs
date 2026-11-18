@@ -112,7 +112,7 @@ test("navigation retains the browser entry scroll position without sharing priva
 });
 test("all source HTML and generated HTML templates preserve safe areas and allow user zoom", () => {
   const root = path.resolve(__dirname, "..");
-  const standard = /content="width=device-width, initial-scale=0\.8(?:5)?, viewport-fit=cover"/;
+  const standard = /content="width=device-width, initial-scale=1, viewport-fit=cover"/;
   for (const file of [
     "index.html",
     "admin/index.html",
