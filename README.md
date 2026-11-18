@@ -1,2 +1,0 @@
-# ZentraStore
-ZENTRA STORE
