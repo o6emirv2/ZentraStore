@@ -21,7 +21,6 @@ const emailLabels = Object.freeze({
   needs_review: "Kontrol gerekiyor",
 });
 const types = Object.freeze({
-  new_device: "Yeni cihazdan giriş", promo_added: "Promosyon kodu", restock: "Stok gelince bildir",
   password: "Şifre yenileme",
   username: "Kullanıcı adı hatırlatma",
   password_changed: "Şifre güvenliği",
@@ -53,8 +52,7 @@ function target(row) {
       encodeURIComponent(text(row.productId, 80)) +
       (row.planKey ? "?paket=" + encodeURIComponent(text(row.planKey, 40)) : "")
     );
-  if (row.type === "promo_added") return "/promosyonlar";
-  return row.type === "security" || row.type === "new_device" || row.type === "account"
+  return row.type === "security"
     ? "/hesabim?bolum=sessions"
     : row.type === "coupon"
       ? "/kuponlar"
@@ -90,21 +88,17 @@ async function list(uid, requested = 30) {
       .limit(10)
       .get(),
   ]);
-  const {templates} = await require("../email/editor").read(db);
   const notifications = [
     ...legacy.docs.map((d) => ({ d, source: "legacy" })),
     ...current.docs.map((d) => ({ d, source: "event" })),
   ]
     .map(({ d, source }) => {
       const r = d.data();
-      const kind = r.templateType || ({wallet:"wallet_credit", coupon:"coupon_assigned", account:"username_changed", security:"password_changed", commerce:r.planKey ? "price" : "stock"})[r.type] || r.type;
-      const copy = require("../email/editor").apply(templates[kind], {subject: text(r.title,120),intro:text(r.message,1000), label:"İlgili kaydı aç"}, {tarih:new Date(Number(r.createdAt)||0).toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"}), urun:r.productName, kod:r.code, cihaz:r.label, kullanici:r.username, tutar:Number.isSafeInteger(r.amountKurus) ? (r.amountKurus/100).toLocaleString("tr-TR",{style:"currency",currency:"TRY"}) : undefined});
       return {
         id: source + "_" + d.id,
         type: text(r.type, 30),
-        title: copy.subject,
-        message: copy.intro,
-        actionLabel:copy.label,
+        title: text(r.title, 100),
+        message: text(r.message, 500),
         createdAt: Number(r.createdAt) || 0,
         readAt:
           Number(r.readAt) || (r.read === true ? Number(r.createdAt) || 1 : 0),
@@ -164,7 +158,7 @@ async function markRead(uid, id) {
 function recordEvent(
   tx,
   db,
-  { uid, key, type, title, message, templateType, username, amountKurus, code, now = Date.now() },
+  { uid, key, type, title, message, now = Date.now() },
 ) {
   if (
     !uid ||
@@ -182,10 +176,6 @@ function recordEvent(
     type,
     title,
     message,
-    ...(templateType ? {templateType} : {}),
-    ...(username ? {username} : {}),
-    ...(Number.isSafeInteger(amountKurus) ? {amountKurus} : {}),
-    ...(code ? {code} : {}),
     createdAt: now,
     readAt: 0,
   });

@@ -1,3 +1,3 @@
-import { installDevicePolicy } from "./device.mjs?v=109";
+import { installDevicePolicy } from "./device.mjs?v=108";
 
 installDevicePolicy(document, window);

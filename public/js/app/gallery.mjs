@@ -35,9 +35,7 @@ function safeSource(source) {
   }
 }
 export function productGallery(product = {}) {
-  if (Array.isArray(product.galleryPaths) && product.galleryPaths.length)
-    return product.galleryPaths.filter(safeSource).slice(0,20).map((src,i) => ({src,alt: (product.name || 'Ürün')+' görseli '+(i+1)}));
-  const group = !Array.isArray(product.galleryPaths) && groups.find((x) => x.ids.includes(product.id));
+  const group = groups.find((x) => x.ids.includes(product.id));
   const name = String(product.name || "Ürün");
   const items = [
     {
@@ -48,7 +46,7 @@ export function productGallery(product = {}) {
     },
   ];
   if (Array.isArray(product.gallery) && product.gallery.length) {
-    for (const image of product.gallery.slice(0, 20))
+    for (const image of product.gallery.slice(0, 12))
       if (safeSource(image.url))
         items.push({ src: image.url, alt: image.alt || name });
     return Object.freeze(items.map(Object.freeze));

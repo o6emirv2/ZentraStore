@@ -8,8 +8,8 @@ import {
   busy,
   safeImage,
   status,
-} from "../public/js/app/ui.js?v=109";
-import { prepareProductImage } from "./product-image-upload.js?v=109";
+} from "../public/js/app/ui.js?v=108";
+import { prepareProductImage } from "./product-image-upload.js?v=108";
 const BASE = "/api/admin/store/commerce";
 const btn = (action, label, id = "", extra = "") =>
   `<button type="button" class="button secondary small" data-commerce-admin="${e(action)}" data-id="${e(id)}" ${extra}>${e(label)}</button>`;

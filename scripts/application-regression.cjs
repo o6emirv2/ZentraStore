@@ -34,10 +34,10 @@ test('public admin shell carries no private data and protected API still require
   const identity = await fixture.request('/api/auth/session', { method: 'POST', body: { idToken: owner.token, remember: false } });
   const cookie = [owner.cookie, ...identity.headers.getSetCookie().map(value => value.split(';')[0])].join('; ');
   const result = await fetch(fixture.origin + '/admin/', { headers: { cookie }, redirect: 'manual' });
-  assert.equal(result.status, 200); assert((await result.text()).includes('admin-entry.js')); assert(result.headers.get('cache-control').includes('no-store'));
+  assert.equal(result.status, 200); assert((await result.text()).includes('portal.js')); assert(result.headers.get('cache-control').includes('no-store'));
   const identityOnly = identity.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
   const gate = await fetch(fixture.origin + '/admin/', { headers: { cookie: identityOnly }, redirect: 'manual' });
-  assert.equal(gate.status, 200); assert((await gate.text()).includes('id="adminGateRoot"'));
+  assert.equal(gate.status, 200); assert((await gate.text()).includes('id="admin-root"'));
   const mismatch = await fixture.request('/api/admin/store/balance-codes', { token: fixture.idToken('member'), cookie });
   assert.equal(mismatch.status, 403);
 });

@@ -22,7 +22,7 @@ test('two stable GBOX device identities have exactly one annual 750 TL plan', ()
   assert.equal(products.length, 2);
   for (const [index, product] of ids.map(id => products.find(row => row.id === id)).entries()) {
     assert.equal(product.name, `GBOX · ${index ? 'iPad' : 'iPhone'}`);
-    assert.equal(product.platform, 'ios'); assert.equal(product.game, 'gbox'); assert.equal(product.categoryKey, product.id);
+    assert.equal(product.platform, 'ios'); assert.equal(product.game, 'gbox'); assert.equal(product.categoryKey, 'gbox-ios');
     assert.deepEqual(product.plans.map(({ key, label, duration, priceKurus }) => ({ key, label, duration, priceKurus })),
       [{ key: 'yearly', label: 'Yıllık', duration: '12 ay', priceKurus: 75000 }]);
     assert.equal(product.automaticEnabled, false); assert.equal(product.telegramEnabled, true);

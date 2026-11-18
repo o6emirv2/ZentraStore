@@ -185,7 +185,7 @@ test("sticky-header measurement follows real layout changes and releases its obs
 test("both removed marketing components and caption styles are absent from active presentation", () => {
   const root = path.resolve(__dirname, "..");
   for (const name of [
-    "store-pages.html",
+    "index.html",
     "public/js/app/store.js",
     "public/js/app/ui.js",
     "public/css/zentra.css",
@@ -201,7 +201,7 @@ test("both removed marketing components and caption styles are absent from activ
     ])
       assert(!source.includes(text), name + ": " + text);
   }
-  const html = fs.readFileSync(path.join(root, "store-pages.html"), "utf8");
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   assert(html.includes("/public/assets/images/apple-touch-icon.png"));
   assert(html.includes("brand-wordmark"));
 });

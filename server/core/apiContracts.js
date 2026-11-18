@@ -37,8 +37,6 @@ const planFields = {
   active: boolean,
 };
 const productFields = {
-  cardStyle: text(20),
-  galleryPaths: list(text(300), 20),
   name: text(80),
   platform: text(20),
   game: text(30),
@@ -104,7 +102,6 @@ const promotion = object({
   customerUids: list(text(128), 100),
   active: boolean,
   visibleInWallet: boolean,
-  announce: boolean,
   createOnly: boolean,
 });
 const inventoryKey = (value) =>
@@ -139,8 +136,6 @@ const content = object({
   quickLinks: list(link, 16),
 });
 const CONTRACTS = [
-  ["DELETE", /^\/api\/admin\/store\/products\/[a-z0-9-]+$/, object({confirmId:text(64)})],
-  ["PUT", /^\/api\/admin\/store\/notification-templates\/[a-z_]+$/, object({revision:integer(0,1000000000),template:object({subject:text(120),intro:text(1000),label:text(60)})})],
   ["POST", /^\/api\/admin\/store\/suppliers\/hilehanem\/check$/, object({})],
   [
     "PUT",
@@ -237,7 +232,7 @@ const CONTRACTS = [
   [
     "POST",
     /^\/api\/auth\/session$/,
-    object({ idToken: text(16384), remember: boolean, deviceMarker:text(97) }),
+    object({ idToken: text(16384), remember: boolean }),
   ],
   [
     "POST",

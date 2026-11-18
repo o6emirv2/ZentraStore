@@ -97,10 +97,6 @@ async function update(uid, input = {}) {
     const snap = await tx.get(ref),
       old = snap.data() || {};
     C.requireRevision(old.revision, input.expectedRevision);
-    if (nextFavorites || nextCart) {
-      const deleted = (await tx.get(database.collection("storefrontSettings").doc("main"))).data()?.catalog?.deletedProductIds || {};
-      if ([...(nextFavorites || []), ...(nextCart || []).map(line => line.productId)].some(id => deleted[id])) C.fail("STORE_ITEM_UNAVAILABLE", 409);
-    }
     const next = {
       ...old,
       uid,
@@ -113,19 +109,6 @@ async function update(uid, input = {}) {
         old.preferences || DEFAULT_PREFS,
       ),
     };
-    if (nextFavorites) {
-      const previous = new Set(old.favorites || []), current = new Set(nextFavorites);
-      const changed = [...new Set([...previous, ...current])].filter(id => previous.has(id) !== current.has(id));
-      const refs = changed.map(id => database.collection("storeProductWatches").doc(C.hash(uid, id)));
-      const watches = await Promise.all(refs.map(ref => tx.get(ref)));
-      changed.forEach((productId,i) => {
-        const oldWatch = watches[i].data() || {};
-        const explicitPrice = oldWatch.explicitPrice ?? (oldWatch.price === true && !oldWatch.favorite);
-        tx.set(refs[i], { ...oldWatch, uid, productId, explicitPrice, favorite:current.has(productId),
-          price:explicitPrice || current.has(productId), stock:oldWatch.stock === true, checkedAt:oldWatch.checkedAt || 0,
-          lastAvailable:oldWatch.lastAvailable || 0, createdAt:oldWatch.createdAt || next.updatedAt, updatedAt:next.updatedAt });
-      });
-    }
     if (nextCart)
       for (const line of nextCart) {
         const previous = (old.cart || []).find(
@@ -167,7 +150,6 @@ async function watch(uid, input) {
       .collection("storeProductWatches")
       .doc(C.hash(uid, productId));
   return database.runTransaction(async (tx) => {
-    await require("../core/productDeletion").assertLive(tx, database, productId);
     await C.activeUser(uid, { transaction: tx, database });
     const before = await tx.get(ref),
       catalog = await getEffectiveCatalog({ includeInactive: false });
@@ -178,11 +160,9 @@ async function watch(uid, input) {
       uid,
       productId,
       stock: input.stock === true,
-      stockSince: input.stock === true ? (before.data()?.stock && (before.data().stockSince || before.data().createdAt)) || Date.now() : 0,
-      explicitPrice: input.price === true,
-      price: input.price === true || before.data()?.favorite === true,
-      checkedAt:before.data()?.stock ? before.data().checkedAt || 0 : 0,
-      lastAvailable:before.data()?.stock ? before.data().lastAvailable || 0 : 0,
+      price: input.price === true,
+      checkedAt: 0,
+      lastAvailable: 0,
       updatedAt: Date.now(),
       createdAt: before.data()?.createdAt || Date.now(),
     };
@@ -207,20 +187,28 @@ async function watches(uid) {
   });
 }
 async function recordSession(uid, input = {}, req = {}) {
-  C.object(input, ["deviceId", "label", "deviceMarker"]);
-  const deviceId = require("../core/loginDevice").read({headers:req.headers,body:input}) || C.id(input.deviceId, 80),
+  C.object(input, ["deviceId", "label"]);
+  const deviceId = C.id(input.deviceId, 80),
     label = C.text(input.label || "Tarayıcı", 80);
   const database = C.db(),
     ref = database
       .collection("storeCustomerSessions")
       .doc(C.hash(uid, deviceId));
   await C.activeUser(uid);
-  const now = Date.now(), authTime = Number(req.user?.auth_time || 0) * 1000;
-  await database.runTransaction(async tx => {
-    const old = (await tx.get(ref)).data() || {};
-    if (old.revokedAt && authTime <= old.revokedAt) C.fail("AUTH_INVALID",401);
-    tx.set(ref, { uid, deviceId, label, createdAt:old.createdAt || now, lastSeenAt:now, authTime, revokedAt:0 }, {merge:true});
-  });
+  const old = await ref.get(),
+    now = Date.now();
+  await ref.set(
+    {
+      uid,
+      deviceId,
+      label,
+      createdAt: old.data()?.createdAt || now,
+      lastSeenAt: now,
+      authTime: Number(req.user?.auth_time || 0) * 1000,
+      revokedAt: 0,
+    },
+    { merge: true },
+  );
   return { id: ref.id, label, lastSeenAt: now };
 }
 async function sessions(uid) {

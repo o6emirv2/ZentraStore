@@ -1,5 +1,5 @@
 "use strict";
-const VERSION = "zentra-public-v110";
+const VERSION = "zentra-public-v108";
 const OFFLINE = "/offline.html";
 const UNAVAILABLE = "/unavailable.html";
 const PRECACHE = [
@@ -8,14 +8,14 @@ const PRECACHE = [
   "/public/assets/images/apple-touch-icon.png",
   "/public/assets/images/zentra-mark.webp",
   "/public/assets/images/logo.png",
-  "/public/css/recovery.css?v=109",
-  "/public/css/design-tokens.css?v=109",
-  "/public/css/device.css?v=109",
-  "/public/css/ambient.css?v=109",
-  "/public/js/app/recovery.mjs?v=109",
-  "/public/js/app/routes.mjs?v=109",
-  "/public/js/app/ambient.mjs?v=109",
-  "/public/js/app/device.mjs?v=109",
+  "/public/css/recovery.css?v=108",
+  "/public/css/design-tokens.css?v=108",
+  "/public/css/device.css?v=108",
+  "/public/css/ambient.css?v=108",
+  "/public/js/app/recovery.mjs?v=108",
+  "/public/js/app/routes.mjs?v=108",
+  "/public/js/app/ambient.mjs?v=108",
+  "/public/js/app/device.mjs?v=108",
 ];
 async function cachedPage(path, status = 503) {
   const cached = await caches.open(VERSION).then((cache) => cache.match(path));

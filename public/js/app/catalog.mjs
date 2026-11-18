@@ -1,4 +1,4 @@
-import { CATEGORY_PRESETS, categoryKey } from "../store/catalog-schema.mjs?v=109";
+import { CATEGORY_PRESETS } from "../store/catalog-schema.mjs?v=108";
 
 export function filterProducts(
   catalog,
@@ -49,7 +49,7 @@ export function filterProducts(
     const custom = categories.find((c) => c.id === cat);
     const preset = CATEGORY_PRESETS[cat];
     rows = rows.filter((p) =>
-      preset ? (cat === "gbox-ios" ? p.game === "gbox" : categoryKey(p) === cat)
+      preset ? p.game === preset.game && p.platform === preset.platform
         : custom ? custom.productIds.includes(p.id)
         : [p.platform, p.game, p.categoryKey].includes(cat),
     );

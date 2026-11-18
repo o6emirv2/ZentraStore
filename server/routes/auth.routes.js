@@ -103,12 +103,13 @@ router.post("/auth/session", strictLimiter, async (req, res) => {
       idToken,
       req.body?.remember === true,
     );
-    const device = await require("../core/loginDevice").observe(req, result.decoded);
-    res.setHeader("Set-Cookie", [sessionCookieHeader(result.sessionCookie, result.remember), device.cookie]);
+    res.setHeader(
+      "Set-Cookie",
+      sessionCookieHeader(result.sessionCookie, result.remember),
+    );
     return res.json({
       ok: true,
       authenticated: true,
-      deviceMarker:device.marker,
       user: {
         uid: result.decoded.uid || result.decoded.sub,
         email: result.decoded.email || "",
