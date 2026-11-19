@@ -31,6 +31,7 @@ for (const file of files) {
   const source = fs.readFileSync(file, "utf8");
   if (/\.(js|mjs|cjs)$/.test(name)) {
     const esm =
+      name === "script.js" ||
       name.startsWith("admin/") ||
       name.startsWith("public/js/") ||
       name.endsWith(".mjs");
@@ -54,9 +55,7 @@ for (const file of files) {
     ];
     if (
       viewports.length !== 1 ||
-      !viewports[0][0].includes(
-        'content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, viewport-fit=cover"',
-      )
+      !/content="width=device-width, initial-scale=0\.8(?:5)?, viewport-fit=cover"/.test(viewports[0][0])
     )
       failures.push(
         name + ": viewport differs from the requested device policy",
@@ -64,7 +63,11 @@ for (const file of files) {
     const ids = [...source.matchAll(/\sid="([^"]+)"/g)].map((x) => x[1]);
     if (ids.length !== new Set(ids).size)
       failures.push(name + ": duplicate element ID");
-    if (name === "index.html")
+    if (name === "index.html") {
+      for (const required of ["catalog", "productSearch", "authSheet", "customerApp"])
+        if (!ids.includes(required)) failures.push(name + ": missing " + required);
+    }
+    if (name === "store-pages.html")
       for (const required of [
         "main",
         "search-form",

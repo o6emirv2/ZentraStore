@@ -213,6 +213,7 @@ async function like(productId, { uid = "", visitorToken = "" } = {}, input) {
     .collection("storeProductReactionReceipts")
     .doc(C.hash(productId, identity, mutationId));
   return database.runTransaction(async (tx) => {
+    await require("../core/productDeletion").assertLive(tx, database, productId);
     const [counter, record, receipt] = await Promise.all([
       tx.get(counterRef),
       tx.get(recordRef),

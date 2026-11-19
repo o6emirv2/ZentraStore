@@ -6,8 +6,8 @@ import {
   date,
   toast,
   initPasswordFields,
-} from "../public/js/app/ui.js?v=108";
-import { createWalletOperation } from "./wallet-model.mjs?v=108";
+} from "../public/js/app/ui.js?v=109";
+import { createWalletOperation } from "./wallet-model.mjs?v=109";
 let retained = null;
 export function clearWalletState() {
   retained = null;

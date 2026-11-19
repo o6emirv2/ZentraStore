@@ -1,5 +1,5 @@
-import { escape as e, field, icon, brand } from "./ui.js?v=108";
-import { verificationMarkup } from "./verification.mjs?v=108";
+import { escape as e, field, icon, brand } from "./ui.js?v=109";
+import { verificationMarkup } from "./verification.mjs?v=109";
 export function authPanel({
   auth,
   mode = "login",

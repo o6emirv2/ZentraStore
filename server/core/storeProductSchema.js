@@ -5,8 +5,9 @@ const { CATEGORY_PRESETS, categoryKey, normalizeCategoryKey } = require('../../p
 function failure(code) { return Object.assign(new Error(code), { code, statusCode: 400 }); }
 
 function productCategory(input = {}, base = {}, { creating = false } = {}) {
-  const key = input.categoryKey === undefined ? categoryKey({ ...base, ...input })
+  let key = input.categoryKey === undefined ? categoryKey({ ...base, ...input })
     : normalizeCategoryKey(input.categoryKey, input.platform || base.platform);
+  if (key === 'gbox-ios' && ['gbox-iphone', 'gbox-ipad'].includes(input.id || base.id)) key = input.id || base.id;
   if (!Object.hasOwn(CATEGORY_PRESETS, key)) throw failure('STORE_PRODUCT_CATEGORY_INVALID');
   const preset = CATEGORY_PRESETS[key];
   if (base.fulfillmentMode === 'telegram_only' && preset?.platform && preset.platform !== base.platform) throw failure('STORE_PRODUCT_CATEGORY_PLATFORM_CONFLICT');

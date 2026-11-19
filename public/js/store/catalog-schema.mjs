@@ -10,6 +10,8 @@ const presets = {
   'pubg-android': { category: 'PUBG MOBILE Android', platform: 'android', game: 'pubg', inventoryType: 'license' },
   'pubg-ios': { category: 'PUBG MOBILE iOS', platform: 'ios', game: 'pubg', inventoryType: 'license' },
   'oxide-android': { category: 'OXİDE Android', platform: 'android', game: 'oxide', inventoryType: 'license' },
+  'gbox-iphone': { category: 'GBOX (iPhone)', platform: 'ios', game: 'gbox', inventoryType: 'license' },
+  'gbox-ipad': { category: 'GBOX (iPad)', platform: 'ios', game: 'gbox', inventoryType: 'license' },
   'gbox-ios': { category: 'GBOX iOS', platform: 'ios', game: 'gbox', inventoryType: 'license' },
   'oxide-ios': { category: 'OXİDE iOS', platform: 'ios', game: 'oxide', inventoryType: 'license' }
 };
@@ -34,6 +36,14 @@ export const CATALOG_FILTERS = Object.freeze(Object.fromEntries([
 
 export const CATEGORY_VISIBILITY_KEYS = Object.freeze(['android', 'ios', ...Object.keys(CATEGORY_PRESETS)]);
 
+export function categoryLabel(product = {}) {
+  const key = categoryKey(product);
+  const preset = CATEGORY_PRESETS[key];
+  if (!preset) return String(product.category || '');
+  if (preset.game === 'gbox') return preset.category;
+  return (preset.game === 'pubg' ? 'PUBG' : 'Oxide') + ' (' + (preset.platform === 'ios' ? 'iOS' : 'Android') + ')';
+}
+
 export function normalizeCategoryKey(value, platform) {
   const key = String(value || '');
   const candidate = GAME_KEYS.includes(key) ? `${key}-${platform}` : key;
@@ -42,7 +52,8 @@ export function normalizeCategoryKey(value, platform) {
 
 export function expandCategoryVisibility(source = {}) {
   const value = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
-  return Object.fromEntries(CATEGORY_VISIBILITY_KEYS.filter((key) => typeof value[key] === 'boolean').map((key) => [key, value[key]]));
+  const inherited = typeof value["gbox-ios"] === "boolean" ? {"gbox-iphone":value["gbox-ios"],"gbox-ipad":value["gbox-ios"]} : {};
+  return {...inherited, ...Object.fromEntries(CATEGORY_VISIBILITY_KEYS.filter((key) => typeof value[key] === 'boolean').map((key) => [key, value[key]]))};
 }
 
 export function normalizeCategoryVisibility(source = {}) {
@@ -52,6 +63,7 @@ export function normalizeCategoryVisibility(source = {}) {
 
 export function categoryKey(product = {}) {
   if (!product || typeof product !== 'object' || Array.isArray(product)) return '';
+  if (product.categoryKey === 'gbox-ios' && ['gbox-iphone','gbox-ipad'].includes(product.id)) return product.id;
   return normalizeCategoryKey(product.categoryKey || `${product.game}-${product.platform}`, product.platform);
 }
 

@@ -289,6 +289,7 @@ async function processRequest(ref, { fetcher = global.fetch } = {}) {
         }
         payload = require("../email/recovery").message({
           kind: job.kind,
+          template: (await require("../email/editor").read(db)).templates["recovery_" + job.kind],
           ...person,
           link,
           expiresAt: job.expiresAt,
@@ -600,7 +601,8 @@ async function complete(input) {
         id: note.id,
         uid: row.uid,
         type: "security",
-        title: "Şifre yenileme tamamlandı",
+        templateType:"password_reset_completed",
+        title: "Şifre sıfırlama tamamlandı",
         message:
           "Hesabının şifresi yenilendi. Güvenlik için yeniden giriş yapmalısın.",
         createdAt: Date.now(),

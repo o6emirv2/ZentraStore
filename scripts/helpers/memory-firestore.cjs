@@ -26,16 +26,16 @@ function memoryFirestore(initial = []) {
       count: () => ({ get: async () => { const result = await query.get(); return { data: () => ({ count: result.size }) }; } }),
       get: async () => {
         stats.queries++; if (queryHook) await queryHook(path);
-        let rows = [...records].filter(([key, row]) => key.startsWith(path + '/') && !key.slice(path.length + 1).includes('/')
+        let rows = [...records].filter(([key, row]) => (path.startsWith("**/") ? key.split("/").at(-2) === path.slice(3) : key.startsWith(path + '/') && !key.slice(path.length + 1).includes('/'))
           && filters.every(([field, op, value]) => {
             const actual = field === '__name__' ? key.split('/').at(-1) : field.split('.').reduce((v,k)=>v?.[k],row);
-            return op === '==' ? actual === value : op === 'in' ? value.includes(actual)
+            return op === 'array-contains' ? Array.isArray(actual) && actual.includes(value) : op === '==' ? actual === value : op === 'in' ? value.includes(actual)
               : op === '<=' ? actual <= value : op === '>=' ? actual >= value : op === '>' ? actual > value : actual < value;
           }));
         const compare = (a, b) => {
           for (const [field, direction] of orders) {
-            const left = field === '__name__' ? a[0].split('/').at(-1) : field.split('.').reduce((v,k)=>v?.[k],a[1]);
-            const right = field === '__name__' ? b[0].split('/').at(-1) : field.split('.').reduce((v,k)=>v?.[k],b[1]);
+            const left = field === '__name__' ? (path.startsWith('**/') ? a[0] : a[0].split('/').at(-1)) : field.split('.').reduce((v,k)=>v?.[k],a[1]);
+            const right = field === '__name__' ? (path.startsWith('**/') ? b[0] : b[0].split('/').at(-1)) : field.split('.').reduce((v,k)=>v?.[k],b[1]);
             if (left !== right) return (left < right ? -1 : 1) * (direction === 'desc' ? -1 : 1);
           }
           return a[0].localeCompare(b[0]);
@@ -44,7 +44,7 @@ function memoryFirestore(initial = []) {
         if (cursor) {
           const id = typeof cursor === 'string' ? cursor : cursor.id;
           const anchor = typeof cursor?.data === 'function' ? [cursor.ref.path, cursor.data()] : null;
-          rows = anchor ? rows.filter(row => compare(row, anchor) > 0) : rows.filter(([key]) => key.split('/').at(-1) > id);
+          rows = anchor ? rows.filter(row => compare(row, anchor) > 0) : rows.filter(([key]) => path.startsWith('**/') ? key > (cursor.path || id) : key.split('/').at(-1) > id);
         }
         const docs = rows.slice(0, take).map(([key]) => snapshot(reference(key))); stats.reads += docs.length;
         return { docs, empty: !docs.length, size: docs.length };
@@ -64,7 +64,7 @@ function memoryFirestore(initial = []) {
     if (failCommit) throw Object.assign(new Error('controlled commit failure'), { code: 'CONTROLLED_COMMIT_FAILURE' });
     records.clear(); updated.forEach((value, key) => records.set(key, value)); stats.writes += staged.length; stats.commits++;
   }
-  const db = { collection, doc: reference, records, stats,
+  const db = { collection, collectionGroup: name => collection("**/" + name), doc: reference, records, stats,
     listCollections: async () => [...new Set([...records.keys()].map(key => key.split('/')[0]))].map(name => collection(name)),
     getAll: async (...refs) => Promise.all(refs.map((ref) => ref.get())),
     setFailure: (value) => { failCommit = value; }, setQueryHook: (hook) => { queryHook = hook; },

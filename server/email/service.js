@@ -56,6 +56,7 @@ function orderEvent(tx, db, order, { created = false, previous = {} } = {}) {
       id: noteId,
       uid: order.uid,
       type: "order",
+      templateType:complete ? "paid_delivered" : "order_created",
       orderId: order.id,
       title: complete ? "Siparişin teslim edildi" : "Siparişin oluşturuldu",
       message: complete
@@ -184,13 +185,14 @@ async function factsFor(job, db) {
       ? row
       : null;
   }
-  if (job.type === "coupon_assigned") {
+  if (job.type === "coupon_assigned" || job.type === "promo_added") {
     const row = (
       await db.collection("storePromotions").doc(data.code).get()
     ).data();
     return row?.active === true &&
-      ["fixed", "percent"].includes(row.type) &&
-      row.customerUids?.includes(job.uid) &&
+      (job.type === "promo_added" ? row.type === "balance" && row.announce === true :
+        ["fixed","percent"].includes(row.type) && (row.customerUids?.includes(job.uid) || (row.visibleInWallet && !row.customerUids?.length))) &&
+      (!row.usageLimit || row.usedCount < row.usageLimit) && (!row.startsAt || row.startsAt <= Date.now()) &&
       (!row.endsAt || row.endsAt > Date.now())
       ? { coupon: row }
       : null;
@@ -200,18 +202,20 @@ async function factsFor(job, db) {
       await db.collection("storePasswordOperations").doc(data.operationId).get()
     ).data();
     return operation?.uid === job.uid && operation.state === "completed"
-      ? {}
+      ? { reset: operation.source === "email-recovery" }
       : null;
   }
-  if (job.type === "username_changed" || job.type === "test") return {};
-  if (job.type === "stock" || job.type === "price") {
+  if (["username_changed", "new_device", "test"].includes(job.type)) return {};
+  if (["restock","stock","price"].includes(job.type)) {
     const catalog = await require("../core/storeService").publicCatalog();
     if (catalog.stockVerified === false)
       throw K.failure("EMAIL_SOURCE_UNAVAILABLE", 503);
     const product = catalog.products.find((p) => p.id === data.productId);
     if (!product) return null;
-    if (job.type === "stock")
-      return product.stock?.available > 0 ? { product } : null;
+    if (job.type !== "price") {
+      const stock = data.planKey ? product.plans.find(p => p.key === data.planKey)?.stock : product.stock;
+      return stock?.available > 0 ? { product } : null;
+    }
     const plan = product.plans.find((p) => p.key === data.planKey);
     return plan && plan.priceKurus <= data.priceKurus
       ? { product, plan, oldPriceKurus: data.oldPriceKurus || 0 }
@@ -275,6 +279,8 @@ async function processMessage(db, ref, { fetcher = global.fetch } = {}) {
   if (current.recipientHash && current.recipientHash !== recipient.hash)
     return skip(db, ref, "EMAIL_RECIPIENT_CHANGED");
   const facts = await factsFor(current, db);
+  const overrides = (await require("./editor").read(db)).templates;
+  const template = current.type === "password_changed" && facts?.reset ? overrides.password_reset_completed || overrides.password_changed : overrides[current.type];
   if (!facts) return skip(db, ref, "EMAIL_SOURCE_NO_LONGER_VALID");
   const lease = crypto.randomUUID();
   const entry = await db.runTransaction(async (tx) => {
@@ -318,7 +324,7 @@ async function processMessage(db, ref, { fetcher = global.fetch } = {}) {
     }
     const next = {
       ...row,
-      payload: row.payload || templates.render(row, facts, recipient.email),
+      payload: row.payload || templates.render(row, facts, recipient.email, template),
       recipientHash: recipient.hash,
       recipientLabel: recipient.email.replace(/^(.).*(@.*)$/, "$1***$2"),
       firstAttemptAt: row.firstAttemptAt || now,

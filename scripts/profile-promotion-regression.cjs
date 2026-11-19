@@ -37,9 +37,11 @@ test('coupon creation collision is rejected atomically and editing preserves red
   records = new Map(); writes = 0;
   const input = { title: 'Test', type: 'percent', value: 10, usageLimit: 10, perUserLimit: 1, active: true, visibleInWallet: true, createOnly: true };
   await promotions.savePromotion('TEST10', input, { uid: 'admin' });
+  const initialWrites = writes;
+  assert(records.has("storePromotions/TEST10"));
   const previous = records.get('storePromotions/TEST10'); previous.usedCount = 2;
   await assert.rejects(promotions.savePromotion('TEST10', { ...input, value: 30 }), { code: 'STORE_PROMOTION_CODE_EXISTS' });
-  assert.equal(writes, 1); assert.equal(previous.value, 10);
+  assert.equal(writes, initialWrites); assert.equal(previous.value, 10);
   await promotions.savePromotion('TEST10', { ...input, createOnly: false, value: 20 });
   assert.equal(records.get('storePromotions/TEST10').usedCount, 2);
   await assert.rejects(promotions.savePromotion('MISSING', { ...input, createOnly: false }), { code: 'STORE_PROMOTION_NOT_FOUND' });

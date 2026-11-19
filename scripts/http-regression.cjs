@@ -186,7 +186,7 @@ test("removed upload route and private source paths are unavailable, and image f
     404,
   );
   assert.equal((await request("/server/config/env.js")).status, 404);
-  const promotionModule = await request("/admin/workspace.js?v=108");
+  const promotionModule = await request("/admin/workspace.js?v=109");
   assert.equal(promotionModule.status, 200);
   assert.ok(promotionModule.headers.get("content-type").includes("javascript"));
   for (const path of [

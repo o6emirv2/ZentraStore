@@ -4,7 +4,7 @@ import {
   requestController,
   compatibleStoreWrites,
   compatiblePrivateReads,
-} from "../request-utils.js?v=108";
+} from "../request-utils.js?v=109";
 
 const DEFAULT_API_BASE = "https://emirhan-siye.onrender.com";
 const DEFAULT_TIMEOUT_MS = 9000;
@@ -233,12 +233,14 @@ const USER_MESSAGES = Object.freeze({
     "Hesap bağlantısı zamanında kurulamadı. Yeniden deneyin.",
   STORE_PROMOTION_NOT_FOUND:
     "Bu indirim kodu bulunamadı veya artık aktif değil.",
+  STORE_PROMOTION_NOT_STARTED: "Bu kuponun kullanım süresi henüz başlamadı.",
+  STORE_CODE_REACTIVATION_BLOCKED: "Kullanılmış kod yeniden etkinleştirilemez.",
   STORE_PROMOTION_EXPIRED:
-    "Bu kampanyanın kullanım süresi dolmuş veya henüz başlamamış.",
+    "Bu kuponun kullanım süresi doldu.",
   STORE_PROMOTION_LIMIT_REACHED:
-    "Bu kampanyanın toplam kullanım limiti dolmuş.",
+    "Bu kuponun tüm kullanım hakları tükendi.",
   STORE_PROMOTION_ALREADY_USED:
-    "Bu indirim kodunu hesabınız için izin verilen sayıda kullandınız.",
+    "Bu kupon kodunu daha önce kullandınız.",
   STORE_PROMOTION_MINIMUM_NOT_MET:
     "Sepetiniz kampanyanın minimum tutar şartını karşılamıyor.",
   STORE_PROMOTION_SCOPE_INVALID:

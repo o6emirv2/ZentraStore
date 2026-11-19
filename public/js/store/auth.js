@@ -4,8 +4,8 @@ import {
   setStoreAppCheckTokenProvider,
   setStoreTokenProvider,
   storeApi,
-} from "./api.js?v=108";
-import { createAccountReader } from "./account-state.js?v=108";
+} from "./api.js?v=109";
+import { createAccountReader } from "./account-state.js?v=109";
 
 const FIREBASE_VERSION = "12.17.1";
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-app.js`;
@@ -196,16 +196,24 @@ export async function refreshStoreAccount(options = {}) {
     throw error;
   }
 }
+const DEVICE_MARKER_KEY = "zentra-recognized-device-v1";
+export function deviceMarker() {
+  try {
+    const marker = localStorage.getItem(DEVICE_MARKER_KEY);
+    return /^[a-f0-9]{32}\.[a-f0-9]{64}$/.test(marker || "") ? {deviceMarker:marker} : {};
+  } catch { return {}; }
+}
 async function syncServerSession(user, remember = rememberPreference()) {
   requireUnchangedUser(user);
   const idToken = await user.getIdToken(true);
   requireUnchangedUser(user);
-  await storeApi("/api/auth/session", {
+  const session = await storeApi("/api/auth/session", {
     method: "POST",
     auth: false,
-    body: { idToken, remember: !!remember },
+    body: { idToken, remember: !!remember, ...deviceMarker() },
   });
   requireUnchangedUser(user);
+  if (session?.deviceMarker) { try { localStorage.setItem(DEVICE_MARKER_KEY, session.deviceMarker); } catch {} }
 }
 async function finishIdentity(
   user,

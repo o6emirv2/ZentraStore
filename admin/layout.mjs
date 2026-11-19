@@ -1,4 +1,4 @@
-import { escape as e, icon, brand } from "../public/js/app/ui.js?v=108";
+import { escape as e, icon, brand } from "../public/js/app/ui.js?v=109";
 export const primaryViews = [
   ["overview", "chart", "Yönetim Özeti", "store.overview.read"],
   ["orders", "receipt", "Siparişler", "store.orders.read"],

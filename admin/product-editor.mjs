@@ -1,7 +1,7 @@
-import { escape as e, field as baseField, icon, toast } from "../public/js/app/ui.js?v=108";
+import { escape as e, field as baseField, icon, toast } from "../public/js/app/ui.js?v=109";
 import { CATEGORY_PRESETS } from "../public/js/store/catalog-schema.mjs";
-import { prepareProductImage } from "./product-image-upload.js?v=108";
-import { productPlans, productSortOrder } from "./product-model.mjs?v=108";
+import { prepareProductImage } from "./product-image-upload.js?v=109";
+import { productPlans, productSortOrder } from "./product-model.mjs?v=109";
 const field = (name, label, type, value, extra = "") => baseField(name, label, type, value, extra,
   ({ id: "grid", name: "box", image: "image", price: "wallet", planKey: "ticket", planLabel: "ticket", duration: "clock" })[name] || "box");
 

@@ -1,19 +1,19 @@
-import { createActivity } from "../public/js/app/activity.mjs?v=108";
-import { inventoryView, bindInventory } from "./inventory-view.mjs?v=108";
-import { initPasswordFields } from "../public/js/app/ui.js?v=108";
+import { createActivity } from "../public/js/app/activity.mjs?v=109";
+import { inventoryView, bindInventory } from "./inventory-view.mjs?v=109";
+import { initPasswordFields } from "../public/js/app/ui.js?v=109";
 import {
   adminViews,
   adminLayout,
   adminNavigation,
   resolveView,
-} from "./layout.mjs?v=108";
-import { walletView, bindWallet } from "./wallet-view.mjs?v=108";
-import { openWalletDialog, clearWalletState } from "./wallet.js?v=108";
-import { createCommerceWorkspace } from "./commerce.js?v=108";
-import { dismissPrivateDialogs } from "../public/js/app/session-view.mjs?v=108";
-import "../public/js/app/device.js?v=108";
-import { presentScreen } from "../public/js/app/motion.mjs?v=108";
-import { metricLabel, metricValue } from "./metrics.mjs?v=108";
+} from "./layout.mjs?v=109";
+import { walletView, bindWallet } from "./wallet-view.mjs?v=109";
+import { openWalletDialog, clearWalletState } from "./wallet.js?v=109";
+import { createCommerceWorkspace } from "./commerce.js?v=109";
+import { dismissPrivateDialogs } from "../public/js/app/session-view.mjs?v=109";
+import "../public/js/app/device.js?v=109";
+import { presentScreen } from "../public/js/app/motion.mjs?v=109";
+import { metricLabel, metricValue } from "./metrics.mjs?v=109";
 import {
   escape as e,
   copyText,
@@ -27,13 +27,13 @@ import {
   status,
   statusNames,
   empty,
-} from "../public/js/app/ui.js?v=108";
-import { productCards } from "./product-view.mjs?v=108";
-import { openProductEditor } from "./product-editor.mjs?v=108";
-import { isProductSettingsUpdate } from "./product-policy.mjs?v=108";
-import { supplierView } from "./supplier-view.mjs?v=108";
+} from "../public/js/app/ui.js?v=109";
+import { productCards } from "./product-view.mjs?v=109";
+import { openProductEditor } from "./product-editor.mjs?v=109";
+import { isProductSettingsUpdate } from "./product-policy.mjs?v=109";
+import { supplierView } from "./supplier-view.mjs?v=109";
 const views = adminViews;
-let workspaceActivity;
+let workspaceActivity, embeddedView;
 let disposeInventory = () => {};
 let disposeWallet = () => {};
 let commerceWorkspace,
@@ -97,13 +97,13 @@ async function show() {
   if (!mounted || !main?.isConnected) return;
   workspaceActivity?.cancel();
   workspaceActivity = createActivity({ target: main });
-  const selected = resolveView(location.hash);
+  const selected = resolveView(embeddedView ? "#panel/" + embeddedView : location.hash);
   disposeInventory();
   disposeWallet();
   currentView = selected[0];
   const v = ++version;
   clearTimeout(jobTimer);
-  qs("#workspace-title").textContent = selected[2];
+  if (qs("#workspace-title")) qs("#workspace-title").textContent = selected[2];
   qs(".admin-nav")
     ?.querySelectorAll("a")
     .forEach((a) => {
@@ -1267,6 +1267,7 @@ export function unmountWorkspace() {
   retainedInventory = null;
   commerceWorkspace?.dispose();
   commerceWorkspace = null;
+  embeddedView = "";
   mounted = false;
   ++version;
   clearTimeout(jobTimer);
@@ -1310,5 +1311,18 @@ export async function mountWorkspace(options) {
   } catch {}
   if (!mounted || generation !== version) return;
   shell();
+  await show();
+}
+
+export async function mountAdvanced(options, view) {
+  unmountWorkspace();
+  ({root, context, api, onLogout} = options);
+  embeddedView = view;
+  main = root.querySelector('[data-tool-result]');
+  mounted = true;
+  commerceWorkspace = createCommerceWorkspace({api, can, refresh:show, context});
+  document.addEventListener("click",click);
+  document.addEventListener("change",change);
+  document.addEventListener("submit",submit);
   await show();
 }

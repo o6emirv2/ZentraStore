@@ -172,7 +172,7 @@ test("store writes bind the initial identity and do not fall back to another acc
       .toString("base64");
   const source = fs
     .readFileSync(path.join(__dirname, "../public/js/store/api.js"), "utf8")
-    .replace(/([\'\"])\.\.\/request-utils\.js\?v=108\1/, JSON.stringify(utils));
+    .replace(/([\'\"])\.\.\/request-utils\.js\?v=109\1/, JSON.stringify(utils));
   const previous = {
     window: global.window,
     document: global.document,
@@ -241,7 +241,7 @@ test("a private response arriving after an account switch is rejected before rea
     fs
       .readFileSync(path.join(__dirname, "../public/js/store/api.js"), "utf8")
       .replace(
-        /([\'\"])\.\.\/request-utils\.js\?v=108\1/,
+        /([\'\"])\.\.\/request-utils\.js\?v=109\1/,
         JSON.stringify(utils),
       ) + "\n// delayed private response boundary";
   const previous = {

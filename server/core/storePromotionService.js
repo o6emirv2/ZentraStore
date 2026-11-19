@@ -49,6 +49,11 @@ function positiveInteger(value, fallback = 0, max = MAX_DISCOUNT_KURUS) {
   return number;
 }
 
+function priorUse(snapshot) {
+  const row = snapshot?.data() || {};
+  return Math.max(0, Number(row.count) || 0, row.lastOrderId ? 1 : 0);
+}
+
 function publicPromotion(row = {}, { customer = false } = {}) {
   const now = Date.now();
   const endsAt = Math.max(0, Number(row.endsAt || 0));
@@ -66,6 +71,7 @@ function publicPromotion(row = {}, { customer = false } = {}) {
     startsAt,
     endsAt,
     active: row.active === true,
+    ...(customer ? {} : {announce: row.announce === true}),
     status:
       row.active !== true
         ? "inactive"
@@ -76,7 +82,7 @@ function publicPromotion(row = {}, { customer = false } = {}) {
             : exhausted
               ? "exhausted"
               : "available",
-    perUserLimit: Math.max(1, Number(row.perUserLimit || 1)),
+    perUserLimit: 1,
     platforms: Array.isArray(row.platforms)
       ? row.platforms.filter((item) => ["android", "ios"].includes(item))
       : [],
@@ -159,6 +165,10 @@ function normalizePromotion(code, input = {}, previous = {}) {
     throw promotionError("STORE_PROMOTION_SCOPE_INVALID");
   const usageLimit = positiveInteger(input.usageLimit);
   const usedCount = Math.max(0, Number(previous.usedCount || 0));
+  if (usedCount && ((previous.active === false && input.active !== false) ||
+      (previous.usageLimit > 0 && usedCount >= previous.usageLimit && usageLimit !== previous.usageLimit) ||
+      (previous.endsAt && previous.endsAt <= Date.now() && (!endsAt || endsAt > previous.endsAt))))
+    throw promotionError("STORE_CODE_REACTIVATION_BLOCKED", 409);
   if (usageLimit > 0 && usageLimit < usedCount)
     throw promotionError("STORE_PROMOTION_LIMIT_INVALID");
   if (
@@ -187,7 +197,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
     minimumSubtotalKurus: positiveInteger(input.minimumSubtotalKurus),
     maxDiscountKurus: positiveInteger(input.maxDiscountKurus),
     usageLimit,
-    perUserLimit,
+    perUserLimit: 1,
     startsAt,
     endsAt,
     platforms,
@@ -195,6 +205,7 @@ function normalizePromotion(code, input = {}, previous = {}) {
     planKeys,
     customerUids,
     active: input.active !== false,
+    ...(type === "balance" ? { announce: input.announce === undefined ? previous.announce === true : input.announce === true } : {}),
     visibleInWallet: type !== "balance" && input.visibleInWallet === true,
     usedCount,
     createdAt: Math.max(0, Number(previous.createdAt || Date.now())),
@@ -210,10 +221,9 @@ function calculatePromotion(row, cart = {}, userUsage = 0, uid = "") {
     throw promotionError("BALANCE_CODE_USE_ACCOUNT", 409);
   if (!row || row.active !== true)
     throw promotionError("STORE_PROMOTION_NOT_FOUND", 404);
-  if (
-    Number(row.startsAt || 0) > now ||
-    (Number(row.endsAt || 0) > 0 && Number(row.endsAt) <= now)
-  ) {
+  if (userUsage > 0) throw promotionError("STORE_PROMOTION_ALREADY_USED", 409);
+  if (Number(row.startsAt || 0) > now) throw promotionError("STORE_PROMOTION_NOT_STARTED", 409);
+  if (Number(row.endsAt || 0) > 0 && Number(row.endsAt) <= now) {
     throw promotionError("STORE_PROMOTION_EXPIRED", 409);
   }
   if (
@@ -222,8 +232,7 @@ function calculatePromotion(row, cart = {}, userUsage = 0, uid = "") {
   ) {
     throw promotionError("STORE_PROMOTION_LIMIT_REACHED", 409);
   }
-  if (userUsage >= Math.max(1, Number(row.perUserLimit || 1)))
-    throw promotionError("STORE_PROMOTION_ALREADY_USED", 409);
+
   const subtotalKurus = Math.max(0, Math.trunc(Number(cart.totalKurus || 0)));
   if (!subtotalKurus || subtotalKurus < Number(row.minimumSubtotalKurus || 0))
     throw promotionError("STORE_PROMOTION_MINIMUM_NOT_MET", 409);
@@ -294,7 +303,7 @@ async function previewPromotion({ uid = "", code = "", cart = {} } = {}) {
   return calculatePromotion(
     campaign.data(),
     cart,
-    Math.max(0, Number(usage.data()?.count || 0)),
+    priorUse(usage),
     uid,
   );
 }
@@ -315,7 +324,7 @@ async function readPromotionInTransaction({
     transaction.get(customerRef),
   ]);
   if (!campaign.exists) throw promotionError("STORE_PROMOTION_NOT_FOUND", 404);
-  const previousCount = Math.max(0, Number(usage.data()?.count || 0));
+  const previousCount = priorUse(usage);
   const result = calculatePromotion(campaign.data(), cart, previousCount, uid);
   return {
     result,
@@ -407,18 +416,6 @@ function releasePromotionInTransaction({
   now = Date.now(),
 } = {}) {
   if (!release) return false;
-  transaction.update(release.campaignRef, {
-    usedCount: Math.max(0, Number(release.campaign.usedCount || 0) - 1),
-    updatedAt: now,
-  });
-  transaction.set(
-    release.customerRef,
-    {
-      count: Math.max(0, Number(release.customer.count || 0) - 1),
-      updatedAt: now,
-    },
-    { merge: true },
-  );
   transaction.set(
     release.redemptionRef,
     {
@@ -458,7 +455,7 @@ async function listWalletPromotions(uid = "") {
   return campaigns
     .map(({ row }, index) => ({
       ...publicPromotion(row, { customer: true }),
-      usedCount: Math.max(0, Number(usage[index]?.data()?.count || 0)),
+      usedCount: priorUse(usage[index]),
     }))
     .sort((left, right) => right.endsAt - left.endsAt);
 }
@@ -527,6 +524,11 @@ async function savePromotion(
       input,
       snapshot.exists ? snapshot.data() : {},
     );
+    const old = snapshot.data() || {};
+    if (row.active && !row.customerUids.length && ((row.type === "balance" && row.announce && !old.announce) ||
+        (row.type !== "balance" && row.visibleInWallet && !(old.active && old.visibleInWallet)))) {
+      require("../email/announcements").schedule(transaction, db, row);
+    }
     row.updatedBy = {
       uid: safeText(actor.uid, 160),
       email: safeText(actor.email, 254).toLowerCase(),
@@ -541,7 +543,7 @@ async function savePromotion(
         require("./customerNotificationService").recordEvent(transaction, db, {
           uid,
           key: normalized + ":" + row.emailAssignmentRevision,
-          type: "coupon",
+          type: "coupon", code:normalized,
           title: "Hesabına kupon tanımlandı",
           message:
             "Sana ait kuponu ve geçerli kullanım koşullarını Kuponlarım alanında görebilirsin.",

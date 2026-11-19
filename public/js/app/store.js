@@ -1,42 +1,43 @@
-import { createSearch } from "./search.mjs?v=108";
-import { activeDiscovery } from "./discovery.mjs?v=108";
-import { mountAmbient } from "./ambient.mjs?v=108";
+import { createSearch } from "./search.mjs?v=109";
+import { activeDiscovery } from "./discovery.mjs?v=109";
+import { mountAmbient } from "./ambient.mjs?v=109";
 import {
   createActivity,
   loadingCards,
   createHistoryScroll,
-} from "./activity.mjs?v=108";
-import { createAccountRecovery } from "./account-recovery.mjs?v=108";
-import { initPasswordFields } from "./ui.js?v=108";
-import { createAccountPages } from "./account-pages.mjs?v=108";
-import { createStorePages, pageHeading } from "./store-pages.mjs?v=108";
-import { authPanel } from "./auth-panel.mjs?v=108";
-import { createCommunity } from "./community.mjs?v=108";
-import { initPwa, installStore } from "./pwa.js?v=108";
-import { createCommerceClient } from "./commerce-client.js?v=108";
-import { translate, tr } from "./preferences.mjs?v=108";
+} from "./activity.mjs?v=109";
+import { createAccountRecovery } from "./account-recovery.mjs?v=109";
+import { initPasswordFields } from "./ui.js?v=109";
+import { createAccountPages } from "./account-pages.mjs?v=109";
+import { createStorePages, pageHeading } from "./store-pages.mjs?v=109";
+import { authPanel } from "./auth-panel.mjs?v=109";
+import { createCommunity } from "./community.mjs?v=109";
+import { initPwa, installStore } from "./pwa.js?v=109";
+import { createCommerceClient } from "./commerce-client.js?v=109";
+import { translate, tr } from "./preferences.mjs?v=109";
 import {
   authMode,
   authPath,
   authReturnTarget,
   syncNavigation,
   measureHeader,
-} from "./navigation.mjs?v=108";
-import { restoreStoreEntry, storeRoute } from "./routes.mjs?v=108";
+} from "./navigation.mjs?v=109";
+import { restoreStoreEntry, storeRoute } from "./routes.mjs?v=109";
 import {
   mountVerificationClock,
-} from "./verification.mjs?v=108";
-import { clearCustomerSessionView } from "./session-view.mjs?v=108";
-import "./device.js?v=108";
-import { presentScreen } from "./motion.mjs?v=108";
-import { productGallery, galleryIndex } from "./gallery.mjs?v=108";
-import { filterProducts } from "./catalog.mjs?v=108";
+} from "./verification.mjs?v=109";
+import { clearCustomerSessionView } from "./session-view.mjs?v=109";
+import "./device.js?v=109";
+import { presentScreen } from "./motion.mjs?v=109";
+import { productGallery, galleryIndex } from "./gallery.mjs?v=109";
+import { filterProducts } from "./catalog.mjs?v=109";
 import {
   storeApi,
   loadStoreRuntimeConfig,
   friendlyStoreError,
-} from "../store/api.js?v=108";
+} from "../store/api.js?v=109";
 import {
+  deviceMarker,
   initStoreAuth,
   subscribeStoreAuth,
   getStoreAuthSnapshot,
@@ -52,9 +53,9 @@ import {
   resendStoreEmailCode,
   refreshStoreVerification,
   refreshStoreIdentity,
-} from "../store/auth.js?v=108";
-import { createPurchaseTracker } from "../store/purchase-tracker.js?v=108";
-import { createCart, priceCart, checkoutState } from "./cart.mjs?v=108";
+} from "../store/auth.js?v=109";
+import { createPurchaseTracker } from "../store/purchase-tracker.js?v=109";
+import { createCart, priceCart, checkoutState } from "./cart.mjs?v=109";
 import {
   escape as e,
   money,
@@ -69,7 +70,7 @@ import {
   status,
   safeImage,
   copyText,
-} from "./ui.js?v=108";
+} from "./ui.js?v=109";
 restoreStoreEntry(window);
 const $ = (s) => document.querySelector(s),
   main = $("#main");
@@ -115,10 +116,11 @@ const tracker = createPurchaseTracker({
   userId: () => state.auth.user?.uid || "",
 });
 const uid = () => state.auth.user?.uid || "";
-cart.owner("");
+
 const commerce = createCommerceClient({
   api: storeApi,
   userId: uid,
+  deviceMarker,
   cart,
   getFavorites: () => favorites,
   setFavorites: (values) => {
@@ -170,6 +172,7 @@ function route() {
 }
 function go(path, { replace = false } = {}) {
   if (recovery.busy) return;
+  if (path === "/") { window.location.assign("/"); return; }
   search.sync(new URL(path, location.origin).searchParams.get("q") || "");
   scrollHistory.push(path, replace);
   void render().then(() => main.focus({ preventScroll: true }));
@@ -263,7 +266,7 @@ function packagePicker(id) {
   const p = product(id);
   if (!p || !p.plans?.length || route().name !== "product" || product(route().id)?.id !== p.id)
     throw new Error("Paket seçimi için ürün detayını aç.");
-  const selected = state.selectedPlans.get(p.id) || route().query.get("paket");
+  const selected = route().query.get("paket") || state.selectedPlans.get(p.id);
   const dialog = modal({
     title: "Paketini seç", description: "Sana uygun kullanım süresini belirle.", symbol: "box", appearance: "package",
     body: pages.packageOptions(p, selected), submit: "Paketi seç",
@@ -421,6 +424,7 @@ async function render() {
     support: "Yardım & destek",
     notifications: "Bildirimler",
     coupons: "Kuponlarım",
+    promotions: "Bakiye promosyonu",
     notFound: "Sayfa bulunamadı",
   };
   document.title = `${titles[r.name]} | Zentra Store`;
@@ -447,7 +451,7 @@ async function render() {
       return;
     }
     if (
-      ["account", "orders", "notifications", "coupons"].includes(r.name) &&
+      ["account", "orders", "notifications", "coupons", "promotions"].includes(r.name) &&
       !uid()
     ) {
       await paint(
@@ -524,8 +528,8 @@ async function render() {
           commerce.productExtras(
             product(r.id),
             info,
-            state.selectedPlans.get(product(r.id).id) ||
-              r.query.get("paket") ||
+            r.query.get("paket") ||
+              state.selectedPlans.get(product(r.id).id) ||
               product(r.id).plans[0]?.key,
           ),
       );
@@ -582,10 +586,12 @@ async function render() {
       await paint(
         accountShell(
           heading("Bildirimler", "GÜNCEL KAL") +
-            `<div class="panel"><h2>${icon("bell")} Hesap bildirimlerin</h2>${state.notifications.length ? state.notifications.map((n) => `<article class="notification-item ${n.readAt ? "read" : "unread"}"><div class="notification-heading">${icon(n.type === "security" ? "shield" : n.type === "order" ? "box" : "bell")}<b>${e(n.title)}</b><span class="status-pill ${n.readAt ? "" : "amber"}">${n.readAt ? "Okundu" : "Yeni"}</span></div><p>${e(n.message)}</p><small>${date(n.createdAt)}</small><div class="button-row"><a class="button secondary small" href="${e(n.href)}" data-nav>İlgili kaydı aç ${icon("arrow")}</a>${!n.readAt ? `<button class="button outline small" data-action="notification-read" data-id="${e(n.id)}">${icon("check")} Okundu olarak işaretle</button>` : ""}</div></article>`).join("") : empty("Her şey güncel", "Gerçek hesap, sipariş ve stok bildirimlerin burada görünür.", "", "")}</div><section class="panel email-delivery"><h2>${icon("mail")} E-posta gönderim durumu</h2><p class="fine-print">Sağlayıcının iletiyi kabul etmesi teslim edildiği anlamına gelmez.${result.webhookConfigured ? "" : " Teslimat webhook’u yapılandırılmadığından son teslimat doğrulanamayabilir."}</p>${(result.emailDelivery || []).map((n) => `<article class="notification-item"><b>${e(n.label)}</b><p>${e(n.stateLabel)}</p><small>${date(n.createdAt)}${n.deliveredAt ? " · Teslim: " + date(n.deliveredAt) : ""}</small></article>`).join("") || "<p>Hesabına ait bir gönderim kaydı henüz yok.</p>"}</section>`,
+            `<div class="panel"><h2>${icon("bell")} Hesap bildirimlerin</h2>${state.notifications.length ? state.notifications.map((n) => `<article class="notification-item ${n.readAt ? "read" : "unread"}"><div class="notification-heading">${icon(n.type === "security" ? "shield" : n.type === "order" ? "box" : "bell")}<b>${e(n.title)}</b><span class="status-pill ${n.readAt ? "" : "amber"}">${n.readAt ? "Okundu" : "Yeni"}</span></div><p>${e(n.message)}</p><small>${date(n.createdAt)}</small><div class="button-row"><a class="button secondary small" href="${e(n.href)}" data-nav>${e(n.actionLabel || "İlgili kaydı aç")} ${icon("arrow")}</a>${!n.readAt ? `<button class="button outline small" data-action="notification-read" data-id="${e(n.id)}">${icon("check")} Okundu olarak işaretle</button>` : ""}</div></article>`).join("") : empty("Her şey güncel", "Gerçek hesap, sipariş ve stok bildirimlerin burada görünür.", "", "")}</div><section class="panel email-delivery"><h2>${icon("mail")} E-posta gönderim durumu</h2><p class="fine-print">Sağlayıcının iletiyi kabul etmesi teslim edildiği anlamına gelmez.${result.webhookConfigured ? "" : " Teslimat webhook’u yapılandırılmadığından son teslimat doğrulanamayabilir."}</p>${(result.emailDelivery || []).map((n) => `<article class="notification-item"><b>${e(n.label)}</b><p>${e(n.stateLabel)}</p><small>${date(n.createdAt)}${n.deliveredAt ? " · Teslim: " + date(n.deliveredAt) : ""}</small></article>`).join("") || "<p>Hesabına ait bir gönderim kaydı henüz yok.</p>"}</section>`,
           "notifications",
         ),
       );
+    } else if (r.name === "promotions") {
+      await paint(accountPages.coupons());
     } else if (r.name === "coupons") {
       const result = await storeApi("/api/store/promotions");
       if (version !== state.render) return;
@@ -1208,11 +1214,12 @@ document.addEventListener("submit", async (event) => {
       if (form.dataset.couponDestination === "cart") go("/sepet");
       else render();
     } else {
-      await storeApi("/api/store/balance-codes/redeem", {
+      const redemption = await storeApi("/api/store/balance-codes/redeem", {
         body: { code: data.get("code") },
       });
       await refreshStoreAccount({ force: true });
-      toast("Bakiye kodunun sonucu doğrulandı.");
+      if (redemption.result?.idempotentReplay || redemption.idempotentReplay) toast("Bu promosyon kodunu daha önce kullandın.", "info");
+      else toast("Bakiye kodunun sonucu doğrulandı.");
       render();
     }
   } catch (error) {
@@ -1281,7 +1288,7 @@ subscribeStoreAuth((snapshot) => {
     clearCustomerSessionView(state, document);
     state.giftRecipient = "";
     if (
-      ["account", "orders", "coupons", "notifications", "cart"].includes(
+      ["account", "orders", "coupons", "promotions", "notifications", "cart"].includes(
         route().name,
       )
     )
@@ -1315,7 +1322,7 @@ subscribeStoreAuth((snapshot) => {
   if (
     changed &&
     !snapshot.busy &&
-    ["account", "orders", "coupons", "notifications", "cart"].includes(
+    ["account", "orders", "coupons", "promotions", "notifications", "cart"].includes(
       route().name,
     )
   )

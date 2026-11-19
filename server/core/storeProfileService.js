@@ -174,7 +174,7 @@ async function updateProfileUsername(uid = "", authUser = {}, input = {}) {
     require("./customerNotificationService").recordEvent(transaction, db, {
       uid: safeUid,
       key: "username:" + String(used + 1),
-      type: "account",
+      type: "account", username,
       title: "Kullanıcı adın güncellendi",
       message:
         "Hesabının kullanıcı adı değişikliği kaydedildi. Bu işlemi sen yapmadıysan destekle iletişime geç.",

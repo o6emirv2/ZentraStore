@@ -1,9 +1,9 @@
-import { createAccountRecovery } from "./account-recovery.mjs?v=108";
-import { recoveryToken } from "./recovery-link.mjs?v=108";
-import { storeApi, friendlyStoreError } from "../store/api.js?v=108";
-import { initStoreIntegrity } from "../store/auth.js?v=108";
-import "./device.js?v=108";
-import "./ambient.mjs?v=108";
+import { createAccountRecovery } from "./account-recovery.mjs?v=109";
+import { recoveryToken } from "./recovery-link.mjs?v=109";
+import { storeApi, friendlyStoreError } from "../store/api.js?v=109";
+import { initStoreIntegrity } from "../store/auth.js?v=109";
+import "./device.js?v=109";
+import "./ambient.mjs?v=109";
 
 const root = document.getElementById("recovery-root");
 const recovery = createAccountRecovery({

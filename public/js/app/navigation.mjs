@@ -1,4 +1,4 @@
-import { safeStorePath } from "./routes.mjs?v=108";
+import { safeStorePath } from "./routes.mjs?v=109";
 
 const accountPaths = new Set([
   "/hesabim",

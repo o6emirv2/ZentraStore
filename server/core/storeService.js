@@ -1451,7 +1451,7 @@ async function adjustStoreBalance({
     require("./customerNotificationService").recordEvent(tx, db, {
       uid: safeUid,
       key: adjustmentId,
-      type: "wallet",
+      type: "wallet", templateType:ledgerType === "CREDIT" ? "wallet_credit" : "wallet_adjustment", amountKurus:numericAmount,
       title: "Bakiyen güncellendi",
       message:
         "Hesabına ait bakiye işlemi kaydedildi. Güncel bakiyeni hesabında görebilirsin.",
@@ -2021,6 +2021,8 @@ async function publicCatalog() {
     image: safeText(product.image, 300),
     accent: safeText(product.accent, 20),
     description: safeText(product.description, 240),
+    cardStyle: require("../../public/js/store/card-appearance.mjs").cardStyle(product.cardStyle),
+    ...(Array.isArray(product.galleryPaths) ? {galleryPaths:product.galleryPaths} : {}),
     featured: product.featured === true,
     tags: (Array.isArray(product.tags) ? product.tags : [])
       .map((tag) => safeText(tag, 20))

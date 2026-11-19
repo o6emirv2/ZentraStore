@@ -7,6 +7,17 @@ const { productCategory, normalizeFeatures } = require('./storeProductSchema');
 const { GAME_KEYS, normalizeProductId, validProductId } = require('../../public/js/store/catalog-schema.mjs');
 const { normalizeBadgeKey, resolveBadge } = require('./storeBadgeCatalog');
 
+const { CARD_STYLES, GALLERY_LIMIT, galleryPath } = require('../../public/js/store/card-appearance.mjs');
+function validateAppearance(input) {
+  const style = input.cardStyle ?? 'classic';
+  if (!Object.hasOwn(CARD_STYLES, style)) throw failure('STORE_CARD_STYLE_INVALID');
+  if (input.galleryPaths === undefined) return { cardStyle: style };
+  if (!Array.isArray(input.galleryPaths) || input.galleryPaths.length > GALLERY_LIMIT) throw failure('STORE_GALLERY_LIMIT');
+  const paths = input.galleryPaths.map(galleryPath);
+  if (paths.some(p => !p || !isValidProductImage(p))) throw failure('STORE_GALLERY_PATH_INVALID');
+  if (new Set(paths).size !== paths.length) throw failure('STORE_GALLERY_DUPLICATE');
+  return { cardStyle: style, galleryPaths: paths };
+}
 const PLAN_ID = /^[a-z][a-z0-9-]{0,39}$/;
 const LOCAL_IMAGE = /^\/public\/assets\/(?:products|images)\/(?:[A-Za-z0-9_-][A-Za-z0-9._-]*\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*\.(?:jpe?g|png|svg|webp|gif|avif|bmp|ico)$/i;
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
@@ -104,6 +115,7 @@ function normalizeCreatedProduct(value) {
     icon: 'fa-box',
     image: productImage(suppliedImage),
     accent: '55,165,255',
+    ...validateAppearance(value),
     featured: value.featured === true,
     sortOrder: value.sortOrder ?? 500,
     tags: [],
@@ -122,4 +134,4 @@ function readCustomProducts(value) {
   });
 }
 
-module.exports = { MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, isValidProductImage, productImage };
+module.exports = { validateAppearance, MAX_CUSTOM_PRODUCTS, normalizeCreatedProduct, readCustomProducts, isValidProductImage, productImage };
