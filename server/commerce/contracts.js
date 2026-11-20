@@ -21,7 +21,7 @@ const contracts = [
   ["POST", /^\/api\/store\/commerce\/reservations$/, ["quoteToken"]],
   ["POST", /^\/api\/store\/commerce\/reservations\/[^/]+\/release$/, []],
   ["POST", /^\/api\/store\/commerce\/watch$/, ["productId", "stock", "price"]],
-  ["POST", /^\/api\/store\/commerce\/sessions$/, ["deviceId", "label"]],
+  ["POST", /^\/api\/store\/commerce\/sessions$/, ["deviceId", "label", "deviceMarker"]],
   ["POST", /^\/api\/store\/commerce\/sessions\/revoke$/, []],
   [
     "POST",

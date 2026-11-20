@@ -83,14 +83,26 @@ function escapeHtml(value = "") {
   );
 }
 
-function adminHandoffPage({ success = false, message = "", code = "" } = {}) {
-  const destination = success
-    ? "/admin/"
-    : `${env.canonicalOrigin || env.publicBaseUrl}/admin/`;
-  const title = success
-    ? "Yönetim merkezi açılıyor"
-    : "Güvenli geçiş tamamlanamadı";
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, viewport-fit=cover" /><meta name="robots" content="noindex,nofollow,noarchive" />${success ? '<meta http-equiv="refresh" content="0;url=/admin/" />' : ""}<title>Zentra Store | Güvenli geçiş</title><link rel="stylesheet" href="/public/assets/fonts/fonts.css" /><link rel="stylesheet" href="/public/css/zentra.css?v=108" /><link rel="stylesheet" href="/public/css/device.css?v=108" /><script type="module" src="/public/js/app/device.js?v=108"></script></head><body><main class="container main-content"><section class="panel"><a class="brand" href="/"><img class="brand-image" src="/public/assets/images/apple-touch-icon.png" alt="Zentra Store" width="192" height="192" draggable="false"/><span class="brand-text" aria-hidden="true">ZENTRA STORE</span></a><span class="eyebrow">ZENTRA STORE · YÖNETİCİ ERİŞİMİ</span><h1>${title}</h1><p class="fine-print">${escapeHtml(message || (success ? "Yönetici oturumun doğrulandı." : "Giriş adımlarını yeniden deneyin."))}</p><a class="button primary" href="${escapeHtml(destination)}">${success ? "Yönetim merkezine devam et" : "Yeniden giriş yap"}</a>${code ? `<p class="fine-print">İşlem kodu: ${escapeHtml(code)}</p>` : ""}</section></main></body></html>`;
+function adminHandoffPage({ success = false, message = '', code = '' } = {}) {
+  const destination = success ? '/admin/' : `${env.canonicalOrigin || env.publicBaseUrl}/admin/index.html`;
+  const safeMessage = escapeHtml(message || (success
+    ? 'Güvenli yönetici oturumu doğrulandı. Yönetim merkezi açılıyor.'
+    : 'Güvenli yönetici geçişi tamamlanamadı. Lütfen son doğrulama adımını yeniden deneyin.'));
+  const safeCode = escapeHtml(code);
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8" />\n`
+    + `<meta name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover" />\n`
+    + `<meta name="color-scheme" content="dark" />\n`
+    + `<meta name="theme-color" content="#070B16" />\n`
+    + `<meta name="robots" content="noindex, nofollow, noarchive" />\n`
+    + (success ? '<meta http-equiv="refresh" content="0;url=/admin/" />\n' : '')
+    + '<title>ZENTRA STORE | Güvenli Yönetici Oturumu</title>\n'
+    + '<link rel="stylesheet" href="/public/css/admin-handoff.css?v=109" /><link rel="stylesheet" href="/public/css/interaction-guard.css?v=109" /><link rel="stylesheet" href="/public/css/app-system.css?v=109" /><link rel="stylesheet" href="/public/css/interface.css?v=109" /></head><body>'
+    + '<main class="gate"><div class="brand"><img src="/public/assets/images/zentra-mark.webp?v=brand-v67" alt="" /><span><b>ZENTRA STORE</b><small>GÜVENLİ YÖNETİCİ GEÇİŞİ</small></span></div>'
+    + `<span class="status ${success ? 'is-success' : 'is-error'}" aria-hidden="true">${success ? '✓' : '!'}</span><span class="eyebrow">${success ? 'OTURUM DOĞRULANDI' : 'ERİŞİM DENETİMİ'}</span>`
+    + `<h1>${success ? 'Yönetim merkezi açılıyor' : 'Güvenli geçiş tamamlanamadı'}</h1>`
+    + `<p>${safeMessage}</p><a href="${escapeHtml(destination)}">${success ? 'Yönetim paneline devam et' : 'Yönetici girişine dön'} <span aria-hidden="true">→</span></a>`
+    + (safeCode ? `<small>İşlem kodu: ${safeCode}</small>` : '')
+    + '</main><script type="module" src="/public/js/ui/interaction-guard-entry.js?v=109"></script></body></html>';
 }
 
 app.disable("x-powered-by");
@@ -464,37 +476,59 @@ app.get(["/admin/", "/admin/index.html"], (_req, res) => {
 });
 app.get("/admin/admin.html", (req, res) => {
   res.setHeader("Cache-Control", "no-store, max-age=0");
-  return res.redirect(302, "/admin/");
+  return req.query.view === "v90" ? res.sendFile(path.join(root, "admin", "admin.html")) : res.redirect(302, "/admin/");
 });
 app.get(["/admin/session/handoff", "/admin/session/handoff/"], (_req, res) =>
   res.redirect(302, "/admin/"),
 );
 const adminAssetAllowlist = new Set([
+  "admin-audit.js",
+  "notification-templates.js",
+  "product-appearance.js",
   "admin-auth.js",
-  "admin-core.js",
   "admin-browser-session.js",
-  "product-image-upload.js",
+  "admin-core.js",
+  "admin-dashboard.css",
+  "admin-dashboard.js",
+  "admin-dialogs.js",
+  "admin-entry.js",
+  "admin-gate.css",
+  "admin-gate.js",
+  "admin-legacy-entry.js",
+  "admin-links.js",
+  "admin-maintenance.js",
+  "admin-operations.css",
+  "admin-security.js",
+  "commerce.js",
+  "inventory-model.mjs",
+  "inventory-view.mjs",
+  "layout.mjs",
+  "metrics.mjs",
+  "portal.js",
   "product-editor.mjs",
+  "product-image-upload.js",
   "product-model.mjs",
   "product-policy.mjs",
   "product-view.mjs",
+  "promo-codes.js",
   "supplier-view.mjs",
-  "portal.js",
-  "workspace.js",
-  "commerce.js",
-  "metrics.mjs",
-  "layout.mjs",
-  "inventory-view.mjs",
+  "wallet-model.mjs",
   "wallet-view.mjs",
   "wallet.js",
-  "wallet-model.mjs",
-  "inventory-model.mjs",
-  "zentra-admin.css",
+  "workspace.js",
+  "zentra-admin.css"
 ]);
 app.get("/admin/:asset", (req, res, next) => {
   const asset = String(req.params.asset || "");
   if (!adminAssetAllowlist.has(asset)) return next();
   return sendVersionedFile(req, res, path.join(root, "admin", asset));
+});
+app.get("/store-pages.html", (req, res) => { res.setHeader("Cache-Control", "no-store"); res.sendFile(path.join(root, "store-pages.html")); });
+app.get(["/style.css", "/script.js"], (req, res) => sendVersionedFile(req, res, path.join(root, req.path.slice(1))));
+app.get(["/", "/index.html"], (req, res, next) => {
+  if (Object.hasOwn(req.query, "devam")) return next();
+  res.setHeader("Cache-Control", "no-cache, max-age=0, must-revalidate");
+  return res.sendFile(path.join(root, "index.html"));
 });
 app.get(["/favicon.ico", "/apple-touch-icon.png"], (req, res) => {
   const filename = req.path.includes("apple")
@@ -528,6 +562,7 @@ app.get(
     "/favoriler",
     "/destek",
     "/kuponlar",
+    "/promosyonlar",
     "/bildirimler",
   ],
   require("./server/core/storefrontSeo").servePage,
@@ -635,6 +670,8 @@ function startServer() {
   startMaintenanceWorker();
   require("./server/core/telegramNotifications").start();
   require("./server/email/service").start();
+  require("./server/email/announcements").worker.start();
+  require("./server/core/productDeletion").worker.start();
   require("./server/core/accountRecoveryService").worker.start();
   require("./server/core/emailVerificationService").worker.start();
   process.once("SIGTERM", () => shutdown("SIGTERM"));
@@ -649,6 +686,8 @@ function shutdown(signal) {
   stopMaintenanceWorker();
   require("./server/core/telegramNotifications").stop();
   require("./server/email/service").stop();
+  require("./server/email/announcements").worker.stop();
+  require("./server/core/productDeletion").worker.stop();
   require("./server/core/accountRecoveryService").worker.stop();
   require("./server/core/emailVerificationService").worker.stop();
   if (!server) return;

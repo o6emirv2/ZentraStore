@@ -137,7 +137,7 @@ test("admin invalidation removes listeners, clears private dialogs and prevents 
     globalThis.location = { hash: "#panel/overview" };
     globalThis.sessionStorage = { getItem: () => null };
     const workspace = await browserModule("admin/workspace.js", {
-      'import "../public/js/app/device.js?v=108";': "",
+      'import "../public/js/app/device.js?v=109";': "",
     });
     let finish,
       calls = 0;

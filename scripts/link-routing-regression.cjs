@@ -148,19 +148,22 @@ test("sign-in and registration preserve an email's package, gifts or preferences
   assert.equal(authReturnTarget("/siparisler"), "/siparisler");
 });
 
-test("all eleven email templates send root-entry action links whose HTTP entry is served", async () => {
+test("all transactional email templates send root-entry action links whose HTTP entry is served", async () => {
   const { render, TYPES } = require("../server/email/templates");
   const expected = {
     stock: "/urun/kingmod",
+    restock: "/urun/kingmod",
+    promo_added: "/promosyonlar",
+    new_device: "/hesabim?bolum=sessions",
     price: "/urun/kingmod?paket=weekly",
     license: "/siparisler",
-    order_created: "/siparisler",
-    paid_delivered: "/siparisler",
+    order_created: "/siparisler?order=order-test",
+    paid_delivered: "/siparisler?order=order-test",
     gift_received: "/hesabim?bolum=gifts",
     wallet_credit: "/hesabim",
     coupon_assigned: "/kuponlar",
-    username_changed: "/hesabim",
-    password_changed: "/hesabim",
+    username_changed: "/hesabim?bolum=sessions",
+    password_changed: "/hesabim?bolum=sessions",
     test: "/hesabim",
   };
   for (const [type, category] of Object.entries(TYPES)) {
@@ -171,7 +174,7 @@ test("all eleven email templates send root-entry action links whose HTTP entry i
         type,
         category,
         createdAt: Date.now(),
-        data: { previous: "Previous", current: "Current" },
+        data: { previous: "Previous", current: "Current", label: "Safari", ...(["order_created","paid_delivered"].includes(type) ? {orderId:"order-test"} : {}) },
       },
       {
         product: { id: "kingmod", name: "KİNGMOD" },
@@ -255,7 +258,7 @@ test("missing pages and missing products return real branded 404s while API erro
 
 test("admin wallet and inventory modules load as JavaScript through the actual server allowlist", async () => {
   for (const name of ["wallet.js", "wallet-model.mjs", "inventory-model.mjs"]) {
-    const response = await fetch(f.origin + "/admin/" + name + "?v=108");
+    const response = await fetch(f.origin + "/admin/" + name + "?v=109");
     assert.equal(response.status, 200, name);
     assert(/javascript/.test(response.headers.get("content-type")), name);
     assert(!(await response.text()).includes("<!doctype html>"));
@@ -407,7 +410,7 @@ test("all PWA recovery dependencies exist and are served with successful respons
   });
   await installed;
   assert(w.stored.includes("/unavailable.html"));
-  assert(w.stored.includes("/public/js/app/routes.mjs?v=108"));
+  assert(w.stored.includes("/public/js/app/routes.mjs?v=109"));
   for (const path of w.stored) {
     const response = await fetch(f.origin + path);
     assert.equal(response.status, 200, path);

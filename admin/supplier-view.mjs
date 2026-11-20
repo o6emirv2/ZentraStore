@@ -1,4 +1,4 @@
-import { escape as e, icon } from "../public/js/app/ui.js?v=108";
+import { escape as e, icon } from "../public/js/app/ui.js?v=109";
 
 const requirements = {
   api_base_url: "Gerçek HTTPS API adresi ve sürümü",

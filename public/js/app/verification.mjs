@@ -1,4 +1,4 @@
-import { escape as e, icon } from "./ui.js?v=108";
+import { escape as e, icon } from "./ui.js?v=109";
 export function remainingTime(deadline, now = Date.now()) {
   const value = Math.max(0, Math.ceil((Number(deadline) - now) / 1000) || 0);
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;

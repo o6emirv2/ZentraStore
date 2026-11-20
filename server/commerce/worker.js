@@ -9,78 +9,19 @@ async function priceNotifications() {
       .orderBy("createdAt", "asc")
       .limit(1)
       .get();
-  for (const job of jobs.docs) {
-    const row = job.data();
-    let query = database
-      .collection("storeProductWatches")
-      .where("productId", "==", row.productId)
-      .where("price", "==", true)
-      .orderBy("__name__", "asc");
-    if (row.cursor) {
-      const anchor = await database
-        .collection("storeProductWatches")
-        .doc(row.cursor)
-        .get();
-      if (anchor.exists) query = query.startAfter(anchor);
-    }
-    const watchers = await query.limit(20).get();
-    for (const doc of watchers.docs)
-      await database.runTransaction(async (tx) => {
-        const watch = await tx.get(doc.ref),
-          profile = await tx.get(
-            database.collection("storeCommerceProfiles").doc(doc.data().uid),
-          );
-        if (
-          watch.data()?.price !== true ||
-          (profile.data()?.preferences?.priceNotifications !== true &&
-            profile.data()?.preferences?.emailPriceNotifications !== true)
-        )
-          return;
-        const ref = database
-          .collection("storeNotifications")
-          .doc(C.hash(doc.data().uid, "price:" + job.id));
-        if ((await tx.get(ref)).exists) return;
-        const receipt = database
-          .collection("storeCommerceNotificationReceipts")
-          .doc(C.hash(doc.data().uid, "price:" + job.id));
-        if ((await tx.get(receipt)).exists) return;
-        C.notification(
-          tx,
-          database,
-          doc.data().uid,
-          "price:" + job.id,
-          "Takip ettiğin ürünün fiyatı düştü",
-          "Güncel paket fiyatını ürün sayfasında inceleyebilirsin.",
-          {
-            productId: row.productId,
-            planKey: row.planKey,
-            priceKurus: row.priceKurus,
-          },
-          { site: profile.data()?.preferences?.priceNotifications === true },
-        );
-        tx.create(receipt, {
-          uid: doc.data().uid,
-          type: "price",
-          createdAt: Date.now(),
-        });
-      });
-    await job.ref.update({
-      cursor: watchers.docs.at(-1)?.id || row.cursor || "",
-      state: watchers.size < 20 ? "completed" : "pending",
-      updatedAt: Date.now(),
-    });
-  }
+  for (const job of jobs.docs) await require("./catalogNotifications").notifyPage(database,job.ref,"price");
   return jobs.size;
 }
 async function stockNotifications() {
   const database = C.db(),
+    completed = await require("./catalogNotifications").stockAdditions(database),
     watches = await database
       .collection("storeProductWatches")
       .where("stock", "==", true)
       .orderBy("checkedAt", "asc")
       .limit(10)
       .get();
-  if (!watches.size) return 0;
+  if (!watches.size) return completed;
   const catalog = await require("../core/storeService").publicCatalog();
   if (catalog.stockVerified === false) return 0;
   for (const doc of watches.docs) {
@@ -88,14 +29,16 @@ async function stockNotifications() {
       product = catalog.products.find((p) => p.id === row.productId),
       available = Number(product?.stock?.available || 0);
     await database.runTransaction(async (tx) => {
-      const [fresh, profile] = await Promise.all([
+      const [fresh, profile, signal] = await Promise.all([
         tx.get(doc.ref),
         tx.get(database.collection("storeCommerceProfiles").doc(row.uid)),
+        tx.get(database.collection("storeStockSignals").doc(row.productId)),
       ]);
       if (fresh.data()?.stock !== true) return;
       if (
         available > 0 &&
         (fresh.data().lastAvailable || 0) === 0 &&
+        (!signal.exists || signal.data().lastAdditionAt < Math.max(fresh.data().checkedAt || 0, fresh.data().stockSince || fresh.data().createdAt || 0)) &&
         (profile.data()?.preferences?.stockNotifications === true ||
           profile.data()?.preferences?.emailStockNotifications === true)
       )
@@ -112,7 +55,7 @@ async function stockNotifications() {
       tx.update(doc.ref, { checkedAt: Date.now(), lastAvailable: available });
     });
   }
-  return 0;
+  return completed;
 }
 async function licenseReminders() {
   const database = C.db(),

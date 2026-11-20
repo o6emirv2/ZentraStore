@@ -24,15 +24,7 @@ function validEmail(value) {
 }
 function configuration() {
   const apiKey = String(process.env.RESEND_API_KEY || "").trim();
-  const from = String(
-    process.env.RESEND_FROM || "ZENTRA STORE <bildirim@zentrastore.com.tr>",
-  ).trim();
-  const match = /^([^<>\r\n]{1,80}) <([^<>\r\n]+)>$/.exec(from);
-  const domain = String(
-    process.env.RESEND_SENDING_DOMAIN || "zentrastore.com.tr",
-  )
-    .trim()
-    .toLowerCase();
+  const from = RECOVERY_FROM, domain = "zentrastore.com.tr";
   const replyTo = String(process.env.RESEND_REPLY_TO || "").trim();
   const webhookSecret = String(process.env.RESEND_WEBHOOK_SECRET || "").trim();
   const origin = env.canonicalOrigin || env.publicBaseUrl;
@@ -40,9 +32,6 @@ function configuration() {
   const apiConfigured = /^re_[A-Za-z0-9_-]{16,200}$/.test(apiKey);
   const configured =
     apiConfigured &&
-    !!match &&
-    validEmail(match[2]) &&
-    match[2].split("@")[1].toLowerCase() === domain &&
     (!replyTo || validEmail(replyTo));
   return {
     enabled:
@@ -144,7 +133,7 @@ function permitted(category, profile = {}) {
   const key = OPTIONAL[category] || SERVICE[category];
   if (OPTIONAL[category]) return profile.preferences?.[key] === true;
   if (SERVICE[category]) return profile.preferences?.[key] !== false;
-  return category === "security" || category === "test";
+  return category === "restock" || category === "security" || category === "test";
 }
 module.exports = {
   configuration,

@@ -142,6 +142,8 @@ function normalizePlan(basePlan = {}, override = {}) {
   };
 }
 
+const { validateAppearance } = require("./storeProductCreation");
+const { cardStyle } = require("../../public/js/store/card-appearance.mjs");
 function mergeProduct(
   baseProduct = {},
   override = {},
@@ -193,6 +195,8 @@ function mergeProduct(
   return {
     ...baseProduct,
     ...category,
+    cardStyle: cardStyle(source.cardStyle ?? baseProduct.cardStyle),
+    ...(Array.isArray(source.galleryPaths ?? baseProduct.galleryPaths) ? {galleryPaths: source.galleryPaths ?? baseProduct.galleryPaths} : {}),
     immutablePlatform: immutableTelegramOnly,
     name: safeText(source.name, 80) || baseProduct.name,
     active: source.active !== false,
@@ -431,7 +435,7 @@ async function readOverrides() {
     Number(stored?.scopeVersion) !== CATALOG_SCOPE_VERSION ||
     Number(stored?.sourceVersion) < Number(STORE_CATALOG.version) ||
     STORE_CATALOG.products.some(
-      (product) => !Object.hasOwn(storedProducts, product.id),
+      (product) => !stored.deletedProductIds?.[product.id] && !Object.hasOwn(storedProducts, product.id),
     );
   if (catalogChanged) {
     const now = Date.now();
@@ -456,7 +460,7 @@ async function readOverrides() {
           STORE_CATALOG.version,
         ),
         updatedAt: now,
-        products: defaults,
+        products: Object.fromEntries(Object.entries(defaults).filter(([id]) => !currentState.deletedProductIds?.[id])),
         customProducts: Object.fromEntries(
           readCustomProducts(currentState.customProducts).map((product) => [
             product.id,
@@ -488,6 +492,7 @@ async function readOverrides() {
     });
   }
   return {
+    deleted: stored?.deletedProductIds || {},
     products: new Map(Object.entries(stored?.products || {})),
     customProducts: readCustomProducts(stored?.customProducts),
     storefront: normalizeStorefront(settings),
@@ -510,7 +515,7 @@ async function getEffectiveCatalog({
     const generation = cacheGeneration;
     const pending = (async () => {
       const overrides = await readOverrides();
-      const products = catalogDefinitions(overrides.customProducts)
+      const products = catalogDefinitions(overrides.customProducts).filter(product => !overrides.deleted?.[product.id])
         .map((product) =>
           mergeProduct(product, overrides.products.get(product.id), true),
         )
@@ -684,6 +689,7 @@ function productSettingsPatch(
   return {
     id,
     patch: {
+      ...validateAppearance({ ...base, ...body }),
       name: safeText(body.name, 80) || base.name,
       ...productCategory(body, base),
       features: normalizeFeatures(
@@ -758,6 +764,7 @@ async function updateProductSettings(productId = "", input = {}, actor = {}) {
       const current = catalogState(snapshot.exists ? snapshot.data() : {});
       if (!current)
         throw serviceError("STORE_CATALOG_PERSISTENCE_UNAVAILABLE", 503);
+      if (current.deletedProductIds?.[id]) throw serviceError("STORE_PRODUCT_NOT_FOUND",404);
       const prepared = productSettingsPatch(
         id,
         mergeProductInput(current.products[id], effectiveInput),
@@ -866,7 +873,7 @@ async function updateProductsBulk(updates = [], actor = {}, context = {}) {
       customProducts.map((entry) => [entry.id, entry]),
     );
     for (const entry of prepared) {
-      if (!findBaseProduct(entry.id) && !customProductMap.has(entry.id))
+      if (current.deletedProductIds?.[entry.id] || (!findBaseProduct(entry.id) && !customProductMap.has(entry.id)))
         throw serviceError("STORE_PRODUCT_NOT_FOUND", 404);
     }
     if (job?.state === "completed")
@@ -971,7 +978,7 @@ async function createProduct(input = {}, actor = {}) {
         throw serviceError("COMMERCE_SLUG_IN_USE", 409);
       const existing = readCustomProducts(current.customProducts);
       if (
-        findBaseProduct(product.id) ||
+        current.deletedProductIds?.[product.id] || findBaseProduct(product.id) ||
         Object.hasOwn(current.products, product.id) ||
         Object.hasOwn(current.customProducts || {}, product.id) ||
         existing.some((row) => row.id === product.id)

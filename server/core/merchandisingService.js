@@ -159,4 +159,5 @@ async function updateExperience(input, actor) {
   cache = null;
   return getExperience({ admin: true });
 }
-module.exports = { normalizeExperience, getExperience, updateExperience };
+function invalidateExperience() { cache = null; }
+module.exports = { normalizeExperience, getExperience, updateExperience, invalidateExperience };

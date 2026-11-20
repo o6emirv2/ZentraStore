@@ -667,6 +667,14 @@ router.get(
   }),
 );
 
+router.get("/admin/store/notification-templates", ...adminChain, requireStorePermission("store.content.read"), asyncRoute(async (_req,res) => {
+  const editor = require("../email/editor");
+  noStore(res);
+  res.json({ok:true, labels:editor.labels, variables:editor.variables, ...await editor.read()});
+}));
+router.put("/admin/store/notification-templates/:type", ...sensitiveAdminChain("store.content.write"), asyncRoute(async (req,res) => {
+  noStore(res); res.json({ok:true, ...await require("../email/editor").save(req.params.type, req.body, req.user)});
+}));
 router.post(
   "/admin/store/products",
   ...sensitiveAdminChain("store.catalog.write"),
@@ -682,6 +690,16 @@ router.post(
   }),
 );
 
+router.delete("/admin/store/products/:productId", ...sensitiveAdminChain("store.catalog.write"), asyncRoute(async (req,res) => {
+  const result = await require("../core/productDeletion").request(req.params.productId,req.body?.confirmId,req.user);
+  invalidateAdminStoreCaches(); noStore(res); res.status(result.state === "completed" ? 200 : 202).json({ok:true,result});
+}));
+router.get("/admin/store/product-deletions", ...adminChain, requireStorePermission("store.catalog.read"), asyncRoute(async (_req,res) => {
+  const {db}=require("../config/firebaseAdmin").initFirebaseAdmin();
+  if (!db) throw Object.assign(new Error("STORE_STORAGE_UNAVAILABLE"),{statusCode:503});
+  const rows=await db.collection("storeProductDeletionJobs").limit(100).get();
+  noStore(res); res.json({ok:true, pending:rows.docs.map(d=>d.id)});
+}));
 router.patch(
   "/admin/store/products/:productId",
   ...sensitiveAdminChain("store.catalog.write"),

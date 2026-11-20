@@ -101,18 +101,18 @@ test("the rollout uses one version of the auth/API singleton and all browser ent
   assert.deepEqual([...versions], [String(Number.parseInt(require("../package.json").version, 10))]);
   assert(
     fs
-      .readFileSync("index.html", "utf8")
-      .includes("/public/js/app/store.js?v=108"),
+      .readFileSync("store-pages.html", "utf8")
+      .includes("/public/js/app/store.js?v=109"),
   );
   assert(
     fs
       .readFileSync("admin/index.html", "utf8")
-      .includes("/admin/portal.js?v=108"),
+      .includes("./admin-entry.js?v=109"),
   );
   assert(
     fs
-      .readFileSync("index.html", "utf8")
-      .includes("/public/css/verification.css?v=108"),
+      .readFileSync("store-pages.html", "utf8")
+      .includes("/public/css/verification.css?v=109"),
   );
   assert(
     !fs

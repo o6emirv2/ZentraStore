@@ -11,6 +11,7 @@ const pages = Object.freeze({
   "/destek": "support",
   "/bildirimler": "notifications",
   "/kuponlar": "coupons",
+  "/promosyonlar": "promotions",
 });
 
 export function safeStorePath(value = "") {
@@ -46,6 +47,7 @@ export function storeRoute(pathname = "/", search = "") {
   const query = new URLSearchParams(search);
   return {
     name:
+      path === "/kuponlar" && query.get("tur") === "promosyon" ? "promotions" :
       (path === "/" && query.has(ENTRY_PARAMETER) ? "notFound" : pages[path]) ||
       (path.startsWith("/urun/")
         ? "product"
@@ -75,7 +77,7 @@ export function storeEntryUrl(origin, target) {
 export function entryDestination(href) {
   try {
     const url = new URL(href);
-    if (!["/", "/index.html"].includes(url.pathname)) return "";
+    if (!["/", "/index.html", "/store-pages.html"].includes(url.pathname)) return "";
     const values = url.searchParams.getAll(ENTRY_PARAMETER);
     return values.length === 1 ? safeStorePath(values[0]) : "";
   } catch {

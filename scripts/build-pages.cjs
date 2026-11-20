@@ -12,7 +12,7 @@ const {
 const root = path.resolve(__dirname, "..");
 const output = path.join(root, "dist-pages");
 const origin = "https://zentrastore.com.tr";
-const template = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const template = fs.readFileSync(path.join(root, "store-pages.html"), "utf8");
 function copy(source, destination) {
   const stat = fs.lstatSync(source);
   if (stat.isSymbolicLink()) throw new Error("STATIC_SYMBOLIC_LINK_REFUSED");
@@ -42,6 +42,9 @@ fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output);
 for (const name of [
   "index.html",
+  "store-pages.html",
+  "style.css",
+  "script.js",
   "404.html",
   "unavailable.html",
   "sifre-yenile.html",
@@ -74,7 +77,7 @@ for (const [id, title] of Object.entries({
       template,
       title,
       STORE_CATALOG.products.filter((p) =>
-        CATEGORY_PRESETS[id] ? p.game === CATEGORY_PRESETS[id].game && p.platform === CATEGORY_PRESETS[id].platform
+        CATEGORY_PRESETS[id] ? (id === "gbox-ios" ? p.game === "gbox" : p.categoryKey === id)
           : [p.platform, p.game, p.categoryKey].includes(id),
       ),
     ),
@@ -94,6 +97,7 @@ for (const [route, title] of Object.entries({
   favoriler: "Favorilerim",
   bildirimler: "Bildirimler",
   kuponlar: "Kuponlarım",
+  promosyonlar: "Bakiye promosyonu",
   destek: "Yardım ve destek",
 }))
   writePage(
@@ -117,7 +121,7 @@ fs.writeFileSync(
 );
 fs.writeFileSync(
   path.join(output, "robots.txt"),
-  "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nDisallow: /hesabim\nDisallow: /sepet\nDisallow: /siparisler\nDisallow: /favoriler\nDisallow: /kuponlar\nDisallow: /bildirimler\nSitemap: " +
+  "User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\nDisallow: /hesabim\nDisallow: /sepet\nDisallow: /siparisler\nDisallow: /favoriler\nDisallow: /kuponlar\nDisallow: /promosyonlar\nDisallow: /bildirimler\nSitemap: " +
     origin +
     "/sitemap.xml\n",
 );

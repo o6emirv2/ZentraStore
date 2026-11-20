@@ -23,7 +23,7 @@ after(async () => f?.close());
 
 test("the actual HTTP server serves every extracted product module as executable JavaScript", async () => {
   for (const module of ["product-editor", "product-model", "product-policy", "product-view"]) {
-    const response = await fetch(f.origin + "/admin/" + module + ".mjs?v=108");
+    const response = await fetch(f.origin + "/admin/" + module + ".mjs?v=109");
     assert.equal(response.status, 200, module);
     assert.match(response.headers.get("content-type"), /(?:java|ecma)script/);
     assert.match(await response.text(), /export /);

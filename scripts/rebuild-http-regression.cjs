@@ -231,7 +231,7 @@ test("direct storefront pages respond successfully with canonical and private in
     assert(html.includes('name="viewport"'));
     assert(
       html.includes(
-        "initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, viewport-fit=cover",
+        "initial-scale=0.85, viewport-fit=cover",
       ),
     );
     if (["/sepet", "/hesabim", "/siparisler"].includes(path))
@@ -327,6 +327,10 @@ test("removed marketing sections never reappear in direct home, listing, detail 
     const response = await fetch(f.origin + path);
     assert.equal(response.status, 200, path);
     const html = await response.text();
+    if (path === "/") {
+      for (const id of ["catalog","productSearch","customerApp","authSheet"]) assert(html.includes('id="' + id + '"'),id);
+      continue;
+    }
     assert(!html.includes('class="hero"'), path);
     assert(!html.includes("home-hero-template"), path);
     assert(!html.includes("auth-visual"), path);

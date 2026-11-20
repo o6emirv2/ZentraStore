@@ -23,6 +23,7 @@ async function create(uid, input) {
       .doc(C.hash(uid, input.quoteToken)),
     active = database.collection("storeReservationOwners").doc(C.hash(uid));
   const result = await database.runTransaction(async (tx) => {
+    for (const id of new Set(cart.items.map(item=>item.productId))) await require("../core/productDeletion").assertLive(tx,database,id);
     const [old, owner] = await Promise.all([tx.get(ref), tx.get(active)]);
     if (old.exists) {
       const r = old.data();

@@ -652,7 +652,7 @@ async function importInventory({
   actor = {},
   idempotencyKey = "",
 } = {}) {
-  const { product, plan, sku, poolId, shared, sourceSkus } = await resolveSku(
+  const { catalog, product, plan, sku, poolId, shared, sourceSkus } = await resolveSku(
     productId,
     planKey,
   );
@@ -708,6 +708,7 @@ async function importInventory({
   const now = Date.now();
 
   await db.runTransaction(async (tx) => {
+    await require("./productDeletion").assertLive(tx, db, product.id);
     const fingerprintRefs = prepared.flatMap((entry) => [
       entry.registryRef,
       entry.manualRegistryRef,
@@ -855,6 +856,11 @@ async function importInventory({
       createdAt: now,
       expiresAt: new Date(now + INVENTORY_IMPORT_RECEIPT_TTL_MS),
     });
+    if (availableAfter > previousAvailable) {
+      for (const member of poolMembers(catalog, product, plan)) {
+        require("../commerce/catalogNotifications").queueStockAddition(tx,db,receiptId,member,plan,availableAfter - previousAvailable,now);
+      }
+    }
     notificationsPending = previousAvailable === 0 && availableAfter > 0;
     if (notificationsPending)
       enqueueRestockJob(tx, db, {
@@ -2335,10 +2341,10 @@ async function subscribeRestock({
     .update(`${safeUid}:${sku}`)
     .digest("hex");
   const now = Date.now();
-  await db
-    .collection("storeRestockSubscriptions")
-    .doc(id)
-    .set(
+  const ref = db.collection("storeRestockSubscriptions").doc(id);
+  await db.runTransaction(async tx => {
+    await require("./productDeletion").assertLive(tx, db, product.id);
+    tx.set(ref,
       {
         id,
         uid: safeUid,
@@ -2357,6 +2363,7 @@ async function subscribeRestock({
       },
       { merge: true },
     );
+  });
   return { subscribed: true, alreadyAvailable: false, available: 0 };
 }
 

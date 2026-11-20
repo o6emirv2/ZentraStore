@@ -10,6 +10,8 @@ const { isProductSettingsUpdate } = require("../../admin/product-policy.mjs");
 const { requireAdminReauth } = require("./adminReauthService");
 const TTL_MS = 90_000;
 const TARGETS = [
+  ["PUT", /^\/api\/admin\/store\/notification-templates\/[a-z_]+$/, "store.content.write"],
+  ["DELETE", /^\/api\/admin\/store\/products\/[a-z0-9-]+$/, "store.catalog.write"],
   ["POST", /^\/api\/admin\/store\/commerce\/email\/test$/, "store.operations.write"],
   [
     "PUT",

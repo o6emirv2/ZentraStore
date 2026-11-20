@@ -1,4 +1,4 @@
-import { escape as e, icon } from "./ui.js?v=108";
+import { escape as e, icon } from "./ui.js?v=109";
 
 export function profileLabel(profile) {
   return profile?.kind === "member" && /^[\p{L}\p{N}._-]{1,40}$/u.test(profile.username || "")

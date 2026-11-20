@@ -1,4 +1,4 @@
-import { escape as e, money, icon, safeImage } from "../public/js/app/ui.js?v=108";
+import { escape as e, money, icon, safeImage } from "../public/js/app/ui.js?v=109";
 
 export function productCards(products, editable = false) {
   return `<div class="admin-product-grid">${products.map(p => {
