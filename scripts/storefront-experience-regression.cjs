@@ -11,7 +11,7 @@ async function pagesFixture(extra = {}) {
   const { createStorePages } = await browserModule("public/js/app/store-pages.mjs");
   const { filterProducts } = await browserModule("public/js/app/catalog.mjs");
   const state = { catalog, selectedImages: new Map(), selectedPlans: new Map(), auth: { user: null }, ...extra };
-  const pages = createStorePages({ state, product: id => state.catalog.products.find(p => p.id === id), filtered: r => filterProducts(state.catalog, r), stockLabel: () => "Stok doğrulanıyor", getFavorites: () => new Set(), currentRoute: () => extra.route || route("product", state.catalog.products[0].id) });
+  const pages = createStorePages({ state, product: id => state.catalog.products.find(p => p.id === id), filtered: r => filterProducts(state.catalog, r), stockLabel: () => "Stok doğrulanıyor", getFavorites: () => new Set(), currentRoute: () => route("product", state.catalog.products[0].id) });
   return { state, pages, filterProducts };
 }
 test("all four game/platform destinations isolate the real catalog and reserved presets cannot be shadowed", async () => {
@@ -23,11 +23,6 @@ test("all four game/platform destinations isolate the real catalog and reserved 
     assert.equal(rows.length, catalog.products.filter(p => p.game === game && p.platform === platform).length);
   }
   assert.equal(filterProducts(catalog, route("category", "gbox")).length, 2);
-  const { pages } = await pagesFixture();
-  for (const id of ["gbox-iphone","gbox-ipad"]) {
-    assert.deepEqual(filterProducts(catalog, route("category", id)).map(row => row.id), [id]);
-    assert(pages.detail(id).includes('href="/kategori/' + id + '"'));
-  }
 });
 test("catalog filters preserve stock, favorite and price rules inside a combined category", async () => {
   const { filterProducts } = await pagesFixture();
@@ -36,11 +31,11 @@ test("catalog filters preserve stock, favorite and price rules inside a combined
   const rows = filterProducts(c, route("favorites", "", "category=oxide-ios&stock=1&min=1&sort=price-up"), { favorites: new Set([selected[0].id, favorite.id]) });
   assert.deepEqual(rows.map(p => p.id), [favorite.id]);
 });
-test("header and product filters follow the same ordered destination contract", async () => {
+test("header and six product filters follow the same ordered destination contract", async () => {
   const { PRODUCT_CATEGORIES, STORE_NAVIGATION, HOME_CATEGORIES } = require("../public/js/app/discovery.mjs");
-  assert.deepEqual(PRODUCT_CATEGORIES.map(c => c.id), ["", "pubg-ios", "pubg-android", "oxide-ios", "oxide-android", "gbox-iphone", "gbox-ipad"]);
-  assert.deepEqual(STORE_NAVIGATION.slice(PRODUCT_CATEGORIES.length).map(c => c.id), ["featured", "account", "promotion", "discount", "orders", "cart", "support"]);
-  const html = fs.readFileSync("store-pages.html", "utf8"), nav = /<nav class="category-nav[^]*?<\/nav>/.exec(html)[0];
+  assert.deepEqual(PRODUCT_CATEGORIES.map(c => c.id), ["", "pubg-ios", "pubg-android", "oxide-ios", "oxide-android", "gbox"]);
+  assert.deepEqual(STORE_NAVIGATION.slice(6).map(c => c.id), ["featured", "account", "promotion", "discount", "orders", "cart", "support"]);
+  const html = fs.readFileSync("index.html", "utf8"), nav = /<nav class="category-nav[^]*?<\/nav>/.exec(html)[0];
   assert.deepEqual([...nav.matchAll(/data-discovery="([^"]*)"/g)].map(m => m[1]), STORE_NAVIGATION.map(c => c.id));
   for (const item of STORE_NAVIGATION) assert(nav.includes('href="' + item.href + '"'));
   for (const item of HOME_CATEGORIES) assert(fs.existsSync("." + item.image));
@@ -72,7 +67,7 @@ test("home selection uses real featured flags and never labels an uncurated cata
   state.catalog = { ...catalog, products: catalog.products.map((p, i) => ({ ...p, featured: i === 0 })) };
   const html = pages.home();
   assert(html.includes("Öne çıkan ürünler"));
-  assert.equal((html.match(/<article class="product-card\b/g) || []).length, 1);
+  assert.equal((html.match(/class="product-card"/g) || []).length, 1);
 });
 test("detail retains the chosen valid package and an invalid choice never becomes a cart plan", async () => {
   const { state, pages } = await pagesFixture(), p = catalog.products[0], plan = p.plans.at(-1);
@@ -82,8 +77,6 @@ test("detail retains the chosen valid package and an invalid choice never become
   assert(html.includes('data-action="add" data-id="' + p.id + '" data-plan="' + plan.key + '"'));
   const options = pages.packageOptions(p, plan.key);
   assert(options.includes('value="' + plan.key + '" checked'));
-  const linked = await pagesFixture({ route: route("product", p.id, "paket="+plan.key), selectedPlans: new Map([[p.id, p.plans[0].key]]) });
-  assert(linked.pages.detail(p.id).includes('data-plan="' + plan.key + '"'));
   state.selectedPlans.set(p.id, "missing");
   assert(pages.detail(p.id).includes('data-plan="' + p.plans[0].key + '"'));
 });

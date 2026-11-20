@@ -138,7 +138,7 @@ async function redeemBalanceCode(uid, input = {}, { requestId = "" } = {}) {
     require("./customerNotificationService").recordEvent(tx, db, {
       uid: safeUid,
       key: transactionId,
-      type: "wallet", amountKurus,
+      type: "wallet",
       title: "Bakiye kodun uygulandı",
       message: "Bakiye kodunun sonucu doğrulandı; tutar hesabına eklendi.",
       now,
@@ -182,7 +182,6 @@ async function saveBalanceCode(code, input = {}, actor = {}) {
     "endsAt",
     "active",
     "createOnly",
-    "announce",
   ];
   if (
     !input ||

@@ -110,9 +110,10 @@ test("navigation retains the browser entry scroll position without sharing priva
   history.dispose();
   assert.equal(events.scroll, undefined);
 });
-test("all source HTML and generated HTML templates preserve safe areas and allow user zoom", () => {
-  const root = path.resolve(__dirname, "..");
-  const standard = /content="width=device-width, initial-scale=0\.8(?:5)?, viewport-fit=cover"/;
+test("all source HTML and generated HTML templates use exactly the requested viewport", () => {
+  const root = path.resolve(__dirname, ".."),
+    standard =
+      "width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, viewport-fit=cover";
   for (const file of [
     "index.html",
     "admin/index.html",
@@ -130,7 +131,7 @@ test("all source HTML and generated HTML templates preserve safe areas and allow
     const metas = [...source.matchAll(/<meta\b[^>]*name="viewport"[^>]*>/g)];
     assert(metas.length > 0, file);
     for (const [meta] of metas)
-      assert(standard.test(meta), file);
+      assert(meta.includes('content="' + standard + '"'), file);
     if (file.endsWith(".html")) assert.equal(metas.length, 1, file);
   }
 });

@@ -1,8 +1,8 @@
-import { initPasswordFields } from "../public/js/app/ui.js?v=109";
-import "../public/js/app/device.js?v=109";
-import "./admin-browser-session.js?v=109";
-import "./admin-auth.js?v=109";
-import { adminFetch } from "./admin-core.js?v=109";
+import { initPasswordFields } from "../public/js/app/ui.js?v=108";
+import "../public/js/app/device.js?v=108";
+import "./admin-browser-session.js?v=108";
+import "./admin-auth.js?v=108";
+import { adminFetch } from "./admin-core.js?v=108";
 import {
   escape as e,
   brand,
@@ -10,7 +10,7 @@ import {
   field,
   busy,
   toast,
-} from "../public/js/app/ui.js?v=109";
+} from "../public/js/app/ui.js?v=108";
 const root = document.getElementById("admin-root");
 let ticket = "",
   step = 0,
@@ -147,7 +147,7 @@ async function openWorkspace() {
   const generation = portalGeneration,
     session = context;
   const { mountWorkspace, unmountWorkspace } =
-    await import("./workspace.js?v=109");
+    await import("./workspace.js?v=108");
   if (!session || generation !== portalGeneration || context !== session)
     return;
   disposeWorkspace = unmountWorkspace;

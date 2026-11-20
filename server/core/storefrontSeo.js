@@ -10,7 +10,7 @@ const {
   entryDestination,
 } = require("../../public/js/app/routes.mjs");
 const root = path.resolve(__dirname, "../..");
-const html = fs.readFileSync(path.join(root, "store-pages.html"), "utf8");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const esc = (value) =>
   String(value ?? "").replace(
     /[&<>"']/g,
@@ -138,7 +138,6 @@ async function servePage(req, res, next) {
         "/siparisler",
         "/favoriler",
         "/kuponlar",
-    "/promosyonlar",
         "/bildirimler",
       ].includes(req.path) ||
       req.query.q
@@ -151,7 +150,6 @@ async function servePage(req, res, next) {
       "/siparisler": "Siparişlerim",
       "/favoriler": "Favorilerim",
       "/kuponlar": "Kuponlarım",
-      "/promosyonlar": "Bakiye promosyonu",
       "/bildirimler": "Bildirimler",
     };
     if (privateTitles[req.path]) {
@@ -206,7 +204,7 @@ async function servePage(req, res, next) {
         source,
         title,
         catalog.products.filter((p) =>
-          preset ? (req.params.category === "gbox-ios" ? p.game === "gbox" : p.categoryKey === req.params.category)
+          preset ? p.game === preset.game && p.platform === preset.platform
             : [p.platform, p.game, p.categoryKey].includes(req.params.category),
         ),
       );
@@ -225,7 +223,7 @@ function robots(_req, res) {
   res
     .type("text/plain")
     .send(
-      `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin/\nDisallow: /hesabim\nDisallow: /sepet\nDisallow: /siparisler\nDisallow: /kuponlar\nDisallow: /promosyonlar\nDisallow: /bildirimler\nDisallow: /favoriler\nSitemap: ${base()}/sitemap.xml\n`,
+      `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin/\nDisallow: /hesabim\nDisallow: /sepet\nDisallow: /siparisler\nDisallow: /kuponlar\nDisallow: /bildirimler\nDisallow: /favoriler\nSitemap: ${base()}/sitemap.xml\n`,
     );
 }
 async function sitemap(_req, res, next) {

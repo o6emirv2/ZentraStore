@@ -66,9 +66,8 @@ async function processRestockJob(db, admin, ref) {
         || timestamp(row.createdAt) > timestamp(job.createdAt)) return;
       if (!existing.get(uid)) {
         tx.create(target, { id: target.id, type: 'restock', title: 'Stok yeniden açıldı',
-          message: `${job.productName} · ${job.planLabel} paketi yeniden stokta.`, productId: row.productId || job.productId, productName:row.productName || job.productName,
-          planKey: row.planKey || job.planKey, read: false, createdAt: now, expiresAt: new Date(now + 7 * 86_400_000) });
-        require('../email/service').enqueue(tx, db, {uid, type:'restock', key:target.id, data:{productId:row.productId || job.productId,planKey:row.planKey || job.planKey}, now});
+          message: `${job.productName} · ${job.planLabel} paketi yeniden stokta.`, productId: job.productId,
+          planKey: job.planKey, read: false, createdAt: now, expiresAt: new Date(now + 7 * 86_400_000) });
         existing.set(uid, true); notified += 1;
       }
       tx.delete(page.docs[index].ref);

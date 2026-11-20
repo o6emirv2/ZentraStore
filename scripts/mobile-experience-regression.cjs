@@ -272,7 +272,7 @@ test("all brand placements use the supplied original logo assets", () => {
     const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
     assert(!source.includes("brand-mark"), file);
   }
-  const html = fs.readFileSync(path.join(__dirname, "../store-pages.html"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   assert(html.includes("/public/assets/images/apple-touch-icon.png"));
   assert(!html.includes('class="hero"'));
   for (const id of [

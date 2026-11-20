@@ -1,8 +1,8 @@
-import { isUncertainMutationError } from "../request-utils.js?v=109";
-import { installTooltips } from "./tooltips.mjs?v=109";
-import { createToastCenter } from "./toast-center.mjs?v=109";
-import { translate } from "./preferences.mjs?v=109";
-import { imageVariants } from "./images.mjs?v=109";
+import { isUncertainMutationError } from "../request-utils.js?v=108";
+import { installTooltips } from "./tooltips.mjs?v=108";
+import { createToastCenter } from "./toast-center.mjs?v=108";
+import { translate } from "./preferences.mjs?v=108";
+import { imageVariants } from "./images.mjs?v=108";
 export const escape = (value = "") =>
   String(value ?? "").replace(
     /[&<>"']/g,

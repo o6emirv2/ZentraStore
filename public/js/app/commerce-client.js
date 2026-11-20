@@ -9,13 +9,13 @@ import {
   busy,
   status,
   copyText,
-} from "./ui.js?v=109";
+} from "./ui.js?v=108";
 import {
   applyPreferences,
   displayPreferences,
   tr,
   translate,
-} from "./preferences.mjs?v=109";
+} from "./preferences.mjs?v=108";
 const BASE = "/api/store/commerce";
 const button = (action, label, id = "", extra = "") =>
   `<button type="button" class="button secondary small" data-commerce="${e(action)}" data-id="${e(id)}" ${extra}>${e(label)}</button>`;
@@ -34,7 +34,6 @@ const brandAppearance = () =>
 export function createCommerceClient({
   api,
   userId,
-  deviceMarker = () => ({}),
   cart,
   getFavorites,
   setFavorites,
@@ -104,7 +103,7 @@ export function createCommerceClient({
       : /Android/i.test(navigator.userAgent)
         ? "Android"
         : "Web tarayıcısı";
-    await call("/sessions", { body: { deviceId, label, ...deviceMarker() } });
+    await call("/sessions", { body: { deviceId, label } });
     if (generation !== epoch) return;
     refresh();
   }

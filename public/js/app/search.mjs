@@ -1,4 +1,4 @@
-import { escape as e, icon, money, safeImage } from "./ui.js?v=109";
+import { escape as e, icon, money, safeImage } from "./ui.js?v=108";
 
 export function createSearch({ form, input, results, clear, search, navigate, available, schedule = setTimeout, cancel = clearTimeout }) {
   let timer, generation = 0, active = -1, choices = [], disposed = false;

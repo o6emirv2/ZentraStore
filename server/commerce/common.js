@@ -151,7 +151,6 @@ function notification(
         id: ref.id,
         uid,
         type: "commerce",
-        templateType:key.split(":")[0],
         title,
         message,
         productId: data.productId || "",

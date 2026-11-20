@@ -151,7 +151,7 @@ async function redeem(uid, input) {
     require("../core/customerNotificationService").recordEvent(tx, database, {
       uid,
       key: code,
-      type: "coupon", code,
+      type: "coupon",
       title: "Kuponun hazır",
       message:
         "Puanlarınla oluşturduğun kupon hesabına tanımlandı. Koşullarını Kuponlarım alanında görebilirsin.",

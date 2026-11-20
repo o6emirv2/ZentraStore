@@ -72,7 +72,7 @@ function normalize(input = {}, previous = EMPTY, { financial = false } = {}) {
       }
       if (v.image !== undefined) out.seo.image = image(v.image);
     } else if (k === "gallery") {
-      out[k] = C.array(v, 20).map((x) => {
+      out[k] = C.array(v, 12).map((x) => {
         C.object(x, ["url", "alt"]);
         return {
           url: image(x.url),
@@ -225,7 +225,6 @@ async function saveDraft(productId, input, actor = {}) {
   const database = C.db(),
     ref = database.collection("storeProductDetails").doc(productId);
   return database.runTransaction(async (tx) => {
-    await require("../core/productDeletion").assertLive(tx, database, productId);
     const before = await tx.get(ref),
       row = before.data() || {},
       base = row.draft || row.published || EMPTY;
@@ -259,7 +258,6 @@ async function publish(productId, input, actor = {}) {
   const database = C.db(),
     ref = database.collection("storeProductDetails").doc(C.id(productId));
   return database.runTransaction(async (tx) => {
-    await require("../core/productDeletion").assertLive(tx, database, productId);
     const snap = await tx.get(ref),
       row = snap.data() || {};
     C.requireRevision(row.revision, input.expectedRevision);
@@ -354,10 +352,11 @@ async function upload(productId, input, actor) {
   await product(productId, true);
   const result = await uploadProductImage(input.imageUpload);
   try {
-    const database = C.db(), ref = database.collection("storeCommerceUploads").doc();
-    await database.runTransaction(async tx => {
-      await require("../core/productDeletion").assertLive(tx,database,productId);
-      tx.create(ref, { productId, url:result.url, uid:actor.uid, createdAt:Date.now() });
+    await C.db().collection("storeCommerceUploads").doc().set({
+      productId,
+      url: result.url,
+      uid: actor.uid,
+      createdAt: Date.now(),
     });
     return { url: result.url };
   } catch (e) {
@@ -387,7 +386,6 @@ async function review(uid, input) {
     database = C.db(),
     ref = database.collection("storeReviews").doc(C.hash(uid, productId));
   const result = await database.runTransaction(async (tx) => {
-    await require("../core/productDeletion").assertLive(tx, database, productId);
     const person = await C.activeUser(uid, { transaction: tx, database }),
       order = await C.orderForUser(uid, orderId, { transaction: tx, database }),
       old = await tx.get(ref);

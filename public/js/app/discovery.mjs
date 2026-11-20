@@ -4,16 +4,15 @@ export const PRODUCT_CATEGORIES = Object.freeze([
   { id: "pubg-android", label: "Pubg Mobile (Android)", href: "/kategori/pubg-android", icon: "game" },
   { id: "oxide-ios", label: "Oxide (iOS)", href: "/kategori/oxide-ios", icon: "flame" },
   { id: "oxide-android", label: "Oxide (Android)", href: "/kategori/oxide-android", icon: "flame" },
-  { id: "gbox-iphone", label: "GBOX (iPhone)", href: "/kategori/gbox-iphone", icon: "box" },
-  { id: "gbox-ipad", label: "GBOX (iPad)", href: "/kategori/gbox-ipad", icon: "box" },
+  { id: "gbox", label: "Gbox", href: "/kategori/gbox", icon: "box" },
 ].map(Object.freeze));
 
 export const STORE_NAVIGATION = Object.freeze([
   ...PRODUCT_CATEGORIES,
   { id: "featured", label: "Öne Çıkan Ürünler", href: "/magaza?featured=1", icon: "sparkles" },
   { id: "account", label: "Hesabım", href: "/hesabim", icon: "user" },
-  { id: "promotion", label: "Promosyon Kodu", href: "/promosyonlar", icon: "gift" },
-  { id: "discount", label: "İndirim Kodu", href: "/kuponlar", icon: "ticket" },
+  { id: "promotion", label: "Promosyon Kodu", href: "/kuponlar?tur=promosyon", icon: "gift" },
+  { id: "discount", label: "İndirim Kodu", href: "/kuponlar?tur=indirim", icon: "ticket" },
   { id: "orders", label: "Siparişlerim", href: "/siparisler", icon: "receipt" },
   { id: "cart", label: "Sepetim", href: "/sepet", icon: "bag" },
   { id: "support", label: "DESTEK KANALLARI", href: "/destek", icon: "support" },
@@ -45,7 +44,6 @@ export function activeDiscovery(route) {
   if (route.name === "category") return route.id === "gbox-ios" ? "gbox" : route.id;
   if (route.name === "catalog" && route.query.get("featured") === "1") return "featured";
   if (["catalog", "home"].includes(route.name)) return "";
-  if (route.name === "promotions") return "promotion";
-  if (route.name === "coupons") return "discount";
+  if (route.name === "coupons") return route.query.get("tur") === "indirim" ? "discount" : "promotion";
   return { account: "account", orders: "orders", cart: "cart", support: "support" }[route.name] || null;
 }

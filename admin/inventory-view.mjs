@@ -5,8 +5,8 @@ import {
   modal,
   toast,
   busy,
-} from "../public/js/app/ui.js?v=109";
-import { createInventoryImport } from "./inventory-model.mjs?v=109";
+} from "../public/js/app/ui.js?v=108";
+import { createInventoryImport } from "./inventory-model.mjs?v=108";
 const selector = (name, label, rows, value = "") =>
   `<label class="field"><span>${label}</span><select name="${name}" required>${rows.map(([id, title]) => `<option value="${e(id)}" ${id === value ? "selected" : ""}>${e(title)}</option>`).join("")}</select></label>`;
 export function inventoryView(list, catalog, canWrite) {

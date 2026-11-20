@@ -1,10 +1,10 @@
-import { isProductSettingsUpdate } from "./product-policy.mjs?v=109";
+import { isProductSettingsUpdate } from "./product-policy.mjs?v=108";
 import {
   readApiJson,
   waitForSignal,
   requestController,
   compatibleStoreWrites,
-} from "../public/js/request-utils.js?v=109";
+} from "../public/js/request-utils.js?v=108";
 
 export function escapeHtml(value = "") {
   return String(value ?? "").replace(
@@ -71,16 +71,6 @@ function errorMessage(payload = {}, status = 0) {
       "",
   );
   const messages = {
-    TEMPLATE_CHANGED: "Şablon başka bir yönetici tarafından değiştirildi. Bölümü yenileyin.",
-    TEMPLATE_INVALID: "Şablon uzunluğunu ve değişken adlarını kontrol edin. HTML kullanılamaz.",
-    STORE_DELETE_ACTIVE_ORDERS: "Bu ürüne ait açık sipariş var. Sipariş işlemini tamamladıktan sonra yeniden deneyin.",
-    STORE_DELETE_ACTIVE_RESERVATIONS: "Bu ürün için etkin stok rezervasyonu var. Rezervasyon kapandığında yeniden deneyin.",
-    STORE_DELETE_CONFIRMATION: "Silme onayı ürün kimliğiyle eşleşmedi.",
-    STORE_GALLERY_PATH_INVALID: "Galeri dosyası bulunamadı. public/assets/products altındaki dosya adını ve uzantısını kontrol edin.",
-    STORE_GALLERY_LIMIT: "Ürün galerisine en fazla 20 görsel eklenebilir.",
-    STORE_GALLERY_DUPLICATE: "Aynı görsel galeride iki kez kullanılamaz.",
-    STORE_CARD_STYLE_INVALID: "Mevcut beş kart görünümünden birini seçin.",
-    STORE_CODE_REACTIVATION_BLOCKED: "Kullanılmış kod yeniden etkinleştirilemez.",
     STORE_MANUAL_PAYMENT_EVIDENCE_REQUIRED:
       "Ödeme veya iade için doğrulanmış harici işlem referansı gerekli.",
     STORE_PAYMENT_CHANNEL_REVIEW_REQUIRED:

@@ -1,8 +1,6 @@
-import { categoryKey, categoryLabel } from "../store/catalog-schema.mjs?v=109";
-import { cardStyle } from '../store/card-appearance.mjs?v=109';
-import { escape as e, money, icon, safeImage, empty } from "./ui.js?v=109";
-import { productGallery, galleryIndex } from "./gallery.mjs?v=109";
-import { PRODUCT_CATEGORIES, STORE_NAVIGATION, HOME_CATEGORIES, HOME_CHANNELS, channelDestination, activeDiscovery } from "./discovery.mjs?v=109";
+import { escape as e, money, icon, safeImage, empty } from "./ui.js?v=108";
+import { productGallery, galleryIndex } from "./gallery.mjs?v=108";
+import { PRODUCT_CATEGORIES, STORE_NAVIGATION, HOME_CATEGORIES, HOME_CHANNELS, channelDestination, activeDiscovery } from "./discovery.mjs?v=108";
 
 export const pageHeading = (title, kicker = "", description = "") =>
   `<div class="section-heading"><div>${kicker ? `<span class="eyebrow">${e(kicker)}</span>` : ""}<h1>${e(title)}</h1>${description ? `<p>${e(description)}</p>` : ""}</div></div>`;
@@ -14,7 +12,7 @@ export function createStorePages({ state, filtered, product, stockLabel, getFavo
     const favorite = getFavorites().has(p.id),
       minimum = Math.min(...plans.map(plan => plan.priceKurus)),
       href = "/urun/" + e(p.id);
-    return `<article class="product-card${p.featured ? ' product-card--featured' : ''}" data-card-style="${cardStyle(p.cardStyle)}">${p.featured ? '<span class="featured-ribbon">ÖNE ÇIKAN ÜRÜN</span>' : ''}
+    return `<article class="product-card">
       <div class="product-image-wrap"><a href="${href}" data-nav tabindex="-1" aria-hidden="true"><img class="product-image" src="${e(safeImage(p.image))}" alt="" width="360" height="320" loading="lazy" decoding="async" draggable="false"/></a>
         ${p.badge ? `<span class="product-label">${e(p.badge)}</span>` : ""}
         <button type="button" class="favorite-btn ${favorite ? "active" : ""}" data-action="favorite" data-id="${e(p.id)}" aria-label="${e(p.name)} ${favorite ? "favorilerimden çıkar" : "favorilerime ekle"}" aria-pressed="${favorite}">${icon("heart")}</button>
@@ -29,7 +27,7 @@ export function createStorePages({ state, filtered, product, stockLabel, getFavo
   function catalog(r, { home = false } = {}) {
     const featured = home ? filtered({ name: "catalog", query: new URLSearchParams({ featured: "1" }) }) : [],
       rows = home && featured.length ? featured : filtered(r), active = activeDiscovery(r),
-      title = r.name === "favorites" ? "Favorilerim" : r.query.get("q") ? `“${r.query.get("q")}” için sonuçlar` : home ? (featured.length ? "Öne çıkan ürünler" : "Ürünleri keşfet") : r.query.get("featured") === "1" ? "Öne çıkan ürünler" : r.name === "category" ? (PRODUCT_CATEGORIES.find(category => category.id === active)?.label || { android: "Android", ios: "iOS", pubg: "PUBG Mobile", oxide: "Oxide", gbox: "GBOX", "gbox-ios": "GBOX" }[r.id] || (state.experience?.categories || []).find(category => category.id === r.id)?.name || "Kategori") : "Tüm Ürünler";
+      title = r.name === "favorites" ? "Favorilerim" : r.query.get("q") ? `“${r.query.get("q")}” için sonuçlar` : home ? (featured.length ? "Öne çıkan ürünler" : "Ürünleri keşfet") : r.query.get("featured") === "1" ? "Öne çıkan ürünler" : r.name === "category" ? (PRODUCT_CATEGORIES.find(category => category.id === active)?.label || { android: "Android", ios: "iOS", pubg: "PUBG Mobile", oxide: "Oxide" }[r.id] || (state.experience?.categories || []).find(category => category.id === r.id)?.name || "Kategori") : "Tüm Ürünler";
     return `<section class="catalog-section" id="catalog" aria-label="Ürünler"><div class="section-heading"><div><span class="eyebrow">${home ? "ZENTRA SEÇKİSİ" : "DİJİTAL ÜRÜNLER"}</span><${home ? "h2" : "h1"}>${e(title)}</${home ? "h2" : "h1"}></div>${home ? `<a href="/magaza" data-nav class="section-link">Tümünü gör ${icon("arrow")}</a>` : `<span class="result-count">${rows.length} ürün</span>`}</div>
       <div class="catalog-toolbar"><nav class="filter-tabs" aria-label="Ürün grupları">${PRODUCT_CATEGORIES.map(category => `<a class="filter-tab ${active === category.id ? "active" : ""}" href="${category.href}" data-nav ${active === category.id ? 'aria-current="page"' : ""}>${e(category.label)}</a>`).join("")}</nav><label><span class="sr-only">Ürün sıralaması</span><select class="sort-select" id="sort-products">${[["", "Önerilen sıralama"], ["price-up", "Fiyat: düşükten yükseğe"], ["price-down", "Fiyat: yüksekten düşüğe"], ["name", "İsme göre A–Z"]].map(([value, label]) => `<option value="${value}" ${r.query.get("sort") === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button type="button" class="filter-tab" data-action="filters">${icon("filter")} Filtrele</button></div>
       ${rows.length ? `<div class="product-grid">${rows.map(card).join("")}</div>` : empty("Aradığın ürün burada görünmüyor.", "Farklı bir kategori seçebilir veya filtrelerini değiştirebilirsin.", "/magaza", "Tüm ürünleri gör")}</section>`;
@@ -54,8 +52,8 @@ export function createStorePages({ state, filtered, product, stockLabel, getFavo
   function detail(id) {
     const p = product(id);
     if (!p || !p.plans?.length) return empty("Bu ürün bulunamadı.", "Güncel mağazayı inceleyebilirsin.");
-    const key = currentRoute().query.get("paket") || state.selectedPlans.get(p.id), plan = p.plans.find(item => item.key === key) || p.plans[0], favorite = getFavorites().has(p.id);
-    return `<nav class="breadcrumb" aria-label="Sayfa yolu"><a href="/" data-nav>Ana sayfa</a>${icon("chevron")}<a href="/kategori/${e(categoryKey(p))}" data-nav>${e(categoryLabel(p))}</a>${icon("chevron")}<span>${e(p.name)}</span></nav>
+    const key = state.selectedPlans.get(p.id) || currentRoute().query.get("paket"), plan = p.plans.find(item => item.key === key) || p.plans[0], favorite = getFavorites().has(p.id);
+    return `<nav class="breadcrumb" aria-label="Sayfa yolu"><a href="/" data-nav>Ana sayfa</a>${icon("chevron")}<a href="/kategori/${e(p.game)}-${e(p.platform)}" data-nav>${e(p.game === "pubg" ? "PUBG Mobile" : p.game === "oxide" ? "Oxide" : "Gbox")} (${p.platform === "ios" ? "iOS" : "Android"})</a>${icon("chevron")}<span>${e(p.name)}</span></nav>
       <section class="product-detail">${gallery(p)}<div class="detail-info"><div class="detail-heading"><span class="eyebrow">${e(p.game === "pubg" ? "PUBG MOBILE" : (p.game || "DİJİTAL ÜRÜN").toLocaleUpperCase("tr-TR"))} · ${p.platform === "ios" ? "iOS" : "ANDROID"}</span><button type="button" class="favorite-btn ${favorite ? "active" : ""}" data-action="favorite" data-id="${e(p.id)}" aria-pressed="${favorite}" aria-label="${e(p.name)} favori seçimi">${icon("heart")}</button></div>
         <h1>${e(p.name)}</h1><span class="status-pill ${p.stock?.available ? "green" : "amber"}">${e(stockLabel(p))}</span><p class="detail-description">${e(p.description)}</p>
         ${p.features?.length ? `<ul class="detail-features">${p.features.map(feature => `<li>${icon("check")}<span>${e(feature)}</span></li>`).join("")}</ul>` : ""}
